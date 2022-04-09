@@ -35,16 +35,16 @@ enum ssl_verify_mode {
 };
 #endif
 template<typename _socket_type>
-class non_ssl_socket : public _socket_type {
+class non_ssl: public _socket_type {
 public:
     using socket_type = _socket_type;
 
 public:
 #ifdef SSL_ENABLE
-    non_ssl_socket(socket_type &sock, const std::shared_ptr<asio::ssl::context> &context)
+    non_ssl(socket_type &sock, const std::shared_ptr<asio::ssl::context> &context)
         : socket_type(std::move(sock)) {}
 #else
-    non_ssl_socket(socket_type &sock) : socket_type(std::move(sock)) {}
+    non_ssl(socket_type &sock) : socket_type(std::move(sock)) {}
 #endif
     template<typename T, typename Func>
     void async_write_some_l(const T &buffer, const Func &func) {
@@ -83,13 +83,13 @@ public:
 };
 #ifdef SSL_ENABLE
 template<typename _socket_type>
-class ssl_socket : public _socket_type {
+class ssl : public _socket_type {
 public:
     using base_type = _socket_type;
     using socket_type = typename _socket_type::next_layer_type;
 
 public:
-    ssl_socket(socket_type &_sock, const std::shared_ptr<asio::ssl::context> &context)
+    ssl(socket_type &_sock, const std::shared_ptr<asio::ssl::context> &context)
         : base_type(std::move(_sock), *context) {}
 
     void close() {
