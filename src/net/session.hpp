@@ -30,8 +30,10 @@
 #include "session_base.hpp"
 #include "session_helper.hpp"
 #include "spdlog/logger.hpp"
+#ifdef SSL_ENABLE
+#include "asio/ssl.hpp"
+#endif
 #include <Util/nocopyable.hpp>
-#include "tcp.hpp"
 template<typename _stream_type>
 class session : public basic_session, public _stream_type, public noncopyable {
     friend class tcp_server;

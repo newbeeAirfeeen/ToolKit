@@ -97,9 +97,9 @@ public:
     }
 
     /*!
-         * 传this是为了设置已经握手flag, 但需要确保ssl_socket 的子类同时也继承basic_session
-         * @param session_ 由子类调用
-         */
+     * 传this是为了设置已经握手flag, 但需要确保ssl_socket 的子类同时也继承basic_session
+     * @param session_ 由子类调用
+     */
     template<typename T, typename Func>
     void do_handshake(const T &buffer, const Func &func, const std::shared_ptr<basic_session> &session_) {
         auto handshake_func = [session_, this, buffer, func](const std::error_code &error) {
@@ -151,6 +151,7 @@ public:
         asio::ip::tcp::no_delay no_delay_(no_delay);
         base_type::next_layer().set_option(no_delay_);
     }
+
 private:
     bool handshake = false;
 };

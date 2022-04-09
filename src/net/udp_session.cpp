@@ -1,5 +1,5 @@
 /*
-* @file_name: tcp_session.hpp
+* @file_name: udp_session.cpp
 * @date: 2022/04/04
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -22,12 +22,4 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_TCP_SESSION_HPP
-#define TOOLKIT_TCP_SESSION_HPP
-#include "session.hpp"
-using tcp_socket = asio::ip::tcp::socket;
-using tcp_session = session<non_ssl_socket<tcp_socket>>;
-#ifdef SSL_ENABLE
-using tls_session = session<ssl_socket<asio::ssl::stream<tcp_socket>>>;
-#endif
-#endif//TOOLKIT_TCP_SESSION_HPP
+#include "udp_session.hpp"

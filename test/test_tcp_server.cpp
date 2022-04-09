@@ -1,22 +1,16 @@
 //
 // Created by 沈昊 on 2022/4/4.
 //
-#include <Network/tcp_server.hpp>
+#include <net/tcp_server.hpp>
 #include <iostream>
 #include <spdlog/logger.hpp>
-#include <event_poller_pool.hpp>
+#include <net/event_poller_pool.hpp>
 using namespace std;
 int main(){
     logger::initialize("logs/test_tcp_server.log", spdlog::level::trace);
     auto& pool = event_poller_pool::Instance();
     auto http_server = std::make_shared<tcp_server>();
-    try{
-        http_server->start<tcp_session>(8080);
-    }catch(const exception& e)
-    {
-        Info(e.what());
-    }
-
+    http_server->start<tcp_session>(8080);
     std::shared_ptr<asio::ssl::context> context = std::make_shared<asio::ssl::context>(asio::ssl::context::method::sslv23_server);
     context->use_certificate_chain_file("default.pem");
     context->use_private_key_file("default.pem", asio::ssl::context::pem);

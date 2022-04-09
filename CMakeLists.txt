@@ -21,10 +21,10 @@ endif()
 #添加包含路径
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/Util SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/spdlog SRC_LIST)
-aux_source_directory(${CMAKE_SOURCE_DIR}/src/Network SRC_LIST)
+aux_source_directory(${CMAKE_SOURCE_DIR}/src/net SRC_LIST)
 add_library(ToolKit STATIC ${SRC_LIST})
 target_link_libraries(ToolKit INTERFACE ${LINK_LIB_LIST})
 target_include_directories(ToolKit PUBLIC ${CMAKE_SOURCE_DIR}/src
-                                   PUBLIC ${CMAKE_SOURCE_DIR}/src/Network)
+                                   PUBLIC ${CMAKE_SOURCE_DIR}/src/net)
 
 add_subdirectory(test)
