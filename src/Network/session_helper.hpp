@@ -41,7 +41,20 @@ public:
      * @return true表示销毁成功
      */
     bool remove_session(const basic_session::pointer&);
+    /*!
+     * 清除当前线程的所有会话
+     * @return true
+     */
     bool clear();
+    /*!
+     * 得到会话的总数量
+     */
+    static size_t get_session_count();
+private:
+    /*!
+     * 会话个数
+     */
+    static std::atomic<size_t> session_count;
     std::unordered_map<typename asio::ip::tcp::socket::native_handle_type, typename basic_session::pointer> session_map;
 };
 

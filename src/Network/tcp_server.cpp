@@ -37,3 +37,7 @@ void tcp_server::stop(){
         get_session_helper().clear();
     });
 }
+
+size_t tcp_server::get_tcp_session_count() const{
+    return session_helper::get_session_count();
+}

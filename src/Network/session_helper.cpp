@@ -25,6 +25,7 @@
 #include "session_helper.hpp"
 #include <atomic>
 static thread_local std::atomic<size_t> identify{0};
+std::atomic<size_t> session_helper::session_count{0};
 session_helper& get_session_helper(){
     static thread_local session_helper helper;
     return helper;
@@ -39,6 +40,7 @@ bool session_helper::create_session(const basic_session::pointer& session_pointe
     if(it != session_map.end()){
         return false;
     }
+    session_count.fetch_add(1, std::memory_order_release);
     session_pointer->identify = identify_index;
     session_map.emplace(identify_index, session_pointer);
     return true;
@@ -51,6 +53,7 @@ bool session_helper::remove_session(const basic_session::pointer& session_pointe
     if( it == session_map.end()){
         return true;
     }
+    session_count.fetch_sub(1, std::memory_order_release);
     session_map.erase(it);
     return true;
 }
@@ -58,4 +61,8 @@ bool session_helper::remove_session(const basic_session::pointer& session_pointe
 bool session_helper::clear(){
     session_map.clear();
     return true;
+}
+
+size_t session_helper::get_session_count(){
+    return session_count.load(std::memory_order_relaxed);
 }

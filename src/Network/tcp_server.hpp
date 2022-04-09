@@ -28,7 +28,6 @@
 #include "event_poller_pool.hpp"
 #include "session_helper.hpp"
 #include "spdlog/logger.hpp"
-#include "ssl.hpp"
 #include "tcp_session.hpp"
 #include <Util/nocopyable.hpp>
 #include <asio.hpp>
@@ -69,8 +68,16 @@ public:
         });
     }
 
+    /*!
+     * 停止当前tcp_server，并清除跟此server相关的所有会话
+     */
     void stop();
 
+    /*!
+     * 得到tcp连接的会话总数。
+     * @return 当前在线人数
+     */
+    size_t get_tcp_session_count() const;
 private:
 #ifdef SSL_ENABLE
     template<typename session_type>

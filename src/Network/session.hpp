@@ -31,89 +31,7 @@
 #include "session_helper.hpp"
 #include "spdlog/logger.hpp"
 #include <Util/nocopyable.hpp>
-#ifdef SSL_ENABLE
-#include <asio/ssl.hpp>
-enum ssl_verify_mode {
-    verify_none = asio::ssl::verify_none,
-    verify_peer = asio::ssl::verify_peer,
-    verify_fail_if_no_peer_cert = asio::ssl::verify_fail_if_no_peer_cert,
-    verify_client_once = asio::ssl::verify_client_once,
-};
-#endif
-namespace net {
-    template<typename _socket_type>
-    class non_ssl_socket : public _socket_type {
-    public:
-        using socket_type = _socket_type;
-
-    public:
-#ifdef SSL_ENABLE
-        non_ssl_socket(socket_type &sock, const std::shared_ptr<asio::ssl::context> &context)
-            : socket_type(std::move(sock)) {}
-#else
-        non_ssl_socket(socket_type &sock): socket_type(std::move(sock)) {}
-#endif
-        template<typename T, typename Func>
-        void async_write_some_l(const T& buffer, const Func& func){
-            return socket_type::async_write_some(buffer, func);
-        }
-
-        template<typename T, typename Func>
-        void async_read_some_l(const T& buffer, const Func& func, const std::shared_ptr<basic_session>& session_){
-            socket_type::async_read_some(buffer, func);
-        }
-    };
-#ifdef SSL_ENABLE
-    template<typename _socket_type>
-    class ssl_socket : public _socket_type {
-    public:
-        using base_type = _socket_type;
-        using socket_type = typename _socket_type::next_layer_type;
-
-    public:
-        ssl_socket(socket_type &_sock, const std::shared_ptr<asio::ssl::context> &context)
-            : base_type(std::move(_sock), *context) {}
-
-        void close() {
-            _socket_type::next_layer().close();
-        }
-
-        /*!
-         * 传this是为了设置已经握手flag, 但需要确保ssl_socket 的子类同时也继承basic_session
-         * @param session_ 由子类调用
-         */
-        template<typename T, typename Func>
-        void do_handshake(const T& buffer, const Func& func, const std::shared_ptr<basic_session>& session_) {
-            auto handshake_func = [session_, this, buffer, func](const std::error_code &error) {
-                if (error) {
-                    session_->onError(error);
-                    get_session_helper().remove_session(session_);
-                    return;
-                }
-                this->handshake = true;
-                this->template async_read_some(buffer, func);
-            };
-            base_type::async_handshake(asio::ssl::stream_base::server, handshake_func);
-        }
-
-        template<typename T, typename Func>
-        void async_write_some_l(const T& buffer, const Func& func){
-            return base_type::async_write_some(buffer, func);
-        }
-
-        template<typename T, typename Func>
-        void async_read_some_l(const T& buffer, const Func& func, const std::shared_ptr<basic_session>& session_) {
-            if (!handshake)
-                do_handshake(buffer, func, session_);
-            else base_type::async_read_some(buffer, func);
-        }
-
-    private:
-        bool handshake = false;
-    };
-#endif
-};// namespace net
-
+#include "tcp.hpp"
 template<typename _stream_type>
 class session : public basic_session, public _stream_type, public noncopyable {
     friend class tcp_server;
@@ -141,14 +59,47 @@ public:
 
     virtual void onRecv(const char *data, size_t length) {
         Trace("recv data length {}", length);
-        std::string str = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 11\r\n\r\nHello,world";
-        send(str);
     }
 
     virtual void onError(const std::error_code &e) {
         Error(e.message());
     }
 
+    /*!
+     * 设置接收缓冲区大小
+     * @param size 接收缓冲区的大小
+     */
+    void set_recv_buffer_size(size_t size){
+        return stream_type::set_recv_buffer_size(size);
+    }
+    /*!
+     * 设置发送缓冲区的大小
+     * @param size 发送缓冲区的大小
+     */
+    void set_send_buffer_size(size_t size){
+        return stream_type::set_send_buffer_size(size);
+    }
+    /*!
+     * 设置发送低水位
+     * @param size 设置发送低水位
+     */
+    void set_send_low_water_mark(size_t size){
+        return stream_type::set_send_low_water_mark(size);
+    }
+    /*!
+     * 设置接收低水位
+     * @param 接收低水位
+     */
+    void set_recv_low_water_mark(size_t size){
+        return stream_type::set_recv_low_water_mark(size);
+    }
+    /*!
+     * 是否关闭nagle算法
+     * @param no_delay true关闭,false开启。
+     */
+    void set_no_delay(bool no_delay = true){
+        return stream_type::set_no_delay(no_delay);
+    }
 protected:
     /*!
      * 数据发送出口。只允许在绑定线程调用
@@ -186,6 +137,8 @@ protected:
 protected:
     void begin_session() {
         Trace("begin tcp session");
+        set_no_delay(true);
+        set_recv_low_water_mark(10);
         return this->read_l();
     }
 
