@@ -120,7 +120,7 @@ public:
         : base_type(std::move(_sock), *context) {}
 
     void open(bool is_ipv4){
-        return socket_type::open(is_ipv4 ? asio::ip::tcp::v4(): asio::ip::tcp::v6());
+        return base_type::next_layer().open(is_ipv4 ? asio::ip::tcp::v4(): asio::ip::tcp::v6());
     }
 
     void close() {
@@ -128,7 +128,7 @@ public:
     }
 
     void bind(const asio::ip::tcp::endpoint& end_point_){
-        return socket_type::bind(end_point_);
+        return base_type::next_layer().bind(end_point_);
     }
     /*!
      * 传this是为了设置已经握手flag, 但需要确保ssl_socket 的子类同时也继承basic_session
@@ -155,7 +155,7 @@ public:
 
     template<typename endpoint_type, typename T>
     void async_connect_l(const endpoint_type& end_point, const T& func){
-        return base_type::async_connect(end_point, func);
+        return base_type::next_layer().async_connect(end_point, func);
     }
 
 
@@ -196,7 +196,15 @@ public:
         asio::ip::tcp::no_delay no_delay_(no_delay);
         base_type::next_layer().set_option(no_delay_);
     }
-
+    /*!
+     * 关闭读，写或者全关闭
+     * @param val 0: 小于0表示关闭读写, 0表示关闭读，大于0表示关闭写
+     */
+    void shutdown(int val){
+        if(val < 0 )
+            return base_type::next_layer().shutdown(socket_type::shutdown_both);
+        return base_type::next_layer().shutdown(val ? socket_type::shutdown_send : socket_type::shutdown_receive);
+    }
 private:
     bool handshake = false;
 };
