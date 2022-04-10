@@ -68,14 +68,8 @@ public:
 
     basic_buffer() noexcept;
 
-    /*!
-     * 移动构造,将会移交str的内存管理权
-     */
     basic_buffer(std::string &&str);
 
-    /*!
-     * 移交, 目前只支持相同的内存分配器
-     */
     basic_buffer(basic_buffer<CharT, Traits, allocator> &&) noexcept;
 
 
@@ -145,7 +139,6 @@ inline void basic_buffer<CharT, Traits, allocator>::remove(size_t len) {
         len = size();
     }
     read_index += len;
-    /* 如果缓冲区大于10kb */
     if (read_index > 10240) {
         base_type::erase(0, read_index);
         read_index = 0;
@@ -154,7 +147,6 @@ inline void basic_buffer<CharT, Traits, allocator>::remove(size_t len) {
         read_index = 0;
         base_type::clear();
     }
-    /* 如果容量大于40kb */
     if (base_type::capacity() > 40240) base_type::shrink_to_fit();
 }
 
