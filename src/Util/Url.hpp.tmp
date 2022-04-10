@@ -27,7 +27,7 @@
 
 #include <string>
 #include <map>
-
+#include <Util/string_view.hpp>
 /*
     Url and UrlView are compliant with
         https://tools.ietf.org/html/rfc3986

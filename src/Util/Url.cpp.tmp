@@ -118,7 +118,7 @@ bool Url::isSecure() const{
 
 
 
-string_view Url::captureUpTo( const string_view& right_delimiter, const std::string& error_message ){
+toolkit::string_view Url::captureUpTo( const string_view& right_delimiter, const std::string& error_message ){
 
   this->right_position = this->parse_target.find_first_of(right_delimiter, this->left_position );
 

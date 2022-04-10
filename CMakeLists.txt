@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(ToolKit)
 
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 add_compile_options(-DASIO_STANDALONE)
 

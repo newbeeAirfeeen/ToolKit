@@ -64,33 +64,52 @@ public:
      * @return 当前线程的id
      */
     const std::thread::id& get_thread_id() const;
-
+    /*!
+     * 异步执行任务,如果在本线程，则直接执行
+     */
     template<typename Func, typename...Args>
     void async(Func&& func, Args&&...args){
-        auto _func = std::bind(func, std::forward<Args>(args)...);
-        _io_context.template post(std::move(_func));
+        auto current_thread_id = std::this_thread::get_id();
+        if(id == current_thread_id){
+            func(std::forward<Args>(args)...);
+        }
+        else{
+            auto _func = std::bind(func, std::forward<Args>(args)...);
+            _io_context.template post(std::move(_func));
+        }
     }
     /*!
-     * 执行一个定时任务.切换到自己的polle线程刷新计时器
+     * 执行一个定时任务.
      * @param duration 多少时间后开始执行,单位为毫秒
      * @param func
      */
-    void execute_delay_task(const std::chrono::milliseconds& time, const std::function<size_t()>& func){
-         async([this, time, func](){
-             this->timer.expires_after(time);
-             this->timer.template async_wait([this, func](const std::error_code& er){
-                 if(er){
-                     Critical(er.message());
-                     return;
-                 }
-                 auto result = func();
-                 if(result <= 0)
-                     return;
-                 this->execute_delay_task(std::chrono::milliseconds(result), func);
-             });
-         });
+    std::shared_ptr<timer_type> execute_delay_task(const std::chrono::milliseconds& time, const std::function<size_t()>& func){
+        std::shared_ptr<timer_type> timer = std::make_shared<timer_type>(get_executor());
+        auto self(shared_from_this());
+        auto timer_func = std::bind(&event_poller::timer_func_helper, self, std::placeholders::_1, timer, func);
+        timer->expires_after(time);
+        timer->async_wait(timer_func);
+        return timer;
     }
+
+    /*!
+     * 创建一个绑定event_poller的定时器
+     * @return 定时器
+     */
+    inline std::shared_ptr<timer_type> create_timer(){
+        return std::make_shared<timer_type>(get_executor());
+    }
+
     void run();
+private:
+    /*!
+     * 内部定时器帮助函数
+     * @param e 定时器错误码
+     * @param timer 定时器
+     * @param func 回调函数
+     */
+    void timer_func_helper(const std::error_code& e, const std::shared_ptr<timer_type>& timer,
+                           const std::function<size_t()>& func);
 private:
     asio::io_context _io_context;
     asio::executor_work_guard<typename asio::io_context::executor_type> work_guard;
@@ -107,10 +126,6 @@ private:
      */
     std::atomic<bool> _running;
     std::mutex _mtx_running;
-    /*!
-     * 定时器
-     */
-    timer_type timer;
 };
 
 

@@ -27,7 +27,7 @@
 #include <spdlog/logger.hpp>
 class thread_quit_exception : public std::exception{};
 
-event_poller::event_poller():work_guard(_io_context.get_executor()), _running(false),timer(_io_context){
+event_poller::event_poller():work_guard(_io_context.get_executor()), _running(false){
 }
 
 event_poller::~event_poller(){
@@ -85,4 +85,18 @@ void event_poller::run(){
             Error(e.what());
         }
     }
+}
+
+void event_poller::timer_func_helper(const std::error_code& e, const std::shared_ptr<timer_type>& timer, const std::function<size_t()>& func){
+    if(e){
+        Debug(e.message());
+        return;
+    }
+    auto result = func();
+    if( result <= 0){
+        return;
+    }
+    auto timer_func = std::bind(&event_poller::timer_func_helper, shared_from_this(), std::placeholders::_1, timer, func);
+    timer->expires_after(std::chrono::milliseconds(result));
+    timer->async_wait(timer_func);
 }
