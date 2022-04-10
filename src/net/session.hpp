@@ -25,12 +25,12 @@
 
 #ifndef TOOLKIT_SESSION_HPP
 #define TOOLKIT_SESSION_HPP
+#include "asio/basic_waitable_timer.hpp"
 #include "buffer.hpp"
 #include "event_poller.hpp"
 #include "session_base.hpp"
 #include "session_helper.hpp"
 #include "spdlog/logger.hpp"
-#include "asio/basic_waitable_timer.hpp"
 #ifdef SSL_ENABLE
 #include "asio/ssl.hpp"
 #endif
@@ -39,18 +39,25 @@ template<typename _stream_type>
 class session : public basic_session, public _stream_type, public noncopyable {
     friend class tcp_server;
     friend class session_helper;
+
 public:
     using pointer = std::shared_ptr<session>;
     using stream_type = _stream_type;
     using socket_type = typename stream_type::socket_type;
-    using timer       = asio::basic_waitable_timer<std::chrono::system_clock>;
+    using clock_type  = std::chrono::system_clock;
+    using timer = asio::basic_waitable_timer<clock_type>;
+
 public:
 #ifdef SSL_ENABLE
-    session(typename stream_type::socket_type &socket_, event_poller &poller, const std::shared_ptr<asio::ssl::context> &context)
-        : poller(poller), stream_type(socket_, context), context(context), internal_timer(poller.get_executor()){}
+    session(typename stream_type::socket_type &socket_, event_poller &poller,
+            const std::shared_ptr<asio::ssl::context> &context)
+        : poller(poller), stream_type(socket_, context),
+          context(context), recv_timer(poller.get_executor()),
+          send_timer(poller.get_executor()) {}
 #else
     session(typename stream_type::socket_type &socket_, event_poller &poller)
-        : poller(poller), stream_type(socket_),internal_timer(poller.get_executor()) {}
+        : poller(poller), stream_type(socket_), recv_timer(poller.get_executor()),
+          send_timer(poller.get_executor()) {}
 #endif
     ~session() {
         Trace("~session");
@@ -72,52 +79,52 @@ public:
      * 设置发送超时, 0为没有超时时间
      * @param time 时间单位为毫秒
      */
-    void set_send_time_out(size_t time){
+    void set_send_time_out(size_t time) {
         send_time_out.store(time);
-
     }
     /*!
      * 设置接收时间超时,0为没有超时时间
      * @param time 时间单位为毫秒
      */
-    void set_recv_time_out(size_t time){
+    void set_recv_time_out(size_t time) {
         recv_time_out.store(time);
     }
     /*!
      * 设置接收缓冲区大小
      * @param size 接收缓冲区的大小
      */
-    void set_recv_buffer_size(size_t size){
+    void set_recv_buffer_size(size_t size) {
         return stream_type::set_recv_buffer_size(size);
     }
     /*!
      * 设置发送缓冲区的大小
      * @param size 发送缓冲区的大小
      */
-    void set_send_buffer_size(size_t size){
+    void set_send_buffer_size(size_t size) {
         return stream_type::set_send_buffer_size(size);
     }
     /*!
      * 设置发送低水位
      * @param size 设置发送低水位
      */
-    void set_send_low_water_mark(size_t size){
+    void set_send_low_water_mark(size_t size) {
         return stream_type::set_send_low_water_mark(size);
     }
     /*!
      * 设置接收低水位
      * @param 接收低水位
      */
-    void set_recv_low_water_mark(size_t size){
+    void set_recv_low_water_mark(size_t size) {
         return stream_type::set_recv_low_water_mark(size);
     }
     /*!
      * 是否关闭nagle算法
      * @param no_delay true关闭,false开启。
      */
-    void set_no_delay(bool no_delay = true){
+    void set_no_delay(bool no_delay = true) {
         return stream_type::set_no_delay(no_delay);
     }
+
 protected:
     /*!
      * 数据发送出口。只允许在绑定线程调用
@@ -155,13 +162,24 @@ protected:
 protected:
     void begin_session() {
         Trace("begin tcp session");
-        set_no_delay(true);
-        set_recv_low_water_mark(10);
         return this->read_l();
     }
 
     void read_l() {
         auto stronger_self = std::static_pointer_cast<session<stream_type>>(shared_from_this());
+        auto time_out = recv_time_out.load(std::memory_order_relaxed);
+        if (time_out) {
+            auto origin_time_out = clock_type::now() + std::chrono::seconds(time_out);
+            recv_timer.expires_at(origin_time_out);
+            recv_timer.template async_wait([stronger_self, origin_time_out](const std::error_code &e) {
+                //此时只剩定时器持有引用
+                if (stronger_self.unique() || stronger_self->recv_timer.expiry() > clock_type::now()) {
+                    return;
+                }
+                Error("session receive timeout");
+                stronger_self->stream_type::shutdown(0);
+            });
+        }
         auto read_function = [stronger_self](const std::error_code &e, size_t length) {
             if (e) {
                 stronger_self->onError(e);
@@ -177,10 +195,22 @@ protected:
 
     void write_l() {
         auto stronger_self = std::static_pointer_cast<session<stream_type>>(shared_from_this());
+        auto time_out = send_time_out.load(std::memory_order_relaxed);
+        if (time_out) {
+            auto origin_time_out = clock_type::now() + std::chrono::seconds(time_out);
+            send_timer.expires_at(origin_time_out);
+            send_timer.template async_wait([stronger_self](const std::error_code &e) {
+                //此时只剩定时器持有引用
+                if (stronger_self.unique() || stronger_self->send_timer.expiry() > clock_type::now()) {
+                    return;
+                }
+                Error("session send timeout");
+                stronger_self->stream_type::shutdown(1);
+            });
+        }
         auto write_function = [stronger_self](const std::error_code &ec, size_t send_length) {
             if (ec) {
-                stronger_self->onError(ec);
-                get_session_helper().remove_session(stronger_self);
+                stronger_self->stream_type::shutdown(0);
                 return;
             }
             stronger_self->_buffer.remove(send_length);
@@ -204,15 +234,16 @@ protected:
     /*!
      * 超时定时器
      */
-    timer internal_timer;
+    timer recv_timer;
+    timer send_timer;
     /*!
      * 发送时间超时
      */
-    std::atomic_size_t  send_time_out;
+    std::atomic_size_t send_time_out{15};
     /*!
      * 接收时间超时
      */
-    std::atomic_size_t  recv_time_out;
+    std::atomic_size_t recv_time_out{15};
     /*!
      * ssl上下文
      */

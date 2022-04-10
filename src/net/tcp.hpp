@@ -80,6 +80,15 @@ public:
         asio::ip::tcp::no_delay no_delay_(no_delay);
         socket_type::set_option(no_delay_);
     }
+    /*!
+     * 关闭读，写或者全关闭
+     * @param val 0: 小于0表示关闭读写, 0表示关闭读，大于0表示关闭写
+     */
+    void shutdown(int val){
+        if(val < 0 )
+            return socket_type::shutdown(socket_type::shutdown_both);
+        return socket_type::shutdown(val ? socket_type::shutdown_send : socket_type::shutdown_receive);
+    }
 };
 #ifdef SSL_ENABLE
 template<typename _socket_type>
