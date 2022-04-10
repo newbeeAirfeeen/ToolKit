@@ -27,8 +27,8 @@
 #include "session.hpp"
 #include "tcp.hpp"
 using tcp_socket = asio::ip::tcp::socket;
-using tcp_session = session<non_ssl<tcp_socket>>;
+using tcp_session = session<non_ssl<tcp_socket>, true>;
 #ifdef SSL_ENABLE
-using tls_session = session<ssl<asio::ssl::stream<tcp_socket>>>;
+using tls_session = session<ssl<asio::ssl::stream<tcp_socket>>, true>;
 #endif
 #endif//TOOLKIT_TCP_SESSION_HPP

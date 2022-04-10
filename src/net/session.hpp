@@ -35,7 +35,7 @@
 #include "asio/ssl.hpp"
 #endif
 #include <Util/nocopyable.hpp>
-template<typename _stream_type>
+template<typename _stream_type, bool is_server>
 class session : public basic_session, public _stream_type, public noncopyable {
     friend class tcp_server;
     friend class session_helper;
@@ -189,7 +189,7 @@ public:
     }
 public:
     void read_l() {
-        auto stronger_self = std::static_pointer_cast<session<stream_type>>(shared_from_this());
+        auto stronger_self = std::static_pointer_cast<session<stream_type, is_server>>(shared_from_this());
         auto time_out = recv_time_out.load(std::memory_order_relaxed);
         if (time_out) {
             auto origin_time_out = clock_type::now() + std::chrono::seconds(time_out);
@@ -214,11 +214,11 @@ public:
             stronger_self->read_l();
         };
         std::shared_ptr<basic_session> session_ptr(shared_from_this());
-        stream_type::async_read_some_l(asio::buffer(stronger_self->buffer, 10240), read_function, session_ptr, true);
+        stream_type::async_read_some_l(asio::buffer(stronger_self->buffer, 10240), read_function, session_ptr, is_server);
     }
 
     void write_l() {
-        auto stronger_self = std::static_pointer_cast<session<stream_type>>(shared_from_this());
+        auto stronger_self = std::static_pointer_cast<session<stream_type,is_server>>(shared_from_this());
         auto time_out = send_time_out.load(std::memory_order_relaxed);
         if (time_out) {
             auto origin_time_out = clock_type::now() + std::chrono::seconds(time_out);

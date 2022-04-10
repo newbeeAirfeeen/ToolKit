@@ -13,7 +13,7 @@ int main(){
     context->use_certificate_chain_file("default.pem");
     context->use_private_key_file("default.pem", asio::ssl::context::pem);
     context->set_verify_mode(asio::ssl::verify_fail_if_no_peer_cert);
-    auto client = std::make_shared<tcp_client>(*pool.get_poller(false));
+    auto client = std::make_shared<tcp_client>();
 
     client->start_connect("127.0.0.1", 8080);
 

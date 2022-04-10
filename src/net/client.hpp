@@ -36,19 +36,19 @@
 #include "socket_base.hpp"
 #include "session.hpp"
 template<typename _stream_type>
-class client : public session<_stream_type>{
+class client : public session<_stream_type, false>{
 public:
     using stream_type = _stream_type;
     using endpoint = typename asio::ip::tcp::endpoint;
-    using base_type = session<stream_type>;
+    using base_type = session<stream_type, false>;
 public:
 #ifdef SSL_ENABLE
-    explicit client(const std::shared_ptr<asio::ssl::context>& context)
+    explicit client(const std::shared_ptr<asio::ssl::context>& context = nullptr)
         :base_type(socket_helper::create_bind_socket(), context){
         this->context = context;
     }
 #else
-    explicit client(event_poller& poller):base_type(socket_helper::create_bind_socket()){}
+    client():base_type(socket_helper::create_bind_socket()){}
 #endif
     virtual void on_connected(){
         Info("connected");
