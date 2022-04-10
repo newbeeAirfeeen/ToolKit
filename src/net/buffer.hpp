@@ -68,7 +68,7 @@ public:
 
     basic_buffer() noexcept;
 
-    basic_buffer(std::string &&str);
+    explicit basic_buffer(std::string &&str);
 
     basic_buffer(basic_buffer<CharT, Traits, allocator> &&) noexcept;
 

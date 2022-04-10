@@ -46,13 +46,31 @@ public:
 #else
     non_ssl(socket_type &sock) : socket_type(std::move(sock)) {}
 #endif
+
+    void open(bool is_ipv4){
+        return socket_type::open(is_ipv4 ? asio::ip::tcp::v4(): asio::ip::tcp::v6());
+    }
+
+    void bind(const asio::ip::tcp::endpoint& end_point_){
+        return socket_type::bind(end_point_);
+    }
+
+    void close() {
+        socket_type::close();
+    }
+
+    template<typename endpoint_type, typename T>
+    void async_connect_l(const endpoint_type& end_point, const T& func){
+        return socket_type::async_connect(end_point, func);
+    }
+
     template<typename T, typename Func>
     void async_write_some_l(const T &buffer, const Func &func) {
         return socket_type::async_write_some(buffer, func);
     }
 
     template<typename T, typename Func>
-    void async_read_some_l(const T &buffer, const Func &func, const std::shared_ptr<basic_session> &session_) {
+    void async_read_some_l(const T &buffer, const Func &func, const std::shared_ptr<basic_session> &session_, bool is_server) {
         socket_type::async_read_some(buffer, func);
     }
 
@@ -101,27 +119,45 @@ public:
     ssl(socket_type &_sock, const std::shared_ptr<asio::ssl::context> &context)
         : base_type(std::move(_sock), *context) {}
 
+    void open(bool is_ipv4){
+        return socket_type::open(is_ipv4 ? asio::ip::tcp::v4(): asio::ip::tcp::v6());
+    }
+
     void close() {
         _socket_type::next_layer().close();
     }
 
+    void bind(const asio::ip::tcp::endpoint& end_point_){
+        return socket_type::bind(end_point_);
+    }
     /*!
      * 传this是为了设置已经握手flag, 但需要确保ssl_socket 的子类同时也继承basic_session
      * @param session_ 由子类调用
      */
     template<typename T, typename Func>
-    void do_handshake(const T &buffer, const Func &func, const std::shared_ptr<basic_session> &session_) {
-        auto handshake_func = [session_, this, buffer, func](const std::error_code &error) {
+    void do_handshake(const T &buffer, const Func &func, const std::shared_ptr<basic_session> &session_, bool is_server) {
+        auto handshake_func = [session_, this, buffer, func, is_server](const std::error_code &error) {
             if (error) {
                 session_->onError(error);
-                get_session_helper().remove_session(session_);
+                if(is_server)
+                    get_session_helper().remove_session(session_);
                 return;
             }
             this->handshake = true;
-            this->template async_read_some(buffer, func);
+            if(is_server)
+                return this->template async_read_some(buffer, func);
+            return this->template async_write_some(buffer, func);
         };
-        base_type::async_handshake(asio::ssl::stream_base::server, handshake_func);
+        if(is_server)
+            return base_type::async_handshake(asio::ssl::stream_base::server, handshake_func);
+        return base_type::async_handshake(asio::ssl::stream_base::client, handshake_func);
     }
+
+    template<typename endpoint_type, typename T>
+    void async_connect_l(const endpoint_type& end_point, const T& func){
+        return base_type::async_connect(end_point, func);
+    }
+
 
     template<typename T, typename Func>
     void async_write_some_l(const T &buffer, const Func &func) {
@@ -129,9 +165,9 @@ public:
     }
 
     template<typename T, typename Func>
-    void async_read_some_l(const T &buffer, const Func &func, const std::shared_ptr<basic_session> &session_) {
+    void async_read_some_l(const T &buffer, const Func &func, const std::shared_ptr<basic_session> &session_, bool is_server) {
         if (!handshake)
-            do_handshake(buffer, func, session_);
+            do_handshake(buffer, func, session_, is_server);
         else
             base_type::async_read_some(buffer, func);
     }

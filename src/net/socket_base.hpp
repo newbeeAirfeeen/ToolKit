@@ -1,5 +1,5 @@
 /*
-* @file_name: tcp_client.hpp
+* @file_name: socket_base.hpp
 * @date: 2022/04/10
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -22,12 +22,16 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_TCP_CLIENT_HPP
-#define TOOLKIT_TCP_CLIENT_HPP
-#include "client.hpp"
-#include "tcp.hpp"
-using tcp_client = client<non_ssl<asio::ip::tcp::socket>>;
-#ifdef SSL_ENABLE
-using tls_client = client<ssl<asio::ip::tcp::socket>>;
-#endif
-#endif//TOOLKIT_TCP_CLIENT_HPP
+#ifndef TOOLKIT_SOCKET_BASE_HPP
+#define TOOLKIT_SOCKET_BASE_HPP
+#include <event_poller.hpp>
+#include <asio.hpp>
+#include <utility>
+class socket_helper{
+public:
+    static std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>> create_bind_socket();
+};
+
+
+
+#endif//TOOLKIT_SOCKET_BASE_HPP

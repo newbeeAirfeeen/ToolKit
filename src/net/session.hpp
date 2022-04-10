@@ -54,10 +54,19 @@ public:
         : poller(poller), stream_type(socket_, context),
           context(context), recv_timer(poller.get_executor()),
           send_timer(poller.get_executor()) {}
+
+    session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>>& pair,
+            const std::shared_ptr<asio::ssl::context> &context)
+        :poller(*pair.first), stream_type(*pair.second, context),
+         context(context), recv_timer(pair.first->get_executor()), send_timer(pair.first->get_executor()){}
 #else
     session(typename stream_type::socket_type &socket_, event_poller &poller)
         : poller(poller), stream_type(socket_), recv_timer(poller.get_executor()),
           send_timer(poller.get_executor()) {}
+
+    session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>>& pair)
+        :poller(*pair.first), stream_type(*pair.second, context),
+          recv_timer(pair.first->get_executor()), send_timer(pair.first->get_executor()){}
 #endif
     ~session() {
         Trace("~session");
@@ -66,12 +75,20 @@ public:
     event_poller &get_poller() {
         return this->poller;
     }
-
-    virtual void onRecv(const char *data, size_t length) {
+    /*!
+     * 为数据接收回调
+     * @param data 数据头指针
+     * @param length 数据的长度
+     */
+    void onRecv(const char *data, size_t length)override {
         Trace("recv data length {}", length);
     }
 
-    virtual void onError(const std::error_code &e) {
+    /*!
+     * 会话出错回调
+     * @param e 错误码
+     */
+    virtual void onError(const std::error_code &e) override {
         Error(e.message());
     }
     /*!
@@ -164,13 +181,13 @@ protected:
         return this->write_l();
     }
 
-protected:
-    void begin_session() {
+public:
+    virtual void begin_session() {
         Trace("begin tcp session");
         before_begin_session();
         return this->read_l();
     }
-
+public:
     void read_l() {
         auto stronger_self = std::static_pointer_cast<session<stream_type>>(shared_from_this());
         auto time_out = recv_time_out.load(std::memory_order_relaxed);
@@ -197,7 +214,7 @@ protected:
             stronger_self->read_l();
         };
         std::shared_ptr<basic_session> session_ptr(shared_from_this());
-        stream_type::async_read_some_l(asio::buffer(stronger_self->buffer, 10240), read_function, session_ptr);
+        stream_type::async_read_some_l(asio::buffer(stronger_self->buffer, 10240), read_function, session_ptr, true);
     }
 
     void write_l() {
