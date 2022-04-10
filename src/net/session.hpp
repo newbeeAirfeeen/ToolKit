@@ -74,13 +74,17 @@ public:
     virtual void onError(const std::error_code &e) {
         Error(e.message());
     }
-
+    /*!
+     * 在会话开始前会被调用
+     */
+    virtual void before_begin_session(){}
     /*!
      * 设置发送超时, 0为没有超时时间
      * @param time 时间单位为毫秒
      */
     void set_send_time_out(size_t time) {
         send_time_out.store(time);
+        this->send_timer.expires_after(time);
     }
     /*!
      * 设置接收时间超时,0为没有超时时间
@@ -88,6 +92,7 @@ public:
      */
     void set_recv_time_out(size_t time) {
         recv_time_out.store(time);
+        this->recv_timer.expires_at(std::chrono::seconds(time));
     }
     /*!
      * 设置接收缓冲区大小
@@ -162,6 +167,7 @@ protected:
 protected:
     void begin_session() {
         Trace("begin tcp session");
+        before_begin_session();
         return this->read_l();
     }
 
@@ -172,8 +178,9 @@ protected:
             auto origin_time_out = clock_type::now() + std::chrono::seconds(time_out);
             recv_timer.expires_at(origin_time_out);
             recv_timer.template async_wait([stronger_self, origin_time_out](const std::error_code &e) {
+                Trace(e.message());
                 //此时只剩定时器持有引用
-                if (stronger_self.unique() || stronger_self->recv_timer.expiry() > clock_type::now()) {
+                if (stronger_self.unique() || e) {
                     return;
                 }
                 Error("session receive timeout");
@@ -201,7 +208,7 @@ protected:
             send_timer.expires_at(origin_time_out);
             send_timer.template async_wait([stronger_self](const std::error_code &e) {
                 //此时只剩定时器持有引用
-                if (stronger_self.unique() || stronger_self->send_timer.expiry() > clock_type::now()) {
+                if (stronger_self.unique() || e) {
                     return;
                 }
                 Error("session send timeout");
