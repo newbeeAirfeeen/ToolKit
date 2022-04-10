@@ -43,12 +43,12 @@ public:
     using base_type = session<stream_type>;
 public:
 #ifdef SSL_ENABLE
-    client(event_poller& poller, const std::shared_ptr<asio::ssl::context>& context)
-        :session<_stream_type>(socket_helper::create_bind_socket(), context){
+    explicit client(const std::shared_ptr<asio::ssl::context>& context)
+        :base_type(socket_helper::create_bind_socket(), context){
         this->context = context;
     }
 #else
-    explicit client(event_poller& poller):_sock(poller.get_executor()), base_type(_sock, poller){}
+    explicit client(event_poller& poller):base_type(socket_helper::create_bind_socket()){}
 #endif
     virtual void on_connected(){
         Info("connected");
