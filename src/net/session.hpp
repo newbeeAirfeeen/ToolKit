@@ -217,6 +217,10 @@ protected:
             if (!stronger_self->_buffer.empty()) {
                 return stronger_self->write_l();
             }
+            else{
+                //如果没有数据可发，取消定时器
+                stronger_self->send_timer.cancel();
+            }
         };
         stream_type::async_write_some_l(asio::buffer(_buffer.data(), _buffer.size()), write_function);
     }
