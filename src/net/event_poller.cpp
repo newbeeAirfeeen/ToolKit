@@ -27,7 +27,7 @@
 #include <spdlog/logger.hpp>
 class thread_quit_exception : public std::exception{};
 
-event_poller::event_poller():work_guard(_io_context.get_executor()), _running(false){
+event_poller::event_poller():work_guard(_io_context.get_executor()), _running(false),timer(_io_context){
 }
 
 event_poller::~event_poller(){

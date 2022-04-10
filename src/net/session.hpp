@@ -30,6 +30,7 @@
 #include "session_base.hpp"
 #include "session_helper.hpp"
 #include "spdlog/logger.hpp"
+#include "asio/basic_waitable_timer.hpp"
 #ifdef SSL_ENABLE
 #include "asio/ssl.hpp"
 #endif
@@ -38,18 +39,18 @@ template<typename _stream_type>
 class session : public basic_session, public _stream_type, public noncopyable {
     friend class tcp_server;
     friend class session_helper;
-
 public:
     using pointer = std::shared_ptr<session>;
     using stream_type = _stream_type;
     using socket_type = typename stream_type::socket_type;
-
+    using timer       = asio::basic_waitable_timer<std::chrono::system_clock>;
 public:
 #ifdef SSL_ENABLE
     session(typename stream_type::socket_type &socket_, event_poller &poller, const std::shared_ptr<asio::ssl::context> &context)
-        : poller(poller), stream_type(socket_, context), context(context) {}
+        : poller(poller), stream_type(socket_, context), context(context), internal_timer(poller.get_executor()){}
 #else
-    session(typename stream_type::socket_type &socket_, event_poller &poller) : poller(poller), stream_type(socket_) {}
+    session(typename stream_type::socket_type &socket_, event_poller &poller)
+        : poller(poller), stream_type(socket_),internal_timer(poller.get_executor()) {}
 #endif
     ~session() {
         Trace("~session");
@@ -67,6 +68,21 @@ public:
         Error(e.message());
     }
 
+    /*!
+     * 设置发送超时, 0为没有超时时间
+     * @param time 时间单位为毫秒
+     */
+    void set_send_time_out(size_t time){
+        send_time_out.store(time);
+
+    }
+    /*!
+     * 设置接收时间超时,0为没有超时时间
+     * @param time 时间单位为毫秒
+     */
+    void set_recv_time_out(size_t time){
+        recv_time_out.store(time);
+    }
     /*!
      * 设置接收缓冲区大小
      * @param size 接收缓冲区的大小
@@ -185,6 +201,18 @@ protected:
      * 用户写缓冲区
      */
     basic_buffer<char> _buffer;
+    /*!
+     * 超时定时器
+     */
+    timer internal_timer;
+    /*!
+     * 发送时间超时
+     */
+    std::atomic_size_t  send_time_out;
+    /*!
+     * 接收时间超时
+     */
+    std::atomic_size_t  recv_time_out;
     /*!
      * ssl上下文
      */
