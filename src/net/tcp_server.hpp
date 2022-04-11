@@ -114,6 +114,7 @@ private:
                     if (!create_ret) {
                         Error("create tcp_session error");
                     } else {
+                        Trace("目前在线人数: {}", stronger_self->get_tcp_session_count());
                         session_->begin_session();
                         std::lock_guard<std::mutex> lmtx(stronger_self->mtx);
                         stronger_self->acceptors.push_back(acceptor);
