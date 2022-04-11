@@ -28,6 +28,7 @@
 #include <unordered_map>
 #include "session_base.hpp"
 #include "asio.hpp"
+#include <Util/onceToken.h>
 class session_helper;
 class session_helper : public noncopyable{
 public:
@@ -55,6 +56,7 @@ private:
      * 会话个数
      */
     static std::atomic<size_t> session_count;
+    static toolkit::onceToken token;
     std::unordered_map<typename asio::ip::tcp::socket::native_handle_type, typename basic_session::pointer> session_map;
 };
 

@@ -24,8 +24,37 @@
 */
 #include "session_helper.hpp"
 #include <atomic>
+#if !defined(_WIN32)
+#include <limits.h>
+#include <sys/resource.h>
+#endif
+#include <fmt/fmt.h>
+#include <iostream>
 static thread_local std::atomic<size_t> identify{0};
 std::atomic<size_t> session_helper::session_count{0};
+toolkit::onceToken session_helper::token([](){
+#if !defined(_WIN32)
+    struct rlimit rlim,rlim_new;
+    if (getrlimit(RLIMIT_CORE, &rlim)==0) {
+        rlim_new.rlim_cur = rlim_new.rlim_max = RLIM_INFINITY;
+        if (setrlimit(RLIMIT_CORE, &rlim_new)!=0) {
+            rlim_new.rlim_cur = rlim_new.rlim_max = rlim.rlim_max;
+            setrlimit(RLIMIT_CORE, &rlim_new);
+        }
+        std::cout << fmt::format("core文件大小设置为:{}",rlim_new.rlim_cur) << std::endl;
+    }
+
+    if (getrlimit(RLIMIT_NOFILE, &rlim)==0) {
+        rlim_new.rlim_cur = rlim_new.rlim_max = RLIM_INFINITY;
+        if (setrlimit(RLIMIT_NOFILE, &rlim_new)!=0) {
+            rlim_new.rlim_cur = rlim_new.rlim_max = rlim.rlim_max;
+            setrlimit(RLIMIT_NOFILE, &rlim_new);
+        }
+        std::cout << fmt::format("文件描述符数量设置为:{}",rlim_new.rlim_cur) << std::endl;
+    }
+#endif
+},[](){});
+
 session_helper& get_session_helper(){
     static thread_local session_helper helper;
     return helper;
