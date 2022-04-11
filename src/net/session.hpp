@@ -55,7 +55,7 @@ public:
           context(context), recv_timer(poller.get_executor()),
           send_timer(poller.get_executor()) {}
 
-    session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>>& pair,
+    session(const std::pair<event_poller::Ptr, std::shared_ptr<typename stream_type::socket_type>>& pair,
             const std::shared_ptr<asio::ssl::context> &context)
         :poller(*pair.first), stream_type(*pair.second, context),
          context(context), recv_timer(pair.first->get_executor()), send_timer(pair.first->get_executor()){}
