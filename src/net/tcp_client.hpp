@@ -27,8 +27,8 @@
 #include "client.hpp"
 #include "tcp.hpp"
 using tcp_socket = asio::ip::tcp::socket;
-using tcp_client = client<non_ssl<tcp_socket>>;
+using tcp_client = client<tcp::non_ssl<tcp_socket>>;
 #ifdef SSL_ENABLE
-using tls_client = client<ssl<asio::ssl::stream<tcp_socket>>>;
+using tls_client = client<tcp::ssl<asio::ssl::stream<tcp_socket>>>;
 #endif
 #endif//TOOLKIT_TCP_CLIENT_HPP

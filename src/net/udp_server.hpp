@@ -24,5 +24,15 @@
 */
 #ifndef TOOLKIT_UDP_SERVER_HPP
 #define TOOLKIT_UDP_SERVER_HPP
+#include <Util/nocopyable.hpp>
+#include <memory>
+class udp_server : public std::enable_shared_from_this<udp_server>, public noncopyable{
+public:
+
+
+};
+
+
+
 
 #endif//TOOLKIT_UDP_SERVER_HPP
