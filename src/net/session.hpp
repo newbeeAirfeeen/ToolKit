@@ -267,11 +267,11 @@ protected:
     /*!
      * 发送时间超时
      */
-    std::atomic_size_t send_time_out{15};
+    std::atomic_size_t send_time_out{0};
     /*!
      * 接收时间超时
      */
-    std::atomic_size_t recv_time_out{15};
+    std::atomic_size_t recv_time_out{30};
     /*!
      * ssl上下文
      */
