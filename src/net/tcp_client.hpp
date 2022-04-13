@@ -1,5 +1,5 @@
 /*
-* @file_name: client.hpp
+* @file_name: tcp_client.hpp
 * @date: 2022/04/10
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -41,7 +41,7 @@ public:
      * @param sock  socket,会移动构造
      * @param context 证书,用于建立tls
      */
-    explicit tcp_client(bool current_thread, const std::shared_ptr<context>& _context_ = nullptr);
+    tcp_client(bool current_thread, const std::shared_ptr<context>& _context_ = nullptr);
 #else
     explicit tcp_client(bool current_thread);
 #endif
@@ -69,6 +69,8 @@ public:
      */
     void start_connect(const std::string& ip, unsigned short port);
 
+public:
+    void send_loop(basic_buffer<char>& buf);
 private:
     std::recursive_mutex mtx;
     endpoint local_point;

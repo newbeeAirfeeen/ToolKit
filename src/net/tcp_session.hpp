@@ -143,6 +143,8 @@ public:
 protected:
     void read_l();
     void write_l();
+    void open_l(bool ipv4);
+    void shutdown();
 protected:
     bool _is_server = true;
     /*!

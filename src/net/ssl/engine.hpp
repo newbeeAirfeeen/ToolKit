@@ -63,6 +63,12 @@ public:
      * @param length 数据长度
      */
     void onSend(const char* data, size_t length);
+
+    /**
+     * 出错回调
+     * @param err_func 出错回调
+     */
+    void onError(const std::function<void()>& err_func);
 public:
     /**
      * @description: 解密完成后的回调
@@ -85,6 +91,7 @@ private:
     BIO* write_bio;
     std::function<void(const char*, size_t)> on_dec_func;
     std::function<void(const char*, size_t)> on_enc_func;
+    std::function<void()> err_func;
     bool send_handshake = false;
     bool server_mode = true;
     bool is_flush = false;

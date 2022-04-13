@@ -37,6 +37,15 @@ public:
         :_engine(context->native_handle(), session_type::is_server()), session_type(std::forward<Arg>(arg), poller, context){
         _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
         _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+        _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
+    }
+
+    template<typename Arg>
+    tls(Arg&& arg, const std::shared_ptr<context>& context): session_type(std::forward<Arg>(arg), context)
+        ,_engine(context->native_handle(), false){
+        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
+        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+        _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
     }
 
     ~tls(){
@@ -48,6 +57,7 @@ public:
     void send(basic_buffer<char>& buff) override{
         _engine.onSend(buff.data(), buff.size());
     }
+
 private:
     void self_onRecv(const char* data, size_t length){
         session_type::onRecv(data, length);
@@ -56,6 +66,9 @@ private:
     void self_send(const char* data, size_t length){
         basic_buffer<char> tmp(data, length);
         session_type::send(tmp);
+    }
+    void self_onErr(){
+        session_type::shutdown();
     }
 private:
     engine _engine;

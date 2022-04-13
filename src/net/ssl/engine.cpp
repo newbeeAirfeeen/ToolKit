@@ -88,6 +88,11 @@ void engine::onSend(const char* data, size_t length){
     flush();
 }
 
+void engine::onError(const std::function<void()>& err_func){
+    this->err_func = err_func;
+}
+
+
 void engine::shutdown() {
     _buffer_send_.clear();
     int ret = SSL_shutdown(_ssl);
@@ -96,6 +101,8 @@ void engine::shutdown() {
     }else{
         flush();
     }
+    if(err_func)
+        err_func();
 }
 void engine::flush() {
 
