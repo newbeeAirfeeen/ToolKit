@@ -143,7 +143,7 @@ void tcp_session::read_l() {
                 return;
             }
             Error("session receive timeout");
-            stronger_self->shutdown(shutdown_receive);
+            stronger_self->super_type::shutdown(shutdown_receive);
         });
     }
     auto read_function = [stronger_self](const std::error_code &e, size_t length) {
