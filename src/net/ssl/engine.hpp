@@ -38,6 +38,11 @@ public:
     using read_func = std::function<void(const char*, size_t)>;
     using write_func = std::function<void(const char*, size_t)>;
 public:
+    /**
+     * @description: 创建engnie对象
+     * @param ctx OpenSSL context对象
+     * @param server_mode 是否是服务器模式
+     */
     engine(SSL_CTX* ctx, bool server_mode);
 
     ~engine();
@@ -46,11 +51,29 @@ public:
 
     engine& operator = (engine&& other);
 
+    /**
+     * @description: 当收到数据的时候
+     * @param data 数据指针
+     * @param length 数据长度
+     */
     void onRecv(const char* data, size_t length);
+    /**
+     * @description: 写入数据到ssl
+     * @param data 数据指针
+     * @param length 数据长度
+     */
     void onSend(const char* data, size_t length);
 public:
-    void setOnRecv(const std::function<void(const char*, size_t)>&);
-    void setOnWrite(const std::function<void(const char*, size_t)>&);
+    /**
+     * @description: 解密完成后的回调
+     * @param f 回调函数
+     */
+    void setOnRecv(const std::function<void(const char*, size_t)>& f);
+    /**
+     * @description: 加密完成后的回调函数
+     * @param f 回调函数
+     */
+    void setOnWrite(const std::function<void(const char*, size_t)>& f);
     void flush();
 private:
     void shutdown();

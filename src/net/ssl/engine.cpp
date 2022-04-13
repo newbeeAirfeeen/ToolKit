@@ -15,17 +15,19 @@ engine::engine(SSL_CTX *ctx, bool server_mode)
     }
     read_bio = BIO_new(BIO_s_mem());
     write_bio = BIO_new(BIO_s_mem());
+    /**
+     * 设置读写bio
+     */
     ::SSL_set_bio(_ssl, read_bio, write_bio);
+    /**
+     * 设置为服务器模式或者客户端模式
+     */
     server_mode ? SSL_set_accept_state(_ssl) : SSL_set_connect_state(_ssl);
 }
 
 engine::~engine() {
     if (_ssl)
         ::SSL_free(_ssl);
-//    if (read_bio)
-//        ::BIO_free(read_bio);
-//    if (write_bio)
-//        ::BIO_free(write_bio);
 }
 
 engine::engine(engine &&other) {
@@ -57,10 +59,15 @@ void engine::onRecv(const char *data, size_t length) {
 
     size_t offset = 0;
     while (offset < length) {
-        //把数据写入到read_bio中
+        /**
+         * 首先把数据写入到_ssl绑定的read_bio的缓冲区中。
+         */
         auto nwrite = BIO_write(read_bio, data + offset, length - offset);
         if (nwrite > 0) {
             offset += nwrite;
+            /**
+             * 尝试读取或者写出
+             */
             flush();
             continue;
         }
@@ -94,10 +101,14 @@ void engine::flush() {
 
     if (is_flush) return;
     toolkit::onceToken token([&] { is_flush = true; }, [&] { is_flush = false; });
-
+    /**
+     * 尝试从ssl中的读缓冲区读入数据
+     */
     flush_read_bio();
     if (!SSL_is_init_finished(_ssl) || _buffer_send_.empty()) {
-        //未握手结束
+        /**
+         * 未握手结束，尝试发送握手包
+         */
         flush_write_bio();
         return;
     }
@@ -106,6 +117,9 @@ void engine::flush() {
         auto& front = _buffer_send_.front();
         size_t offset = 0;
         while(offset < front.size()){
+            /**
+             * 需要加密数据
+             */
             auto nwrite = SSL_write(_ssl, front.data() + offset, front.size() - offset);
             if(nwrite > 0){
                 offset += nwrite;
@@ -131,6 +145,9 @@ void engine::flush_read_bio() {
     int nread = 0;
     size_t offset = 0;
     do {
+        /**
+         * 尝试从_ssl中读出数据
+         */
         nread = SSL_read(_ssl, buffer + offset, capacity - offset);
         if (nread > 0) {
             offset += nread;
@@ -140,9 +157,15 @@ void engine::flush_read_bio() {
         return;
     }
     buffer[offset] = '\0';
+    /**
+     * 此时有数据并调用回调
+     */
     if (on_dec_func) {
         on_dec_func(buffer, offset);
     }
+    /**
+     * 如果还有数据,在尝试刷新
+     */
     if (nread > 0) {
         return flush_read_bio();
     }
@@ -154,6 +177,9 @@ void engine::flush_write_bio() {
     int nread = 0;
     size_t offset = 0;
     do {
+        /**
+         * 从ssl的write_bio中读取数据
+         */
         nread = BIO_read(write_bio, buffer + offset, capacity - offset);
         if (nread > 0) {
             offset += nread;
@@ -163,6 +189,9 @@ void engine::flush_write_bio() {
         return;
     }
     buffer[offset] = '\0';
+    /**
+     * 如果此时有数据并设置了回调，调用回调
+     */
     if (on_enc_func) {
         on_enc_func(buffer, offset);
     }

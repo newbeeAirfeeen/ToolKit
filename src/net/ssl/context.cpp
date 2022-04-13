@@ -277,6 +277,7 @@ context::context(context &&other) noexcept {
 context &context::operator=(context &&other) {
     context tmp(std::move(static_cast<context &>(*this)));
     std::swap(handle_, other.handle_);
+    return *this;
 }
 
 context::~context() {

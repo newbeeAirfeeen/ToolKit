@@ -14,7 +14,7 @@ if(OPENSSL_FOUND)
     message("-- 开启OpenSSL, path:${OPENSSL_INCLUDE_DIR}, 将要链接的OpenSSL库: ${OPENSSL_LIBRARIES}")
     include_directories(${OPENSSL_INCLUDE_DIR})
     list(APPEND LINK_LIB_LIST ${OPENSSL_LIBRARIES})
-    #add_definitions(-DSSL_ENABLE)
+    add_definitions(-DSSL_ENABLE)
     add_definitions(-DUSE_OPENSSL)
 endif()
 
