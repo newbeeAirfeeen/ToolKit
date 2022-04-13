@@ -6,6 +6,7 @@
 #define TOOLKIT_SESSION_BASE_HPP
 #include <memory>
 #include <system_error>
+#include "buffer.hpp"
 class basic_session : public std::enable_shared_from_this<basic_session>{
     friend class session_helper;
 public:
@@ -13,6 +14,7 @@ public:
 public:
     virtual void onRecv(const char* data, size_t size) = 0;
     virtual void onError(const std::error_code &e) = 0;
+    virtual void send(basic_buffer<char>& buffer) = 0;
 private:
     /*!
      * 用户标识

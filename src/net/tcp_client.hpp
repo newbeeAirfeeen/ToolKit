@@ -1,5 +1,5 @@
 /*
-* @file_name: tcp_client.hpp
+* @file_name: client.hpp
 * @date: 2022/04/10
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -22,13 +22,57 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_TCP_CLIENT_HPP
-#define TOOLKIT_TCP_CLIENT_HPP
-#include "client.hpp"
-#include "tcp.hpp"
-using tcp_socket = asio::ip::tcp::socket;
-using tcp_client = client<tcp::non_ssl<tcp_socket>>;
+#ifndef TOOLKIT_CLIENT_HPP
+#define TOOLKIT_CLIENT_HPP
+#include <memory>
+#include <functional>
+#include <event_poller.hpp>
+#include "buffer.hpp"
+#include <asio.hpp>
+#include <net/ssl/context.hpp>
+#include "tcp_session.hpp"
+class tcp_client : public tcp_session{
+public:
+    using endpoint = typename asio::ip::tcp::endpoint;
+public:
 #ifdef SSL_ENABLE
-using tls_client = client<tcp::ssl<asio::ssl::stream<tcp_socket>>>;
+    /**
+     * @description: 建立一个tcp_client,
+     * @param sock  socket,会移动构造
+     * @param context 证书,用于建立tls
+     */
+    explicit tcp_client(bool current_thread, const std::shared_ptr<context>& _context_ = nullptr);
+#else
+    explicit tcp_client(bool current_thread);
 #endif
-#endif//TOOLKIT_TCP_CLIENT_HPP
+    /**
+     * @description: 当连接建立的时候会调用的函数
+     */
+    virtual void on_connected();
+    /**
+     * 收到响应消息函数
+     * @param data 数据指针
+     * @param size 长度
+     */
+    void onRecv(const char* data, size_t size) override;
+    /**
+     * @description: 绑定本机ip和端口
+     * @param ip ipv4或ipv6
+     * @param port 端口
+     */
+    void bind_local(const std::string& ip, unsigned short port);
+
+    /**
+     * @description: 开始连接对应的ip和端口
+     * @param ip ipv4或者ipv6
+     * @param port 端口
+     */
+    void start_connect(const std::string& ip, unsigned short port);
+
+private:
+    std::recursive_mutex mtx;
+    endpoint local_point;
+};
+
+
+#endif//TOOLKIT_CLIENT_HPP

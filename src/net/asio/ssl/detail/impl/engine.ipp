@@ -274,8 +274,11 @@ engine::want engine::perform(int (engine::* op)(void*, std::size_t),
     void* data, std::size_t length, asio::error_code& ec,
     std::size_t* bytes_transferred)
 {
+  //返回bio中待处理的字节
   std::size_t pending_output_before = ::BIO_ctrl_pending(ext_bio_);
+  //清除错误
   ::ERR_clear_error();
+  //如果是服务器，则执行do_accept ,client :do connect
   int result = (this->*op)(data, length);
   int ssl_error = ::SSL_get_error(ssl_, result);
   int sys_error = static_cast<int>(::ERR_get_error());

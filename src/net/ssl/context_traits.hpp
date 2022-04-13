@@ -1,6 +1,6 @@
 /*
-* @file_name: udp_session.cpp
-* @date: 2022/04/04
+* @file_name: context_base.hpp
+* @date: 2022/04/12
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -22,4 +22,17 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include "udp_session.hpp"
+
+#ifndef TOOLKIT_CONTEXT_TRAITS_HPP
+#define TOOLKIT_CONTEXT_TRAITS_HPP
+
+#include <type_traits>
+#include "context_base.hpp"
+
+template<typename T> struct is_tls_context : public std::false_type{};
+template<> struct is_tls_context<typename context_base::tls::method>: public std::true_type{};
+
+template<typename T> struct is_dtls_context : public std::false_type{};
+template<> struct is_dtls_context<typename context_base::dtls::method>: public std::true_type{};
+
+#endif//TOOLKIT_CONTEXT_TRAITS_HPP

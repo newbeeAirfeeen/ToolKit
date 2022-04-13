@@ -45,11 +45,11 @@ public:
 
 public:
 #ifdef SSL_ENABLE
-    template<typename session_type, typename = typename std::enable_if<std::is_base_of<basic_session, session_type>::value>::type>
+    template<typename session_type>
     void start(unsigned short port, const std::string &address = "0.0.0.0", bool ipv4 = true,
-               const std::shared_ptr<asio::ssl::context> &ssl_context = nullptr) {
+               const std::shared_ptr<context>& _context = nullptr) {
 #else
-    template<typename session_type, typename = typename std::enable_if<std::is_base_of<basic_session, session_type>::value>::type>
+    template<typename session_type>
     void start(unsigned short port, const std::string &address = "0.0.0.0", bool ipv4 = true) {
 #endif
         std::weak_ptr<tcp_server> self(shared_from_this());
@@ -61,7 +61,7 @@ public:
             if (!stronger_self)
                 return;
 #ifdef SSL_ENABLE
-            stronger_self->start_listen<session_type>(acceptor, ssl_context);
+            stronger_self->start_listen<session_type>(acceptor, _context);
 #else
             stronger_self->start_listen<session_type>(acceptor);
 #endif
@@ -82,7 +82,7 @@ private:
 #ifdef SSL_ENABLE
     template<typename session_type>
     void start_listen(const std::shared_ptr<asio::ip::tcp::acceptor> &acceptor,
-                      const std::shared_ptr<asio::ssl::context> &ssl_context) {
+                      const std::shared_ptr<context>& _context = nullptr) {
 #else
     template<typename session_type>
     void start_listen(const std::shared_ptr<asio::ip::tcp::acceptor> &acceptor) {
@@ -91,7 +91,7 @@ private:
         auto _socket_ = std::make_shared<asio::ip::tcp::socket>(poller->get_executor());
         std::weak_ptr<tcp_server> self(shared_from_this());
 #ifdef SSL_ENABLE
-        auto async_func = [_socket_, acceptor, poller, self, ssl_context](const std::error_code &e) {
+        auto async_func = [_socket_, acceptor, poller, self, _context](const std::error_code &e) {
 #else
         auto async_func = [_socket_, acceptor, poller, self](const std::error_code &e) {
 #endif
@@ -104,7 +104,7 @@ private:
                 Error("accept error, {}", e.message());
             } else {
 #ifdef SSL_ENABLE
-                std::shared_ptr<session_type> session_(new session_type(*_socket_, *poller, ssl_context));
+                std::shared_ptr<session_type> session_(new session_type(*_socket_, *poller, _context));
 #else
                 std::shared_ptr<session_type> session_(new session_type(*_socket_, *poller));
 #endif
@@ -122,7 +122,7 @@ private:
                 });
             }
 #ifdef SSL_ENABLE
-            stronger_self->template start_listen<session_type>(acceptor, ssl_context);
+            stronger_self->template start_listen<session_type>(acceptor, _context);
 #endif
         };
         acceptor->template async_accept(*_socket_, async_func);

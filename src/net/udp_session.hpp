@@ -25,9 +25,29 @@
 #ifndef TOOLKIT_UDPSESSION_HPP
 #define TOOLKIT_UDPSESSION_HPP
 
+#include "udp.hpp"
+#include <Util/nocopyable.hpp>
+#include "session_base.hpp"
+#include "event_poller.hpp"
 
+template<typename _stream_type>
+class datagram_session : public _stream_type, public basic_session, public noncopyable{
+public:
+    using stream_type = typename _stream_type::stream_type;
+public:
 
+private:
+    event_poller& poller;
+    char _buffer[2048] = {0};
+};
 
+using udp_session = udp::non_ssl<asio::ip::udp::socket>;
+#if SSL_ENABLE
+/*!
+ * 这里需要扩展 暂时先
+ */
+using dtls_session = udp::ssl<asio::ip::udp::socket>;
+#endif
 
 
 #endif//TOOLKIT_UDPSESSION_HPP

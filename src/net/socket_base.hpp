@@ -29,7 +29,7 @@
 #include <utility>
 class socket_helper{
 public:
-    static std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>> create_bind_socket();
+    static std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>> create_bind_socket(bool current_thread);
 };
 
 
