@@ -8,6 +8,8 @@
 #include <net/event_poller.hpp>
 #include <net/event_poller_pool.hpp>
 #include <net/ssl/tls.hpp>
+#include <net/tcp_client.hpp>
+#include <iostream>
 int main(){
 
     logger::initialize("logs/test_tcp_server.log", spdlog::level::trace);
@@ -19,11 +21,13 @@ int main(){
     _context->use_private_key_file("default.pem", context::pem);
     _context->set_verify_mode(context::verify_none);
     http_server->start<tls<tcp_session>>(443, "0.0.0.0", true, _context);
-    //http_server->start<tls<tcp_client>>(8080);
+    std::cin.get();
 #endif
-
+    auto client = std::make_shared<tls<tcp_client>>(false, std::make_shared<context>(context::tls::method::sslv23_client));
+    client->start_connect("127.0.0.1", 443);
+    basic_buffer<char> buf("123", 3);
+    client->send_loop(buf);
     pool.wait();
-    
     return 0;
 }
 
