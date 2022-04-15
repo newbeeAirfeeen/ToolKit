@@ -6,10 +6,10 @@
 #include <vector>
 int main(){
 
-    logger::initialize("logs/test_client.log", spdlog::level::trace);
-    //asio::io_context context;
-    //asio::ssl::stream<asio::ip::tcp::socket> sock(context);
-    auto& pool = event_poller_pool::Instance();
+//    logger::initialize("logs/test_client.log", spdlog::level::trace);
+//    //asio::io_context context;
+//    //asio::ssl::stream<asio::ip::tcp::socket> sock(context);
+//    auto& pool = event_poller_pool::Instance();
 //    std::shared_ptr<asio::ssl::context> context = std::make_shared<asio::ssl::context>(asio::ssl::context::method::sslv23_client);
 //    context->use_certificate_chain_file("default.pem");
 //    context->use_private_key_file("default.pem", asio::ssl::context::pem);
@@ -23,6 +23,6 @@ int main(){
 
 
 
-    pool.wait();
+    //pool.wait();
     return 0;
 }

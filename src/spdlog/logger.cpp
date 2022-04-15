@@ -32,12 +32,13 @@ namespace logger{
                 case level::level_enum::debug:   type = fmt::terminal_color::blue;				    level = "Debug";	 break;
                 case level::level_enum::info:    type = fmt::terminal_color::green;				    level = "Info";		 break;
                 case level::level_enum::warn:    type = fmt::terminal_color::yellow;			    level = "Warn";		 break;
-                case level::level_enum::err:     type = fmt::terminal_color::bright_magenta;	level = "Error";	 break;
+                case level::level_enum::err:     type = fmt::terminal_color::red;	            level = "Error";	 break;
                 case level::level_enum::critical:type = fmt::terminal_color::bright_red;		  level = "Critical";	 break;
                 default:break;
             }
             time_t tt = std::chrono::system_clock::to_time_t(msg.time);
             tm* local_time = ::localtime(&tt);
+            auto index = msg.payload.size() - 1;
             int64_t miliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(msg.time.time_since_epoch()).count() % 1000;
             fmt::format_to(std::back_inserter(dest), format_pattern, *local_time, miliseconds, msg.thread_id, level, line, msg.source.line, msg.payload);
         }

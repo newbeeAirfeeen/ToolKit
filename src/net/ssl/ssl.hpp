@@ -22,8 +22,8 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_TLS_HPP
-#define TOOLKIT_TLS_HPP
+#ifndef TOOLKIT_SSL_HPP
+#define TOOLKIT_SSL_HPP
 #ifdef SSL_ENABLE
 #include "engine.hpp"
 #include "context.hpp"
@@ -35,17 +35,17 @@ public:
     template<typename Arg>
     ssl(Arg&& arg, event_poller& poller, const std::shared_ptr<context>& context)
         :_engine(context->native_handle(), session_type::is_server()), session_type(std::forward<Arg>(arg), poller, context){
-        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
-        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
-        _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
+        _engine.setOnRecv(std::bind(&ssl<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
+        _engine.setOnWrite(std::bind(&ssl<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+        _engine.onError(std::bind(&ssl<session_type>::self_onErr, this));
     }
 
     template<typename Arg>
     ssl(Arg&& arg, const std::shared_ptr<context>& context): session_type(std::forward<Arg>(arg), context)
         ,_engine(context->native_handle(), false){
-        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
-        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
-        _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
+        _engine.setOnRecv(std::bind(&ssl<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
+        _engine.setOnWrite(std::bind(&ssl<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+        _engine.onError(std::bind(&ssl<session_type>::self_onErr, this));
     }
 
     ~ssl(){
@@ -68,10 +68,10 @@ private:
         session_type::send(tmp);
     }
     void self_onErr(){
-        session_type::shutdown();
+        session_type::get_sock().shutdown(asio::socket_base::shutdown_both);
     }
 private:
     engine _engine;
 };
 #endif
-#endif//TOOLKIT_TLS_HPP
+#endif//TOOLKIT_SSL_HPP
