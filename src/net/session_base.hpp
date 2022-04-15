@@ -7,7 +7,8 @@
 #include <memory>
 #include <system_error>
 #include "buffer.hpp"
-class basic_session : public std::enable_shared_from_this<basic_session>{
+#include <Util/nocopyable.hpp>
+class basic_session : public std::enable_shared_from_this<basic_session>, public noncopyable{
     friend class session_helper;
 public:
     using pointer = std::shared_ptr<basic_session>;
