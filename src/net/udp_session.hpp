@@ -25,29 +25,85 @@
 #ifndef TOOLKIT_UDPSESSION_HPP
 #define TOOLKIT_UDPSESSION_HPP
 
-#include "udp.hpp"
-#include <Util/nocopyable.hpp>
-#include "session_base.hpp"
+#include "asio.hpp"
+#include "asio/basic_waitable_timer.hpp"
+#include "buffer.hpp"
 #include "event_poller.hpp"
+#include "net/ssl/context.hpp"
+#include "session_base.hpp"
+#include "udp_helper.hpp"
+#include <Util/nocopyable.hpp>
+#include <chrono>
+#include "socket_base.hpp"
+class udp_server;
+class udp_session : public basic_session, public udp_helper, public socket_sender<asio::ip::udp::socket, udp_session>{
+    friend class udp_server;
 
-template<typename _stream_type>
-class datagram_session : public _stream_type, public basic_session, public noncopyable{
 public:
-    using stream_type = typename _stream_type::stream_type;
+    using endpoint_type = typename asio::ip::udp::socket::endpoint_type;
+    using timer_type = asio::basic_waitable_timer<std::chrono::system_clock>;
 public:
-
-private:
-    event_poller& poller;
-    char _buffer[2048] = {0};
-};
-
-using udp_session = udp::non_ssl<asio::ip::udp::socket>;
-#if SSL_ENABLE
-/*!
- * 这里需要扩展 暂时先
- */
-using dtls_session = udp::ssl<asio::ip::udp::socket>;
+#ifdef SSL_ENABLE
+    udp_session(event_poller &poller, const std::shared_ptr<context> &context, asio::ip::udp::socket &sock);
+#else
+    explicit udp_session(event_poller &poller, asio::ip::udp::socket &sock);
 #endif
-
+    ~udp_session();
+    std::shared_ptr<udp_session> shared_from_this_subtype()override;
+protected:
+   void onRecv(const char *data, size_t size)override;
+   void onError(const std::error_code &e) override;
+   void send(basic_buffer<char>& buffer) override;
+private:
+    void attach_server(udp_server *server);
+    /**
+     * @description:会切换到自己绑定的线程处理数据
+     * @param buff 接收到的数据
+     * @param endpoint 接收到数据的对端地址
+     */
+    void launchRecv(basic_buffer<char> &buff, const endpoint_type& endpoint);
+    /**
+     * @description: 由udp_server调用
+     */
+    void begin_session();
+    /**
+     * @description: 由udp_server调用,用于刷新定时器
+     */
+    void flush();
+    void write_l();
+private:
+    /**
+     * @description: 绑定的udp_server
+     */
+    udp_server *server = nullptr;
+    /**
+     * @description: socket为一个引用
+     */
+    asio::ip::udp::socket &sock;
+    /**
+     * @description: 绑定的poller
+     */
+    event_poller &poller;
+    /**
+     * @description: 接收数据缓冲区
+     */
+    basic_buffer<char> buffer_;
+    /**
+     * @description: 用于绑定的对端地址
+     */
+    endpoint_type endpoint;
+    /**
+     * @description: 接收超时
+     */
+    timer_type recv_timer;
+    /**
+     * @description: 接收超时
+     */
+    std::atomic_size_t time_out{30};
+    char buff[2048] = {0};
+#ifdef SSL_ENABLE
+    std::shared_ptr<context> _context;
+#endif
+};
 
 #endif//TOOLKIT_UDPSESSION_HPP
