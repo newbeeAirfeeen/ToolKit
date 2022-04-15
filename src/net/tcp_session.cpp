@@ -29,26 +29,32 @@
 
 #ifdef SSL_ENABLE
 tcp_session::tcp_session(typename asio::ip::tcp::socket &socket_, event_poller &poller,
-                         const std::shared_ptr<context> &context) : poller(poller), asio::ip::tcp::socket(std::move(socket_)),
+                         const std::shared_ptr<context> &context) : poller(poller), sock(std::move(socket_)),
                                                                     _context(context), recv_timer(poller.get_executor()),
-                                                                    send_timer(poller.get_executor()) {
+                                                                    socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), poller) {
 }
 tcp_session::tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>> &pair_,
                          const std::shared_ptr<context> &_context_)
-    : _context(_context_), recv_timer(pair_.first->get_executor()), send_timer(pair_.first->get_executor()), asio::ip::tcp::socket(std::move(*pair_.second)), poller(*pair_.first) {
+    : _context(_context_), recv_timer(pair_.first->get_executor()),
+      sock(std::move(*pair_.second)),
+      poller(*pair_.first),
+      socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), *pair_.first) {
     _is_server = false;
 }
 #else
 tcp_session::tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>> &pair_)
-    : recv_timer(pair_.first->get_executor()), send_timer(pair_.first->get_executor()), poller(*pair_.first), super_type(std::move(*pair_.second)) {
+    : recv_timer(pair_.first->get_executor()),
+      poller(*pair_.first),
+      sock(std::move(*pair_.second)),
+      socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), poller){
 }
 tcp_session::tcp_session(super_type &socket_, event_poller &poller)
-    : poller(poller), asio::ip::tcp::socket(std::move(socket_)), recv_timer(poller.get_executor()),
-      send_timer(poller.get_executor()) {}
+    : poller(poller), sock(std::move(socket_)), recv_timer(poller.get_executor()),
+      socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), poller){}
 #endif
 tcp_session::~tcp_session() {
     Trace("~session");
-    super_type::close();
+    sock.close();
 }
 
 event_poller &tcp_session::get_poller() {
@@ -69,7 +75,7 @@ void tcp_session::before_begin_session() {
 
 void tcp_session::set_send_time_out(size_t time) {
     send_time_out.store(time);
-    this->send_timer.expires_after(std::chrono::seconds(time));
+    return this->reset_timer(time);
 }
 
 void tcp_session::set_recv_time_out(size_t time) {
@@ -79,50 +85,56 @@ void tcp_session::set_recv_time_out(size_t time) {
 
 void tcp_session::set_recv_buffer_size(size_t size) {
     asio::socket_base::receive_buffer_size recv_buf_size(size);
-    super_type::set_option(recv_buf_size);
+    sock.set_option(recv_buf_size);
 }
 
 void tcp_session::set_send_buffer_size(size_t size) {
     asio::socket_base::send_buffer_size send_buf_size(size);
-    super_type::set_option(send_buf_size);
+    sock.set_option(send_buf_size);
 }
 
 void tcp_session::set_send_low_water_mark(size_t size) {
     asio::socket_base::send_low_watermark slw(size);
-    super_type::set_option(slw);
+    sock.set_option(slw);
 }
 
 void tcp_session::set_recv_low_water_mark(size_t size) {
     asio::socket_base::receive_low_watermark rlw(size);
-    super_type::set_option(rlw);
+    sock.set_option(rlw);
 }
 
 void tcp_session::set_no_delay(bool no_delay) {
     asio::ip::tcp::no_delay _no_delay(no_delay);
-    super_type::set_option(_no_delay);
+    sock.set_option(_no_delay);
 }
 
-void tcp_session::send(basic_buffer<char> &buffer) {
-    if (_buffer.empty())
-        _buffer.swap(buffer);
-    else
-        _buffer.append(buffer.data(), buffer.size());
-    return this->write_l();
+void tcp_session::send(basic_buffer<char> &buf) {
+    return socket_sender<socket_type, tcp_session>::send(std::ref(buf));
 }
 
 void tcp_session::send(const char *data, size_t length) {
     basic_buffer<char> tmp(data, length);
-    return send(tmp);
+    return send(std::ref(tmp));
 }
 
 void tcp_session::send(std::string &str) {
-    basic_buffer<char> tmp(std::move(str));
-    return send(tmp);
+    basic_buffer<char> tmp_buf(std::move(str));
+    return send(std::ref(tmp_buf));
 }
 
 bool tcp_session::is_server() const {
     return _is_server;
 }
+
+using endpoint_type = typename tcp_session::endpoint_type;
+endpoint_type tcp_session::get_local_endpoint() {
+    return sock.local_endpoint();
+}
+
+endpoint_type tcp_session::get_remote_endpoint() {
+    return sock.remote_endpoint();
+}
+
 
 void tcp_session::begin_session() {
     Trace("begin tcp session");
@@ -143,7 +155,7 @@ void tcp_session::read_l() {
                 return;
             }
             Error("session receive timeout");
-            stronger_self->super_type::shutdown(shutdown_receive);
+            stronger_self->sock.shutdown(asio::socket_base::shutdown_receive);
         });
     }
     auto read_function = [stronger_self](const std::error_code &e, size_t length) {
@@ -158,45 +170,13 @@ void tcp_session::read_l() {
         stronger_self->read_l();
     };
     std::shared_ptr<basic_session> session_ptr(shared_from_this());
-    async_read_some(asio::buffer(stronger_self->buffer, 10240), read_function);
+    sock.async_read_some(asio::buffer(stronger_self->buffer, 10240), read_function);
 }
 
-void tcp_session::write_l() {
-    auto stronger_self = std::static_pointer_cast<tcp_session>(shared_from_this());
-    auto time_out = send_time_out.load(std::memory_order_relaxed);
-    if (time_out) {
-        auto origin_time_out = clock_type::now() + std::chrono::seconds(time_out);
-        send_timer.expires_at(origin_time_out);
-        send_timer.template async_wait([stronger_self](const std::error_code &e) {
-            //此时只剩定时器持有引用
-            if (stronger_self.unique() || e) {
-                return;
-            }
-            Error("session send timeout");
-            stronger_self->super_type::shutdown(shutdown_both);
-        });
-    }
-    auto write_function = [stronger_self](const std::error_code &ec, size_t send_length) {
-        if (ec) {
-            stronger_self->send_timer.cancel();
-            stronger_self->super_type::shutdown(shutdown_both);
-            return;
-        }
-        stronger_self->_buffer.remove(send_length);
-        if (!stronger_self->_buffer.empty()) {
-            return stronger_self->write_l();
-        } else {
-            //如果没有数据可发，取消定时器
-            stronger_self->send_timer.cancel();
-        }
-    };
-    async_write_some(asio::buffer(_buffer.data(), _buffer.size()), write_function);
+size_t tcp_session::get_send_time_out(){
+    return this->send_time_out.load(std::memory_order_relaxed);
 }
-
-void tcp_session::open_l(bool is_ipv4){
-    return open(is_ipv4 ? asio::ip::tcp::v4() : asio::ip::tcp::v6());
-}
-
-void tcp_session::shutdown(){
-    return super_type::shutdown(shutdown_both);
+using socket_type = typename tcp_session::socket_type;
+socket_type &tcp_session::get_sock() {
+    return sock;
 }
