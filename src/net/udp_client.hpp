@@ -24,22 +24,23 @@
 */
 #ifndef TOOLKIT_UDP_CLIENT_HPP
 #define TOOLKIT_UDP_CLIENT_HPP
-#include "event_poller.hpp"
 #include "asio.hpp"
-#include <net/ssl/context.hpp>
 #include "buffer.hpp"
+#include "event_poller.hpp"
+#include "socket_base.hpp"
 #include "udp_helper.hpp"
 #include <Util/nocopyable.hpp>
-#include "socket_base.hpp"
-class udp_client : public udp_helper, public noncopyable, public std::enable_shared_from_this<udp_client>, public socket_sender<asio::ip::udp::socket, udp_client>{
+#include <net/ssl/context.hpp>
+class udp_client : public udp_helper, public noncopyable, public std::enable_shared_from_this<udp_client>, public socket_sender<asio::ip::udp::socket, udp_client> {
 public:
     using socket_type = asio::ip::udp::socket;
     using endpoint_type = asio::ip::udp::socket::endpoint_type;
+
 public:
 #ifdef SSL_ENABLE
-    udp_client(event_poller& poller, const std::shared_ptr<context>& _context = nullptr);
+    udp_client(event_poller &poller, const std::shared_ptr<context> &_context = nullptr);
 #else
-    explicit udp_client(event_poller& poller);
+    explicit udp_client(event_poller &poller);
 #endif
 public:
     std::shared_ptr<udp_client> shared_from_this_subtype() override;
@@ -47,32 +48,40 @@ public:
      * @description: 连接一个udp对端
      * @param endpoint
      */
-    void connect(const endpoint_type& endpoint);
+    void connect(const endpoint_type &endpoint);
     /**
      * @description: 设置收到数据回调x
      * @param func 回调函数
      */
-    void setOnRecv(const std::function<void(const char*,size_t, const endpoint_type&)>& func);
+    void setOnRecv(const std::function<void(const char *, size_t, const endpoint_type &)> &func);
     /**
      * @description: 收到错误回调
      * @param func 错误回调
      */
-    void setOnError(const std::function<void(const std::error_code&)>& func);
+    void setOnError(const std::function<void(const std::error_code &, const endpoint_type&)> &func);
+
+    /**
+     * 发送一个数据报，地址为先前connect的地址
+     * @param buf 数据包
+     */
+    void send(basic_buffer<char>& buf);
+
 private:
     void init();
     void read_l();
+
 private:
     socket_type sock;
-    event_poller& poller;
+    event_poller &poller;
     char buff_[2048] = {0};
     /**
      * @description: 收到数据回调
      */
-    std::function<void(const char*,size_t, const endpoint_type&)> on_recv_func;
+    std::function<void(const char *, size_t, const endpoint_type &)> on_recv_func;
     /**
      * @description: 出错回调
      */
-    std::function<void(const std::error_code&)> on_error_func;
+    std::function<void(const std::error_code &)> on_error_func;
     std::recursive_mutex mtx;
 };
 

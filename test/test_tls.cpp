@@ -22,12 +22,13 @@ int main(){
     _context->set_verify_mode(context::verify_none);
     http_server->start<ssl<tcp_session>>(443, "0.0.0.0", true, _context);
     std::cin.get();
-#endif
     auto client = std::make_shared<ssl<tcp_client>>(false,std::make_shared<context>(context::tls::method::sslv23_client));
     client->start_connect("127.0.0.1", 443);
     basic_buffer<char> buf("123", 3);
     client->send_loop(buf);
+#endif
     pool.wait();
+
     return 0;
 }
 

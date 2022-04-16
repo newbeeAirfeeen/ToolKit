@@ -31,7 +31,8 @@
 tcp_session::tcp_session(typename asio::ip::tcp::socket &socket_, event_poller &poller,
                          const std::shared_ptr<context> &context) : poller(poller), sock(std::move(socket_)),
                                                                     _context(context), recv_timer(poller.get_executor()),
-                                                                    socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), poller) {
+                                                                    socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), poller){
+                                                                            set_no_delay();
 }
 tcp_session::tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>> &pair_,
                          const std::shared_ptr<context> &_context_)
@@ -40,6 +41,7 @@ tcp_session::tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio
       poller(*pair_.first),
       socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), *pair_.first) {
     _is_server = false;
+    set_no_delay();
 }
 #else
 tcp_session::tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>> &pair_)
@@ -48,7 +50,7 @@ tcp_session::tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio
       sock(std::move(*pair_.second)),
       socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), poller){
 }
-tcp_session::tcp_session(super_type &socket_, event_poller &poller)
+tcp_session::tcp_session(socket_type &socket_, event_poller &poller)
     : poller(poller), sock(std::move(socket_)), recv_timer(poller.get_executor()),
       socket_sender<asio::ip::tcp::socket, tcp_session>(std::ref(sock), poller){}
 #endif

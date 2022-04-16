@@ -36,7 +36,7 @@
 #include <chrono>
 #include "socket_base.hpp"
 class udp_server;
-class udp_session : public basic_session, public udp_helper, public socket_sender<asio::ip::udp::socket, udp_session>{
+class udp_session : public udp_helper, public socket_sender<asio::ip::udp::socket, udp_session>, public std::enable_shared_from_this<udp_session>{
     friend class udp_server;
 
 public:
@@ -51,9 +51,10 @@ public:
     ~udp_session();
     std::shared_ptr<udp_session> shared_from_this_subtype()override;
 protected:
-   void onRecv(const char *data, size_t size)override;
-   void onError(const std::error_code &e) override;
-   void send(basic_buffer<char>& buffer) override;
+   void onRecv(const char *data, size_t size, const endpoint_type& endpoint);
+   void onError(const std::error_code &e);
+   void send(basic_buffer<char>& buffer, const endpoint_type& enpoint);
+   void set_recv_time_out(size_t size);
 private:
     void attach_server(udp_server *server);
     /**
@@ -70,7 +71,6 @@ private:
      * @description: 由udp_server调用,用于刷新定时器
      */
     void flush();
-    void write_l();
 private:
     /**
      * @description: 绑定的udp_server
@@ -88,10 +88,6 @@ private:
      * @description: 接收数据缓冲区
      */
     basic_buffer<char> buffer_;
-    /**
-     * @description: 用于绑定的对端地址
-     */
-    endpoint_type endpoint;
     /**
      * @description: 接收超时
      */

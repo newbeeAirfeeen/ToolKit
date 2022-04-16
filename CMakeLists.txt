@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(ToolKit)
 
 
@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 add_compile_options(-DASIO_STANDALONE)
 
-
+set(CMAKE_PREFIX_PATH /usr/local/openssl)
 set(LINK_LIB_LIST "")
 find_package(OpenSSL)
 

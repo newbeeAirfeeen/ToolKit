@@ -64,7 +64,7 @@ public:
 private:
     void read_datagram();
     void transmit_message(basic_buffer<char>& buf, const endpoint_type& endpoint);
-    void launchError(const endpoint_type& endpoint);
+    void launchError(const std::error_code& e, const endpoint_type& endpoint);
     void remove_session(const endpoint_type& endpoint);
 private:
     event_poller& poller;

@@ -27,7 +27,7 @@
 #include "buffer.hpp"
 #include <asio/detail/buffer_sequence_adapter.hpp>
 #include <list>
-
+#include <algorithm>
 template<typename T, typename Traits = std::char_traits<T>, typename allocator = std::allocator<T>>
 class basic_buffer_list : public std::list<basic_buffer<T>,
                                            typename std::allocator_traits<allocator>::template rebind_alloc<basic_buffer<T, Traits, allocator>>> {
@@ -37,6 +37,14 @@ public:
     using base_type = std::list<basic_buffer<T>, typename std::allocator_traits<allocator>::template rebind_alloc<basic_buffer<T, Traits, allocator>>>;
 
 public:
+    void udp(bool _is_udp_){
+        this->is_udp_ = _is_udp_;
+    }
+
+    bool is_udp() const{
+        return this->is_udp_;
+    }
+
     size_t remove(size_t remove_size) {
         if (base_type::empty()) {
             return 0;
@@ -61,6 +69,8 @@ public:
         });
         return buffers_size;
     }
+private:
+    bool is_udp_ = false;
 };
 
 /**
@@ -119,6 +129,9 @@ namespace asio {
                 auto iter = buffers.begin();
                 auto end = buffers.end();
                 for (; iter != end && count_ < max_buffers; ++iter, ++count_) {
+                    if(buffers.is_udp() && count_){
+                        break;
+                    }
                     total_buffer_size_ += iter->size();
                     buffer_s[count_] = {(void *) iter->data(), iter->size()};
                 }

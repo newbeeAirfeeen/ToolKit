@@ -61,7 +61,7 @@ public:
      */
     tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>>& pair_, const std::shared_ptr<context>& _context_);
 #else
-    tcp_session(super_type &socket_, event_poller &poller);
+    tcp_session(socket_type &socket_, event_poller &poller);
     tcp_session(const std::pair<event_poller::Ptr, std::shared_ptr<asio::ip::tcp::socket>>& pair_);
 #endif
     ~tcp_session();

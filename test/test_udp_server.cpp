@@ -1,8 +1,10 @@
 //
 // Created by 沈昊 on 2022/4/9.
 //
-#include <asio.hpp>
+#ifdef SSL_ENABLE
 #include <asio/ssl.hpp>
+#endif
+#include <asio.hpp>
 #include <event_poller_pool.hpp>
 #include <net/udp_server.hpp>
 #include <spdlog/logger.hpp>

@@ -30,12 +30,14 @@
 udp_session::udp_session(event_poller &poller, const std::shared_ptr<context> &context_, asio::ip::udp::socket &sock)
     : poller(poller), _context(context_), recv_timer(poller.get_executor()), sock(sock),udp_helper(sock),
       socket_sender<asio::ip::udp::socket, udp_session>(sock, poller) {
+    socket_sender<asio::ip::udp::socket, udp_session>::setOnErr(std::bind(&udp_session::onError, this, std::placeholders::_1));
 }
 
 #else
 udp_session::udp_session(event_poller &poller, asio::ip::udp::socket &sock)
     : poller(poller), recv_timer(poller.get_executor()), sock(sock),
       udp_helper(sock),socket_sender<asio::ip::udp::socket, udp_session>(sock, poller) {
+    socket_sender<asio::ip::udp::socket, udp_session>::setOnErr(std::bind(&udp_session::onError, this, std::placeholders::_1));
 }
 #endif
 
@@ -47,23 +49,23 @@ std::shared_ptr<udp_session> udp_session::shared_from_this_subtype() {
     return std::static_pointer_cast<udp_session>(shared_from_this());
 }
 
-void udp_session::onRecv(const char *data, size_t size) {
+void udp_session::onRecv(const char *data, size_t size, const endpoint_type& endpoint) {
     Info("udp recv {} length, {}", size, data);
     basic_buffer<char> b(data, size);
-    send(b);
+    send(b, endpoint);
 }
 
 void udp_session::onError(const std::error_code &e) {
     Error(e.message());
 }
 
-void udp_session::send(basic_buffer<char> &buffer) {
-    if (buffer_.empty()) {
-        buffer_.swap(buffer);
-    } else {
-        buffer_.append(buffer.data(), buffer.size());
-    }
-    return write_l();
+void udp_session::send(basic_buffer<char> &buffer, const endpoint_type& endpoint) {
+    return socket_sender<asio::ip::udp::socket, udp_session>::send(buffer, endpoint);
+}
+
+void udp_session::set_recv_time_out(size_t size_){
+    this->time_out.store(size_);
+    this->recv_timer.expires_after(std::chrono::seconds(size_));
 }
 
 void udp_session::launchRecv(basic_buffer<char> &buff, const endpoint_type &endpoint) {
@@ -74,29 +76,9 @@ void udp_session::launchRecv(basic_buffer<char> &buff, const endpoint_type &endp
         if (!stronger_self) {
             return;
         }
-        stronger_self->endpoint = endpoint;
-        stronger_self->onRecv(tmp_buffer->data(), tmp_buffer->size());
+        stronger_self->recv_timer.expires_after(std::chrono::seconds(stronger_self->time_out.load(std::memory_order_relaxed)));
+        stronger_self->onRecv(tmp_buffer->data(), tmp_buffer->size(), endpoint);
     });
-}
-
-void udp_session::write_l() {
-    auto stronger_self(std::static_pointer_cast<udp_session>(shared_from_this()));
-    auto write_func = [stronger_self](const std::error_code &e, size_t length) {
-        if (stronger_self.unique())
-            return;
-        if (e) {
-            Error(e.message());
-            return;
-        }
-        stronger_self->buffer_.remove(length);
-        if (stronger_self->buffer_.size()) {
-            return stronger_self->write_l();
-        }
-    };
-    return sock.async_send_to(
-            asio::buffer(stronger_self->buffer_.data(),
-                         stronger_self->buffer_.size()),
-            stronger_self->endpoint, write_func);
 }
 
 using endpoint_type = typename udp_session::endpoint_type;
@@ -117,7 +99,7 @@ void udp_session::begin_session() {
                 return;
             }
             Error("session receive timeout");
-            stronger_self->server->launchError(stronger_self->endpoint);
+            stronger_self->server->launchError(e, stronger_self->sock.remote_endpoint());
         });
     }
 }

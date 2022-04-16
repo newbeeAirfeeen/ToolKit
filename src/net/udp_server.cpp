@@ -53,7 +53,11 @@ void udp_server::read_datagram() {
 void udp_server::transmit_message(basic_buffer<char> &buf, const endpoint_type &endpoint) {
     auto it = session_map.find(endpoint);
     if (it == session_map.end()) {
+#ifdef SSL_ENABLE
         auto session = std::make_shared<udp_session>(*event_poller_pool::Instance().get_poller(false), _context, static_cast<asio::ip::udp::socket&>(*this));
+#else
+        auto session = std::make_shared<udp_session>(*event_poller_pool::Instance().get_poller(false), static_cast<asio::ip::udp::socket&>(*this));
+#endif
         session_map.emplace(endpoint, session);
         //开始会话
         session->attach_server(this);
@@ -66,7 +70,7 @@ void udp_server::transmit_message(basic_buffer<char> &buf, const endpoint_type &
     it->second->launchRecv(buf, endpoint);
 }
 
-void udp_server::launchError(const endpoint_type &endpoint) {
+void udp_server::launchError(const std::error_code& e, const endpoint_type &endpoint) {
     //切换到自己的线程
     std::weak_ptr<udp_server> self(std::static_pointer_cast<udp_server>(shared_from_this()));
     poller.async([endpoint, self]() {

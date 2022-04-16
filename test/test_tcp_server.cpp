@@ -14,11 +14,13 @@ int main(){
     auto& pool = event_poller_pool::Instance();
     auto http_server = std::make_shared<tcp_server>();
     http_server->start<tcp_session>(8080);
+#ifdef SSL_ENABLE
     std::shared_ptr<context> _context = std::make_shared<context>(context::tls::method::sslv23_server);
     _context->use_certificate_chain_file("default.pem");
     _context->use_private_key_file("default.pem", context::pem);
     _context->set_verify_mode(context::verify_fail_if_no_peer_cert);
     http_server->start<ssl<tcp_session>>(443, "0.0.0.0", true, _context);
+#endif
     pool.wait();
 
     return 0;
