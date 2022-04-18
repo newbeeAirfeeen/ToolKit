@@ -120,7 +120,41 @@ public:
 
     struct dtls {
         enum method {
-
+#if 0
+            /**
+             * dtls_method
+             */
+            sslv1,
+            /**
+             * dtls server method
+             */
+            sslv1_server,
+            /**
+             * dtls client method
+             */
+            sslv1_client,
+            /**
+             * dtls_1.2
+             */
+            sslv1_2,
+            /**
+             * dtls_server1.2
+             */
+            sslv1_2_server,
+            /**
+             * dtls_client1.2
+             */
+            sslv1_2_client,
+#else
+            /**
+             * include dtls 1.0 , dtls 1.2 server
+             */
+            ssl_server,
+            /**
+             * include dtls 1.0 dtls 1.2 client
+             */
+            ssl_client,
+#endif
         };
     };
 
