@@ -23,9 +23,11 @@
 * SOFTWARE.
 */
 #include "context.hpp"
+#include <Util/onceToken.h>
+#include <mutex>
 #if defined(SSL_ENABLE) && defined(USE_OPENSSL)
-#include <openssl/err.h>
 #include "spdlog/logger.hpp"
+#include <openssl/err.h>
 std::string get_error_string(unsigned long err) {
     char buf[4096] = {0};
     ERR_error_string_n(err, buf, sizeof(buf));
@@ -34,6 +36,7 @@ std::string get_error_string(unsigned long err) {
 
 
 context::context(tls_method m) : handle_(nullptr) {
+    init();
     switch (m) {
         //SSL v2
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L) || defined(OPENSSL_NO_SSL2)
@@ -266,7 +269,59 @@ context::context(tls_method m) : handle_(nullptr) {
 }
 
 context::context(dtls_method m) {
-
+    init();
+#if 0
+    switch(m){
+#ifdef OPENSSL_NO_DTLS1_METHOD
+        case context_base::dtls::sslv1:
+        case context_base::dtls::sslv1_server:
+        case context_base::dtls::sslv1_client:
+            throw std::invalid_argument("dtls setting error: unknown dtls method");
+#else
+        case context_base::dtls::sslv1:
+            handle_ = ::SSL_CTX_new(DTLSv1_method());
+            break;
+        case context_base::dtls::sslv1_server:
+            handle_ = ::SSL_CTX_new(DTLSv1_server_method());
+            break;
+        case context_base::dtls::sslv1_client:
+            handle_ = ::SSL_CTX_new(DTLSv1_client_method());
+            break;
+#endif
+#ifdef OPENSSL_NO_DTLS1_2_METHOD
+        case context_base::dtls::sslv1_2:
+        case context_base::dtls::sslv1_2_server:
+        case context_base::dtls::sslv1_2_client:
+            throw std::invalid_argument("dtls setting error: no dtls v1.2 method");
+#else
+        case context_base::dtls::sslv1_2:
+            handle_ = ::SSL_CTX_new(DTLSv1_2_method());
+            break;
+        case context_base::dtls::sslv1_2_server:
+            handle_ = ::SSL_CTX_new(DTLSv1_2_server_method());
+            break;
+        case context_base::dtls::sslv1_2_client:
+            handle_ = ::SSL_CTX_new(DTLSv1_2_client_method());
+            break;
+#endif
+        default:
+            throw std::invalid_argument("dtls setting error: unknown dtls method");
+    }
+#else
+    switch (m) {
+        case context_base::dtls::method::ssl_client:
+            handle_ = ::SSL_CTX_new(DTLS_client_method());
+            break;
+        case context_base::dtls::method::ssl_server:
+            handle_ = ::SSL_CTX_new(DTLS_server_method());
+            break;
+        default:
+            throw std::invalid_argument("no dtls method");
+    }
+#endif
+    if (handle_ == nullptr) {
+        throw std::invalid_argument("dtls initialize error: not init a method");
+    }
 }
 
 context::context(context &&other) noexcept {
@@ -314,41 +369,68 @@ void context::set_options(options o) {
 }
 
 
-void context::set_verify_mode(verify_mode v){
+void context::set_verify_mode(verify_mode v) {
     ::SSL_CTX_set_verify(handle_, v, nullptr);
 }
 
 
-void context::load_verify_file(const std::string &filename){
-    if(::SSL_CTX_load_verify_locations(handle_, filename.c_str(), 0) != 1){
+void context::load_verify_file(const std::string &filename) {
+    if (::SSL_CTX_load_verify_locations(handle_, filename.c_str(), 0) != 1) {
         throw std::runtime_error(get_error_string());
     }
 }
 
-void context::set_default_verify_paths(){
-    if(::SSL_CTX_set_default_verify_paths(handle_) != 1){
+void context::set_default_verify_paths() {
+    if (::SSL_CTX_set_default_verify_paths(handle_) != 1) {
         throw std::runtime_error(get_error_string());
     }
 }
 
-void context::use_certificate_chain_file(const std::string& filename){
+void context::use_certificate_chain_file(const std::string &filename) {
     ::ERR_clear_error();
-    if(::SSL_CTX_use_certificate_chain_file(handle_, filename.c_str()) != 1){
+    if (::SSL_CTX_use_certificate_chain_file(handle_, filename.c_str()) != 1) {
         throw std::runtime_error(get_error_string());
     }
 }
 
-void context::use_private_key_file(const std::string& filename, file_format format){
-    if(::SSL_CTX_use_PrivateKey_file(handle_, filename.c_str(),
-                                      format == file_format::pem ? SSL_FILETYPE_PEM : SSL_FILETYPE_ASN1) != 1){
+void context::use_private_key_file(const std::string &filename, file_format format) {
+    if (::SSL_CTX_use_PrivateKey_file(handle_, filename.c_str(),
+                                      format == file_format::pem ? SSL_FILETYPE_PEM : SSL_FILETYPE_ASN1) != 1) {
 
         throw std::runtime_error(get_error_string());
     }
 
     auto ret = ::SSL_CTX_check_private_key(handle_);
-    if( ret != 1){
+    if (ret != 1) {
         throw std::runtime_error(get_error_string());
     }
 }
 
+
+void context::init() {
+    static toolkit::onceToken token([&]() {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+        SSL_library_init();
+        SSL_load_error_strings();
+        OpenSSL_add_all_algorithms();
+        OpenSSL_add_all_ciphers();
+        OpenSSL_add_all_digests();
+        CRYPTO_set_locking_callback([](int mode, int n, const char *file, int line) {
+            static mutex *s_mutexes = new mutex[CRYPTO_num_locks()];
+            static onceToken token(nullptr, []() {
+                delete[] s_mutexes;
+            });
+            if (mode & CRYPTO_LOCK) {
+                s_mutexes[n].lock();
+            } else {
+                s_mutexes[n].unlock();
+            }
+        });
+
+        CRYPTO_set_id_callback([]() -> unsigned long {
+            return (unsigned long) std::this_thread::get_id();
+        });
+#endif
+    });
+}
 #endif

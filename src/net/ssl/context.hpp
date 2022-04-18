@@ -139,6 +139,8 @@ public:
      * @note Calls @c SSL_CTX_use_PrivateKey_file.
      */
      void use_private_key_file(const std::string& filename, file_format format);
+ private:
+     void init();
 private:
     native_handle_type handle_;
 };
