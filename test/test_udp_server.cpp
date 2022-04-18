@@ -12,6 +12,8 @@ int main() {
     logger::initialize("logs/test_tcp_server.log", spdlog::level::trace);
     auto udp_server_ = std::make_shared<udp_server>(*event_poller_pool::Instance().get_poller(false));
     udp_server_->start<udp_session>(9000);
+    auto udp_server_2 = std::make_shared<udp_server>(*event_poller_pool::Instance().get_poller(false));
+    udp_server_2->start<udp_session> (9001);
     event_poller_pool::Instance().wait();
     return 0;
 }

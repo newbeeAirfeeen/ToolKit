@@ -7,7 +7,7 @@
 #include <net/event_poller_pool.hpp>
 #include <buffer_list.hpp>
 #include "net/ssl/context.hpp"
-#include "net/ssl/ssl.hpp"
+#include "net/ssl/tls.hpp"
 using namespace std;
 int main(){
     logger::initialize("logs/test_tcp_server.log", spdlog::level::trace);
@@ -19,7 +19,7 @@ int main(){
     _context->use_certificate_chain_file("default.pem");
     _context->use_private_key_file("default.pem", context::pem);
     _context->set_verify_mode(context::verify_fail_if_no_peer_cert);
-    http_server->start<ssl<tcp_session>>(443, "0.0.0.0", true, _context);
+    http_server->start<tls<tcp_session>>(443, "0.0.0.0", true, _context);
 #endif
     pool.wait();
 
