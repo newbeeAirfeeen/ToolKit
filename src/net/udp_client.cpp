@@ -43,6 +43,7 @@ std::shared_ptr<udp_client> udp_client::shared_from_this_subtype() {
 
 void udp_client::connect(const endpoint_type &endpoint) {
     std::lock_guard<decltype(mtx)> lmtx(mtx);
+    sock.cancel();
     socket_sender<asio::ip::udp::socket, udp_client>::clear();
     sock.connect(endpoint);
     socket_sender<asio::ip::udp::socket, udp_client>::is_connected(true);
