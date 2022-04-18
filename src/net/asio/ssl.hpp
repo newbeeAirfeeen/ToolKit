@@ -24,5 +24,5 @@
 #include "asio/ssl/stream_base.hpp"
 #include "asio/ssl/verify_context.hpp"
 #include "asio/ssl/verify_mode.hpp"
-
+#include "asio/ssl/dtls.hpp"
 #endif // ASIO_SSL_HPP

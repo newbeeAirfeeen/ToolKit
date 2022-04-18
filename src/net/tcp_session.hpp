@@ -159,7 +159,6 @@ public:
     size_t get_send_time_out() override;
 protected:
     void read_l();
-    void write_l();
     socket_type& get_sock();
 protected:
     asio::ip::tcp::socket sock;
