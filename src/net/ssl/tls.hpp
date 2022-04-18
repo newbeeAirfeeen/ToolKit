@@ -22,33 +22,33 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_SSL_HPP
-#define TOOLKIT_SSL_HPP
+#ifndef TOOLKIT_TLS_HPP
+#define TOOLKIT_TLS_HPP
 #ifdef SSL_ENABLE
 #include "engine.hpp"
 #include "context.hpp"
 #include <net/event_poller.hpp>
 #include <net/buffer.hpp>
 template<typename session_type>
-class ssl : public session_type{
+class tls : public session_type{
 public:
     template<typename Arg>
-    ssl(Arg&& arg, event_poller& poller, const std::shared_ptr<context>& context)
+    tls(Arg&& arg, event_poller& poller, const std::shared_ptr<context>& context)
         :_engine(context->native_handle(), session_type::is_server()), session_type(std::forward<Arg>(arg), poller, context){
-        _engine.setOnRecv(std::bind(&ssl<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
-        _engine.setOnWrite(std::bind(&ssl<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
-        _engine.onError(std::bind(&ssl<session_type>::self_onErr, this));
+        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
+        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+        _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
     }
 
     template<typename Arg>
-    ssl(Arg&& arg, const std::shared_ptr<context>& context): session_type(std::forward<Arg>(arg), context)
+    tls(Arg&& arg, const std::shared_ptr<context>& context): session_type(std::forward<Arg>(arg), context)
         ,_engine(context->native_handle(), false){
-        _engine.setOnRecv(std::bind(&ssl<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
-        _engine.setOnWrite(std::bind(&ssl<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
-        _engine.onError(std::bind(&ssl<session_type>::self_onErr, this));
+        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
+        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+        _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
     }
 
-    ~ssl(){
+    ~tls(){
         _engine.flush();
     }
     void onRecv(const char* data, size_t length) override{
@@ -73,5 +73,7 @@ private:
 private:
     engine _engine;
 };
+
+
 #endif
-#endif//TOOLKIT_SSL_HPP
+#endif//TOOLKIT_TLS_HPP
