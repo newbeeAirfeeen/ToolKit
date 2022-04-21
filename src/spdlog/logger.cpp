@@ -77,6 +77,13 @@ namespace logger{
     void initialize(const std::string& base_name, const spdlog::level::level_enum& lvl, int hours, int minutes){
         static std::once_flag flag;
         auto func = [&](){
+#ifdef WIN32
+            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            DWORD dwMode = 0;
+            GetConsoleMode(hOut, &dwMode);
+            dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            SetConsoleMode(hOut, dwMode);
+#endif
             spdlog::init_thread_pool(4096, 1);
 
             auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
