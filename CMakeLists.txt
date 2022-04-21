@@ -18,6 +18,10 @@ if(OPENSSL_FOUND)
 endif()
 
 
+if(WIN32)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
+
 #添加包含路径
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/Util SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/spdlog SRC_LIST)

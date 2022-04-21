@@ -1,4 +1,4 @@
-/*
+﻿/*
 * @file_name: EventPoller.hpp
 * @date: 2022/04/04
 * @author: oaho
@@ -75,7 +75,7 @@ public:
         }
         else{
             auto _func = std::bind(func, std::forward<Args>(args)...);
-            _io_context.template post(std::move(_func));
+            _io_context.post(std::move(_func));
         }
     }
     /*!

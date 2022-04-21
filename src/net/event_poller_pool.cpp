@@ -1,4 +1,4 @@
-/*
+﻿/*
 * @file_name: EventPollerPool.cpp
 * @date: 2022/04/04
 * @author: oaho
@@ -35,7 +35,7 @@ event_poller_pool::~event_poller_pool(){
 }
 
 event_poller_pool::event_poller_pool(size_t num):_num(num), index(0){
-    for(int i = 0; i < _num; i++){
+    for(size_t i = 0; i < _num; i++){
         auto poller = std::make_shared<event_poller>();
         poller->start();
         poller_pool.emplace_back(poller);

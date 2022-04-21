@@ -1,4 +1,4 @@
-/*
+﻿/*
 * @file_name: session_helper.hpp
 * @date: 2022/04/04
 * @author: oaho
@@ -59,10 +59,10 @@ public:
     virtual void async_send(buffer &buf) {
         {
             std::lock_guard<decltype(mtx)> lmtx(mtx);
-            L2_cache_.template emplace_back(std::move(buf));
+            L2_cache_.emplace_back(std::move(buf));
         }
         auto stronger_self = std::static_pointer_cast<socket_helper<asio::ip::tcp::socket, sub_type>>(shared_from_this_sub_type());
-        return poller.template async([stronger_self]() { stronger_self->write_l(); });
+        return poller.async([stronger_self]() { stronger_self->write_l(); });
     }
 
 
@@ -139,7 +139,7 @@ private:
             if (time_out) {
                 auto origin_time_out = std::chrono::system_clock::now() + std::chrono::seconds(time_out);
                 stronger_self->send_timer.expires_at(origin_time_out);
-                stronger_self->send_timer.template async_wait([stronger_self](const std::error_code &e) {
+                stronger_self->send_timer.async_wait([stronger_self](const std::error_code &e) {
                     //此时只剩定时器持有引用
                     if (stronger_self.unique() || e) {
                         return;

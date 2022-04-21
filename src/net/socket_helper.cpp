@@ -1,4 +1,4 @@
-/*
+﻿/*
 * @file_name: session_helper.cpp
 * @date: 2022/04/04
 * @author: oaho

@@ -1,7 +1,7 @@
-#define ASIO_STANDALONE 1
+﻿#define ASIO_STANDALONE 1
 #define ASIO_HEADER_ONLY 1
 
-
+#ifdef SSL_ENABLE
 #include <asio/ssl.hpp>
 #include <asio.hpp>
 #include <functional>
@@ -161,3 +161,8 @@ int main()
 
     return 0;
 }
+#else
+int main(){
+    return 0;
+}
+#endif

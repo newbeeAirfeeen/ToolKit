@@ -1,4 +1,4 @@
-/*
+﻿/*
 * @file_name: buffer_list.h
 * @date: 2021/10/06
 * @author: oaho
@@ -120,7 +120,12 @@ namespace asio {
                 auto end = buffers.end();
                 for (; iter != end && count_ < max_buffers; ++iter, ++count_) {
                     total_buffer_size_ += iter->size();
+#ifdef _WIN32
+                    buffer_s[count_].buf = (char*)(iter->data());
+                    buffer_s[count_].len = iter->size();
+#else
                     buffer_s[count_] = {(void *) iter->data(), iter->size()};
+#endif
                 }
             }
 

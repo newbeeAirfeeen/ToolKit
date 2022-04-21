@@ -1,3 +1,4 @@
+﻿#ifdef SSL_ENABLE
 #define ASIO_STANDALONE 1
 #   define ASIO_HEADER_ONLY 1
 #include <asio/ssl.hpp>
@@ -48,3 +49,8 @@ int main()
         std::cout << e.what() << std::endl;
     }
 }
+#else
+int main(){
+    return 0;
+}
+#endif

@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by 沈昊 on 2022/4/10.
 //
 #include "net/tcp_client.hpp"
@@ -13,10 +13,8 @@ int main(){
     auto& pool = event_poller_pool::Instance();
 
 #ifdef SSL_ENABLE
-
     std::shared_ptr<asio::ssl::context> context = std::make_shared<asio::ssl::context>(asio::ssl::context::method::sslv23_client);
     auto _tls = std::make_shared<tls<tcp_client>>(*event_poller_pool::Instance().get_poller(false), context);
-
 
     auto server = std::make_shared<tcp_server>();
     std::shared_ptr<asio::ssl::context> server_context = std::make_shared<asio::ssl::context>(asio::ssl::context::method::sslv23_server);
