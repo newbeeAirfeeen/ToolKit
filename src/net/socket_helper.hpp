@@ -53,7 +53,7 @@ public:
 
     void begin_read() {
         auto stronger_self(shared_from_this_sub_type());
-        return poller.template async([stronger_self]() { stronger_self->read_l(); });
+        return poller.async([stronger_self]() { stronger_self->read_l(); });
     }
 
     virtual void async_send(buffer &buf) {
@@ -96,7 +96,7 @@ private:
         if (time_out) {
             auto origin_time_out = std::chrono::system_clock::now() + std::chrono::seconds(time_out);
             recv_timer.expires_at(origin_time_out);
-            recv_timer.template async_wait([stronger_self, origin_time_out](const std::error_code &e) {
+            recv_timer.async_wait([stronger_self, origin_time_out](const std::error_code &e) {
                 Trace(e.message());
                 //此时只剩定时器持有引用
                 if (stronger_self.unique() || e) {

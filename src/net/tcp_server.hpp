@@ -44,7 +44,7 @@ public:
     template<typename session_type, typename...Args>
     void start(const endpoint_type& endpoint, Args&&...args) {
         std::weak_ptr<tcp_server> self(shared_from_this());
-        event_poller_pool::Instance().get_poller(false)->template async([&, self]() {
+        event_poller_pool::Instance().get_poller(false)->async([&, self]() {
             auto &poller = event_poller_pool::Instance().get_poller(false);
             auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(poller->get_executor(), endpoint);
             auto stronger_self = self.lock();
@@ -70,14 +70,14 @@ private:
             }
             else{
                 std::shared_ptr<session_type> session_(new session_type(*poller, *_socket_, std::forward<Args>(args)...));
-                poller->template async([stronger_self, acceptor, session_]() {
+                poller->async([stronger_self, acceptor, session_]() {
                     session_->onConnected();
                     session_->begin_read();
                 });
             }
-            stronger_self->template start_listen<session_type>(acceptor, std::forward<Args>(args)...);
+            stronger_self->start_listen<session_type>(acceptor, std::forward<Args>(args)...);
         };
-        acceptor->template async_accept(*_socket_, async_func);
+        acceptor->async_accept(*_socket_, async_func);
     }
 };
 
