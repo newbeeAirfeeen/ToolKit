@@ -44,6 +44,25 @@
  *               |                                                               |
  *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *                              Figure 1: SRT packet as UDP payload
+ * SRT has two types of packet type distinguished by packet type: data packet and protocol packet
+ *
+ *               0                   1                   2                   3
+ *               0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *               +-+-+-+-+-+-+-+-+-+-+-+-+- SRT Header +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *               |F|        (Field meaning depends on the packet type)           |
+ *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *               |          (Field meaning depends on the packet type)           |
+ *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *               |                          Timestamp                            |
+ *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *               |                     Destination Socket ID                     |
+ *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *               |                                                               |
+ *               +                      Packet Contents                          |
+ *               |                  (depends on the packet type)                 +
+ *               |                                                               |
+ *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
  */
 
 
