@@ -28,53 +28,55 @@
 #include <functional>
 #include <event_poller.hpp>
 #include "buffer.hpp"
-#include <asio.hpp>
-#include <net/ssl/context.hpp>
-#include "tcp_session.hpp"
-class tcp_client : public tcp_session{
-public:
-    using endpoint = typename asio::ip::tcp::endpoint;
-public:
-#ifdef SSL_ENABLE
-    /**
-     * @description: 建立一个tcp_client,
-     * @param sock  socket,会移动构造
-     * @param context 证书,用于建立tls
-     */
-    tcp_client(bool current_thread, const std::shared_ptr<context>& _context_ = nullptr);
-#else
-    explicit tcp_client(bool current_thread);
-#endif
-    /**
-     * @description: 当连接建立的时候会调用的函数
-     */
-    virtual void on_connected();
-    /**
-     * 收到响应消息函数
-     * @param data 数据指针
-     * @param size 长度
-     */
-    void onRecv(const char* data, size_t size) override;
-    /**
-     * @description: 绑定本机ip和端口
-     * @param ip ipv4或ipv6
-     * @param port 端口
-     */
-    void bind_local(const std::string& ip, unsigned short port);
+#include "socket_helper.hpp"
+#include "spdlog/logger.hpp"
+#include <memory>
 
-    /**
-     * @description: 开始连接对应的ip和端口
-     * @param ip ipv4或者ipv6
-     * @param port 端口
-     */
-    void start_connect(const std::string& ip, unsigned short port);
-
+template<typename _socket_type>
+class basic_stream_oried_client: public socket_helper<_socket_type, basic_stream_oried_client<_socket_type>>,
+                                 public std::enable_shared_from_this<basic_stream_oried_client<_socket_type>>{
 public:
-    void send_loop(basic_buffer<char>& buf);
-private:
-    std::recursive_mutex mtx;
-    endpoint local_point;
+    using socket_type = _socket_type;
+    using base_type = socket_helper<socket_type, basic_stream_oried_client<socket_type>>;
+    using endpoint_type = typename base_type::endpoint_type;
+public:
+
+    explicit basic_stream_oried_client(event_poller& poller):base_type(poller){}
+
+    std::shared_ptr<basic_stream_oried_client<socket_type>> shared_from_this_sub_type() final{
+        return this->std::enable_shared_from_this<basic_stream_oried_client<socket_type>>::shared_from_this();
+    }
+
+    void async_connect(const endpoint_type& endpoint){
+        auto stronger_self(shared_from_this_sub_type());
+        base_type::getSock().async_connect(endpoint, [stronger_self, endpoint](const std::error_code& e){
+            if(e){
+                return stronger_self->onError(e);
+            }
+            stronger_self->begin_read();
+            return stronger_self->onConnected();
+        });
+    }
+
+    virtual void onConnected(){
+        Info("connect success: {}:{}", base_type::getSock().remote_endpoint().address().to_string(), base_type::getSock().remote_endpoint().port());
+    }
+
+    void onRecv(buffer& buffer) override {
+        Info("recv data length {}", buffer.size());
+    }
+
+    void onError(const std::error_code& e) override{
+        Error("error: {}", e.message());
+    }
+
+    inline bool is_server(){
+        return false;
+    }
 };
 
-
+using tcp_client = basic_stream_oried_client<asio::ip::tcp::socket>;
+#ifdef SSL_ENABLE
+#include "ssl/tls.hpp"
+#endif
 #endif//TOOLKIT_CLIENT_HPP

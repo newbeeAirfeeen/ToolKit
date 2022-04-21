@@ -1,6 +1,6 @@
 /*
-* @file_name: context_base.hpp
-* @date: 2022/04/12
+* @file_name: session_helper.cpp
+* @date: 2022/04/04
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -22,17 +22,34 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
+#include "socket_helper.hpp"
+#include <atomic>
+#if !defined(_WIN32)
+#include <limits.h>
+#include <sys/resource.h>
+#endif
+#include <fmt/fmt.h>
+#include <Util/onceToken.h>
+#include <iostream>
+toolkit::onceToken token([](){
+#if !defined(_WIN32)
+    struct rlimit rlim,rlim_new;
+    if (getrlimit(RLIMIT_CORE, &rlim)==0) {
+        rlim_new.rlim_cur = rlim_new.rlim_max = RLIM_INFINITY;
+        if (setrlimit(RLIMIT_CORE, &rlim_new)!=0) {
+            rlim_new.rlim_cur = rlim_new.rlim_max = rlim.rlim_max;
+            setrlimit(RLIMIT_CORE, &rlim_new);
+        }
+        std::cout << fmt::format("core文件大小设置为:{}",rlim_new.rlim_cur) << std::endl;
+    }
 
-#ifndef TOOLKIT_CONTEXT_TRAITS_HPP
-#define TOOLKIT_CONTEXT_TRAITS_HPP
-
-#include <type_traits>
-#include "context_base.hpp"
-
-template<typename T> struct is_tls_context : public std::false_type{};
-template<> struct is_tls_context<typename context_base::tls::method>: public std::true_type{};
-
-template<typename T> struct is_dtls_context : public std::false_type{};
-template<> struct is_dtls_context<typename context_base::dtls::method>: public std::true_type{};
-
-#endif//TOOLKIT_CONTEXT_TRAITS_HPP
+    if (getrlimit(RLIMIT_NOFILE, &rlim)==0) {
+        rlim_new.rlim_cur = rlim_new.rlim_max = RLIM_INFINITY;
+        if (setrlimit(RLIMIT_NOFILE, &rlim_new)!=0) {
+            rlim_new.rlim_cur = rlim_new.rlim_max = rlim.rlim_max;
+            setrlimit(RLIMIT_NOFILE, &rlim_new);
+        }
+        std::cout << fmt::format("文件描述符数量设置为:{}",rlim_new.rlim_cur) << std::endl;
+    }
+#endif
+});

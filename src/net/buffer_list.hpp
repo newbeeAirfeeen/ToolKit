@@ -37,14 +37,6 @@ public:
     using base_type = std::list<basic_buffer<T>, typename std::allocator_traits<allocator>::template rebind_alloc<basic_buffer<T, Traits, allocator>>>;
 
 public:
-    void udp(bool _is_udp_){
-        this->is_udp_ = _is_udp_;
-    }
-
-    bool is_udp() const{
-        return this->is_udp_;
-    }
-
     size_t remove(size_t remove_size) {
         if (base_type::empty()) {
             return 0;
@@ -70,7 +62,6 @@ public:
         return buffers_size;
     }
 private:
-    bool is_udp_ = false;
 };
 
 /**
@@ -85,7 +76,7 @@ namespace asio {
         public:
             enum { is_single_buffer = false };
             enum { is_registered_buffer = false };
-
+            enum { linearisation_storage_size = 8192 };
         public:
             explicit buffer_sequence_adapter(const basic_buffer_list<T> &buffers)
                 : count_(0), total_buffer_size_(0) {
@@ -123,15 +114,11 @@ namespace asio {
             static std::basic_string<T> first(const basic_buffer_list<T> &) {
                 return {};
             }
-
         private:
             void init(const basic_buffer_list<T> &buffers) {
                 auto iter = buffers.begin();
                 auto end = buffers.end();
                 for (; iter != end && count_ < max_buffers; ++iter, ++count_) {
-                    if(buffers.is_udp() && count_){
-                        break;
-                    }
                     total_buffer_size_ += iter->size();
                     buffer_s[count_] = {(void *) iter->data(), iter->size()};
                 }

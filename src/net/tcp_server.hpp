@@ -26,9 +26,9 @@
 #ifndef TOOLKIT_TCP_SERVER_HPP
 #define TOOLKIT_TCP_SERVER_HPP
 #include "event_poller_pool.hpp"
-#include "session_helper.hpp"
+#include "socket_helper.hpp"
 #include "spdlog/logger.hpp"
-#include "tcp_session.hpp"
+#include "net/deprecated/tcp_session.hpp.tmp"
 #include <Util/nocopyable.hpp>
 #include <asio.hpp>
 #include <mutex>
@@ -37,64 +37,29 @@ class tcp_server;
 
 class tcp_server : public std::enable_shared_from_this<tcp_server>, public noncopyable {
 public:
-    using acceptor_pointer = std::shared_ptr<asio::ip::tcp::acceptor>;
-
+    using endpoint_type = typename asio::ip::tcp::socket::endpoint_type;
 public:
     tcp_server() = default;
-    ~tcp_server();
-
 public:
-#ifdef SSL_ENABLE
-    template<typename session_type>
-    void start(unsigned short port, const std::string &address = "0.0.0.0", bool ipv4 = true,
-               const std::shared_ptr<context>& _context = nullptr) {
-#else
-    template<typename session_type>
-    void start(unsigned short port, const std::string &address = "0.0.0.0", bool ipv4 = true) {
-#endif
+    template<typename session_type, typename...Args>
+    void start(const endpoint_type& endpoint, Args&&...args) {
         std::weak_ptr<tcp_server> self(shared_from_this());
-        event_poller_pool::Instance().get_poller(false)->template async([=]() {
-            using acceptor_func_type = std::function<void(const std::error_code &)>;
+        event_poller_pool::Instance().get_poller(false)->template async([&, self]() {
             auto &poller = event_poller_pool::Instance().get_poller(false);
-            auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(poller->get_executor(), asio::ip::tcp::endpoint(ipv4 ? asio::ip::tcp::v4() : asio::ip::tcp::v6(), port));
+            auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(poller->get_executor(), endpoint);
             auto stronger_self = self.lock();
             if (!stronger_self)
                 return;
-#ifdef SSL_ENABLE
-            stronger_self->start_listen<session_type>(acceptor, _context);
-#else
-            stronger_self->start_listen<session_type>(acceptor);
-#endif
+            stronger_self->start_listen<session_type>(acceptor, std::forward<Args>(args)...);
         });
     }
-
-    /*!
-     * 停止当前tcp_server，并清除跟此server相关的所有会话
-     */
-    void stop();
-
-    /*!
-     * 得到tcp连接的会话总数。
-     * @return 当前在线人数
-     */
-    size_t get_tcp_session_count() const;
 private:
-#ifdef SSL_ENABLE
-    template<typename session_type>
-    void start_listen(const std::shared_ptr<asio::ip::tcp::acceptor> &acceptor,
-                      const std::shared_ptr<context>& _context = nullptr) {
-#else
-    template<typename session_type>
-    void start_listen(const std::shared_ptr<asio::ip::tcp::acceptor> &acceptor) {
-#endif
+    template<typename session_type, typename...Args>
+    void start_listen(const std::shared_ptr<asio::ip::tcp::acceptor> &acceptor, Args&&...args) {
         auto &poller = event_poller_pool::Instance().get_poller(false);
         auto _socket_ = std::make_shared<asio::ip::tcp::socket>(poller->get_executor());
         std::weak_ptr<tcp_server> self(shared_from_this());
-#ifdef SSL_ENABLE
-        auto async_func = [_socket_, acceptor, poller, self, _context](const std::error_code &e) {
-#else
-        auto async_func = [_socket_, acceptor, poller, self](const std::error_code &e) {
-#endif
+        auto async_func = [&, _socket_, poller, self, acceptor](const std::error_code &e) {
             auto stronger_self = self.lock();
             if (!stronger_self) {
                 Warn("the tcp server has shutdown");
@@ -102,35 +67,18 @@ private:
             }
             if (e) {
                 Error("accept error, {}", e.message());
-            } else {
-#ifdef SSL_ENABLE
-                std::shared_ptr<session_type> session_(new session_type(*_socket_, *poller, _context));
-#else
-                std::shared_ptr<session_type> session_(new session_type(*_socket_, *poller));
-#endif
-                //切换到自己的线程处理
+            }
+            else{
+                std::shared_ptr<session_type> session_(new session_type(*poller, *_socket_, std::forward<Args>(args)...));
                 poller->template async([stronger_self, acceptor, session_]() {
-                    auto create_ret = get_session_helper().create_session(session_);
-                    if (!create_ret) {
-                        Error("create tcp_session error");
-                    } else {
-                        Trace("目前在线人数: {}", stronger_self->get_tcp_session_count());
-                        session_->begin_session();
-                        std::lock_guard<std::mutex> lmtx(stronger_self->mtx);
-                        stronger_self->acceptors.push_back(acceptor);
-                    }
+                    session_->onConnected();
+                    session_->begin_read();
                 });
             }
-#ifdef SSL_ENABLE
-            stronger_self->template start_listen<session_type>(acceptor, _context);
-#endif
+            stronger_self->template start_listen<session_type>(acceptor, std::forward<Args>(args)...);
         };
         acceptor->template async_accept(*_socket_, async_func);
     }
-
-private:
-    std::mutex mtx;
-    std::vector<acceptor_pointer> acceptors;
 };
 
 #endif//TOOLKIT_TCP_SERVER_HPP

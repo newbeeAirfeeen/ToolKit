@@ -26,49 +26,49 @@
 #define TOOLKIT_TLS_HPP
 #ifdef SSL_ENABLE
 #include "engine.hpp"
-#include "context.hpp"
+#include "asio/ssl/context.hpp"
 #include <net/event_poller.hpp>
 #include <net/buffer.hpp>
+#include "asio/basic_socket.hpp"
 template<typename session_type>
 class tls : public session_type{
 public:
-    template<typename Arg>
-    tls(Arg&& arg, event_poller& poller, const std::shared_ptr<context>& context)
-        :_engine(context->native_handle(), session_type::is_server()), session_type(std::forward<Arg>(arg), poller, context){
-        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
-        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+    tls(event_poller& poller, const std::shared_ptr<asio::ssl::context>& context)
+        :_engine(context->native_handle(), session_type::is_server()), session_type(poller){
+
+        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1));
+        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1));
         _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
     }
 
-    template<typename Arg>
-    tls(Arg&& arg, const std::shared_ptr<context>& context): session_type(std::forward<Arg>(arg), context)
-        ,_engine(context->native_handle(), false){
-        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1,std::placeholders::_2));
-        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1, std::placeholders::_2));
+    tls(event_poller& poller, asio::ip::tcp::socket& sock, const std::shared_ptr<asio::ssl::context>& context): session_type(poller, sock, context)
+        ,_engine(context->native_handle(), session_type::is_server()){
+
+        _engine.setOnRecv(std::bind(&tls<session_type>::self_onRecv, this, std::placeholders::_1));
+        _engine.setOnWrite(std::bind(&tls<session_type>::self_send, this, std::placeholders::_1));
         _engine.onError(std::bind(&tls<session_type>::self_onErr, this));
     }
 
     ~tls(){
         _engine.flush();
     }
-    void onRecv(const char* data, size_t length) override{
-        _engine.onRecv(data, length);
+    void onRecv(buffer& buff) override{
+        _engine.onRecv(buff);
     }
-    void send(basic_buffer<char>& buff) override{
-        _engine.onSend(buff.data(), buff.size());
+    void async_send(buffer& buff) override{
+        _engine.onSend(buff);
     }
 
 private:
-    void self_onRecv(const char* data, size_t length){
-        session_type::onRecv(data, length);
+    void self_onRecv(buffer& buff){
+        session_type::onRecv(buff);
     }
 
-    void self_send(const char* data, size_t length){
-        basic_buffer<char> tmp(data, length);
-        session_type::send(tmp);
+    void self_send(buffer& buff){
+        session_type::async_send(buff);
     }
     void self_onErr(){
-        session_type::get_sock().shutdown(asio::socket_base::shutdown_both);
+        session_type::getSock().shutdown(asio::socket_base::shutdown_both);
     }
 private:
     engine _engine;

@@ -1,3 +1,4 @@
+#if 0
 /*
 * @file_name: context.cpp
 * @date: 2022/04/12
@@ -433,4 +434,5 @@ void context::init() {
 #endif
     });
 }
+#endif
 #endif

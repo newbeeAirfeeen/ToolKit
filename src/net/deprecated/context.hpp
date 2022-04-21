@@ -1,3 +1,4 @@
+#if 0
 /*
 * @file_name: context.hpp
 * @date: 2022/04/12
@@ -147,3 +148,4 @@ private:
 #endif
 
 #endif//TOOLKIT_CONTEXT_HPP
+#endif

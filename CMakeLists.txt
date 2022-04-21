@@ -15,7 +15,6 @@ if(OPENSSL_FOUND)
     include_directories(${OPENSSL_INCLUDE_DIR})
     list(APPEND LINK_LIB_LIST ${OPENSSL_LIBRARIES})
     add_definitions(-DSSL_ENABLE)
-    add_definitions(-DUSE_OPENSSL)
 endif()
 
 
@@ -28,5 +27,4 @@ add_library(ToolKit STATIC ${SRC_LIST})
 target_link_libraries(ToolKit INTERFACE ${LINK_LIB_LIST})
 target_include_directories(ToolKit PUBLIC ${CMAKE_SOURCE_DIR}/src
                                    PUBLIC ${CMAKE_SOURCE_DIR}/src/net)
-
 add_subdirectory(test)

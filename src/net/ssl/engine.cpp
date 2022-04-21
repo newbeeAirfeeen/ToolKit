@@ -3,10 +3,15 @@
 //
 #include "engine.hpp"
 #include "Util/onceToken.h"
-#include "context.hpp"
 #include <iostream>
 #include <spdlog/logger.hpp>
-#if defined(SSL_ENABLE) && defined(USE_OPENSSL)
+#if defined(SSL_ENABLE)
+#include <openssl/err.h>
+std::string get_error_string(unsigned long err = ::ERR_get_error()) {
+    char buf[4096] = {0};
+    ERR_error_string_n(err, buf, sizeof(buf));
+    return {buf, std::char_traits<char>::length(buf)};
+}
 engine::engine(SSL_CTX *ctx, bool server_mode)
     : _ssl(SSL_new(ctx)), read_bio(nullptr), write_bio(nullptr), server_mode(server_mode) {
 
@@ -52,19 +57,18 @@ engine &engine::operator=(engine &&other) {
     return *this;
 }
 
-void engine::onRecv(const char *data, size_t length) {
-    if (length <= 0) {
+void engine::onRecv(buffer& buf) {
+    if (buf.size() <= 0) {
         return;
     }
 
-    size_t offset = 0;
-    while (offset < length) {
+    while (buf.size()) {
         /**
          * 首先把数据写入到_ssl绑定的read_bio的缓冲区中。
          */
-        auto nwrite = BIO_write(read_bio, data + offset, length - offset);
+        auto nwrite = BIO_write(read_bio, buf.data(), buf.size());
         if (nwrite > 0) {
-            offset += nwrite;
+            buf.remove(nwrite);
             /**
              * 尝试读取或者写出
              */
@@ -77,14 +81,14 @@ void engine::onRecv(const char *data, size_t length) {
     }
 }
 
-void engine::onSend(const char* data, size_t length){
-    if(length <= 0)
+void engine::onSend(buffer& buff){
+    if(buff.size() <= 0)
         return;
     if(!server_mode && !send_handshake){
         send_handshake = true;
         SSL_do_handshake(_ssl);
     }
-    _buffer_send_.emplace_back(data, length);
+    _buffer_send_.emplace_back(std::move(buff));
     flush();
 }
 
@@ -147,15 +151,15 @@ void engine::flush() {
 }
 
 void engine::flush_read_bio() {
-    char buffer[32 * 1024] = {0};
-    auto capacity = sizeof(buffer) - 1;
+    char buffer_[32 * 1024] = {0};
+    auto capacity = sizeof(buffer_) - 1;
     int nread = 0;
     size_t offset = 0;
     do {
         /**
          * 尝试从_ssl中读出数据
          */
-        nread = SSL_read(_ssl, buffer + offset, capacity - offset);
+        nread = SSL_read(_ssl, buffer_ + offset, capacity - offset);
         if (nread > 0) {
             offset += nread;
         }
@@ -163,12 +167,13 @@ void engine::flush_read_bio() {
     if (!offset) {
         return;
     }
-    buffer[offset] = '\0';
+    buffer_[offset] = '\0';
+    buffer buff(buffer_, offset);
     /**
      * 此时有数据并调用回调
      */
     if (on_dec_func) {
-        on_dec_func(buffer, offset);
+        on_dec_func(buff);
     }
     /**
      * 如果还有数据,在尝试刷新
@@ -179,15 +184,15 @@ void engine::flush_read_bio() {
 }
 
 void engine::flush_write_bio() {
-    char buffer[32 * 1024] = {0};
-    auto capacity = sizeof(buffer) - 1;
+    char buffer_[32 * 1024] = {0};
+    auto capacity = sizeof(buffer_) - 1;
     int nread = 0;
     size_t offset = 0;
     do {
         /**
          * 从ssl的write_bio中读取数据
          */
-        nread = BIO_read(write_bio, buffer + offset, capacity - offset);
+        nread = BIO_read(write_bio, buffer_ + offset, capacity - offset);
         if (nread > 0) {
             offset += nread;
         }
@@ -195,23 +200,24 @@ void engine::flush_write_bio() {
     if (!offset) {
         return;
     }
-    buffer[offset] = '\0';
+    buffer_[offset] = '\0';
+    buffer buff(buffer_, offset);
     /**
      * 如果此时有数据并设置了回调，调用回调
      */
     if (on_enc_func) {
-        on_enc_func(buffer, offset);
+        on_enc_func(buff);
     }
     if (nread > 0) {
         return flush_write_bio();
     }
 }
 
-void engine::setOnRecv(const std::function<void(const char *, size_t)> &rf) {
+void engine::setOnRecv(const std::function<void(buffer&)> &rf) {
     this->on_dec_func = rf;
 }
 
-void engine::setOnWrite(const std::function<void(const char*, size_t)>& wf){
+void engine::setOnWrite(const std::function<void(buffer&)>& wf){
     this->on_enc_func = wf;
 }
 

@@ -22,8 +22,9 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
+#if 0
 #include "tcp_session.hpp"
-#include "session_helper.hpp"
+#include "socket_helper.hpp"
 #include "spdlog/logger.hpp"
 #include <chrono>
 
@@ -182,3 +183,4 @@ using socket_type = typename tcp_session::socket_type;
 socket_type &tcp_session::get_sock() {
     return sock;
 }
+#endif

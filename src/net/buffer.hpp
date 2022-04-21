@@ -29,6 +29,7 @@
 #include <string>
 #include <type_traits>
 #include <ostream>
+#include <asio/detail/buffer_sequence_adapter.hpp>
 template<typename T>
 struct return_type{
     using type = typename std::remove_reference<typename std::remove_pointer<typename std::remove_cv<T>::type>::type>::type;
@@ -106,6 +107,10 @@ public:
 
     inline bool empty() const{
         return size() == 0;
+    }
+
+    inline void backward(){
+        read_index = 0;
     }
 
     void remove(size_t length){
@@ -402,6 +407,74 @@ private:
     size_t read_index;
     base_type _data;
 };
+
+template<typename CharT, typename Traits = std::char_traits<CharT>,
+         typename allocator = std::allocator<CharT>>
+class mutable_basic_buffer: public basic_buffer<CharT, Traits, allocator>{
+public:
+    char* data() const {
+        return const_cast<char*>(basic_buffer<CharT, Traits, allocator>::data());
+    }
+};
+
+
+namespace asio {
+    namespace detail {
+        template<typename Buffer, typename T>
+        class buffer_sequence_adapter<Buffer, mutable_basic_buffer<T>> : public buffer_sequence_adapter_base {
+        public:
+            enum { is_single_buffer = true };
+            enum { is_registered_buffer = false };
+
+        public:
+            explicit buffer_sequence_adapter(const mutable_basic_buffer<T> &buffers){
+                init(buffers);
+            }
+
+        public:
+            native_buffer_type *buffers() {
+                return buffer_s;
+            }
+
+            std::size_t count() const {
+                return 1;
+            }
+
+            std::size_t total_size() const {
+                return size;
+            }
+
+            registered_buffer_id registered_id() const {
+                return {};
+            }
+
+            bool all_empty() const {
+                return size == 0;
+            }
+
+            static bool all_empty(const mutable_basic_buffer<T> &buffers) {
+                return buffers.empty();
+            }
+
+            static void validate(const mutable_basic_buffer<T> &buffers) {}
+
+
+            static Buffer first(const mutable_basic_buffer<T>& mtb) {
+                return Buffer((void*)mtb.data(), mtb.size());
+            }
+        private:
+            void init(const mutable_basic_buffer<T> &buffers) {
+                buffer_s->iov_base = buffers.data();
+                size = buffers.size();
+                int a  = 1;
+            }
+        private:
+            native_buffer_type* buffer_s;
+            size_t size = {0};
+        };
+    };// namespace detail
+};    // namespace asio
+
 
 using buffer = basic_buffer<char>;
 

@@ -26,17 +26,14 @@
 #ifndef TOOLKIT_engine_HPP
 #define TOOLKIT_engine_HPP
 #include <Util/nocopyable.hpp>
-#if defined(SSL_ENABLE) && defined(USE_OPENSSL)
+#if defined(SSL_ENABLE)
 #include <openssl/ssl.h>
 #include <functional>
 #include <vector>
 #include <list>
 #include <string>
-
+#include <net/buffer.hpp>
 class engine : public noncopyable{
-public:
-    using read_func = std::function<void(const char*, size_t)>;
-    using write_func = std::function<void(const char*, size_t)>;
 public:
     /**
      * @description: 创建engnie对象
@@ -56,13 +53,13 @@ public:
      * @param data 数据指针
      * @param length 数据长度
      */
-    void onRecv(const char* data, size_t length);
+    void onRecv(buffer& buff);
     /**
      * @description: 写入数据到ssl
      * @param data 数据指针
      * @param length 数据长度
      */
-    void onSend(const char* data, size_t length);
+    void onSend(buffer& buff);
 
     /**
      * 出错回调
@@ -74,12 +71,12 @@ public:
      * @description: 解密完成后的回调
      * @param f 回调函数
      */
-    void setOnRecv(const std::function<void(const char*, size_t)>& f);
+    void setOnRecv(const std::function<void(buffer&)>& f);
     /**
      * @description: 加密完成后的回调函数
      * @param f 回调函数
      */
-    void setOnWrite(const std::function<void(const char*, size_t)>& f);
+    void setOnWrite(const std::function<void(buffer&)>& f);
     void flush();
 private:
     void shutdown();
@@ -89,13 +86,13 @@ private:
     SSL* _ssl;
     BIO* read_bio;
     BIO* write_bio;
-    std::function<void(const char*, size_t)> on_dec_func;
-    std::function<void(const char*, size_t)> on_enc_func;
+    std::function<void(buffer&)> on_dec_func;
+    std::function<void(buffer&)> on_enc_func;
     std::function<void()> err_func;
     bool send_handshake = false;
     bool server_mode = true;
     bool is_flush = false;
-    std::list<std::string> _buffer_send_;
+    std::list<buffer> _buffer_send_;
 };
 #endif
 #endif//TOOLKIT_engine_HPP
