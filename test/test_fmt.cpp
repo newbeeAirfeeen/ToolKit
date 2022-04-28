@@ -1,11 +1,11 @@
 ﻿//
 // Created by 沈昊 on 2022/4/3.
 //
-#include <fmt/fmt.h>
 #include <fmt/bundled/color.h>
+#include <fmt/fmt.h>
 #include <iostream>
 
-using  namespace std;
+using namespace std;
 
 /*
  *
@@ -38,22 +38,22 @@ using  namespace std;
  * */
 
 
-void basic_use(){
+void basic_use() {
     std::cout << fmt::format("Hell,world") << std::endl;
     std::string s = fmt::format("The answer is {}.", 42);
     std::cout << s << std::endl;
 }
 
-void avoid_memory_alloc(){
+void avoid_memory_alloc() {
     //这里可以避免构造string
 
     auto out = fmt::memory_buffer();
     fmt::format_to(std::back_inserter(out), "For a moment, {} happend", "nothing");
 
-    fmt::print(out.data());
+    //fmt::print(out.data());
 }
 
-void pass_named_arg(){
+void pass_named_arg() {
 
     fmt::print("I'd rather be {1} than {0}.", "right", "happy\n");
     fmt::print("Hello, {name}! The answer is {number}. Goodbye, {name}.\n",
@@ -61,12 +61,12 @@ void pass_named_arg(){
 }
 
 
-void format_spec(){
+void format_spec() {
     //保证输出正确的情况下向右shift
     cout << fmt::format("{0:->10}\n", "", "hello,world");
     cout << fmt::format("{0:-^100}\n{1: ^+100.4}\n{0:-^100}\n", "", 1.098765);
-                        //"{0:^{100}}\n"
-                        //"{0:-^{100}}\n", "hello,world");
+    //"{0:^{100}}\n"
+    //"{0:-^{100}}\n", "hello,world");
     cout << fmt::format("{0:#b}\n", 15);
     cout << fmt::format("{0:#B}\n", 15);
     cout << fmt::format("{0:b}\n", 15);
@@ -78,12 +78,10 @@ void format_spec(){
 }
 
 
-void test_color(){
-//    fmt::format()
-
-
+void test_color() {
+    //    fmt::format()
 }
-int main(){
+int main() {
 
     basic_use();
     avoid_memory_alloc();

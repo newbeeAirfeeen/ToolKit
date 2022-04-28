@@ -1,16 +1,16 @@
 ﻿//
 // Created by 沈昊 on 2022/4/10.
 //
+#include "event_poller_pool.hpp"
 #include "net/tcp_client.hpp"
 #include "net/tcp_server.hpp"
-#include "event_poller_pool.hpp"
-#include <iostream>
 #include "net/tcp_session.hpp"
+#include <iostream>
 
-int main(){
+int main() {
 
     logger::initialize("logs/test_client.log", spdlog::level::trace);
-    auto& pool = event_poller_pool::Instance();
+    auto &pool = event_poller_pool::Instance();
 
     auto server = std::make_shared<tcp_server>();
 #ifdef SSL_ENABLE
@@ -32,7 +32,7 @@ int main(){
 
 
     std::string buf_;
-    while(getline(std::cin, buf_)){
+    while (getline(std::cin, buf_)) {
         buffer buff(std::move(buf_));
         tcp->async_send(buff);
     }

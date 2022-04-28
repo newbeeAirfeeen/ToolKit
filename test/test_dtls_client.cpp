@@ -1,24 +1,22 @@
 ﻿#ifdef SSL_ENABLE
 #define ASIO_STANDALONE 1
-#   define ASIO_HEADER_ONLY 1
-#include <asio/ssl.hpp>
-#include <asio/ip/udp.hpp>
-#include <asio.hpp>
+#define ASIO_HEADER_ONLY 1
 #include <array>
+#include <asio.hpp>
+#include <asio/ip/udp.hpp>
+#include <asio/ssl.hpp>
 #include <iostream>
 
 /* Certificate validation works exactly the same as with SSL Streams.
  */
-bool callback(bool preverified, asio::ssl::verify_context &ctx)
-{
+bool callback(bool preverified, asio::ssl::verify_context &ctx) {
     (void) preverified;
     (void) ctx;
 
     return 1;
 }
 
-int main()
-{
+int main() {
     asio::io_context context;
     asio::ssl::dtls::context ctx(asio::ssl::dtls::context::dtls_client);
 
@@ -30,8 +28,7 @@ int main()
 
     asio::ip::udp::endpoint ep(asio::ip::address_v4::loopback(), 9000);
 
-    try
-    {
+    try {
         dtls_con.lowest_layer().connect(ep);
 
         dtls_con.handshake(asio::ssl::stream_base::handshake_type::client);
@@ -43,14 +40,12 @@ int main()
         dtls_con.receive(asio::buffer(recbuffer));
 
         std::cout << "Received: " << recbuffer.data() << std::endl;
-    }
-    catch(std::exception &e)
-    {
+    } catch (std::exception &e) {
         std::cout << e.what() << std::endl;
     }
 }
 #else
-int main(){
+int main() {
     return 0;
 }
 #endif
