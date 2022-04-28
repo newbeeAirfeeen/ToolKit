@@ -288,7 +288,7 @@ namespace srt{
         }
     }
     void srt_core::loop_l(){
-        auto stronger_self(shared_from_this());
+        std::weak_ptr<srt_core> self(shared_from_this());
 
         /**
          * 1. receive packet from buffer
@@ -309,7 +309,12 @@ namespace srt{
         /**
          * post loop function into next round-trip loop instead of recursive invoke,
          */
-        poller.get_executor().post([stronger_self](){
+
+        poller.get_executor().post([self](){
+            auto stronger_self = self.lock();
+            if(!stronger_self){
+                return;
+            }
             stronger_self->loop_l();
         });
     }
