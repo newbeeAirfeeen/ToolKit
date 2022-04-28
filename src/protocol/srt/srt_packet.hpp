@@ -24,7 +24,8 @@
 */
 #ifndef TOOLKIT_SRT_PACKET_HPP
 #define TOOLKIT_SRT_PACKET_HPP
-
+#include <iostream>
+#include "srt_packet_profile.hpp"
 /**
  * The SRT Protocol draft-sharabayko-srt-01
  *
@@ -64,6 +65,26 @@
  *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
+namespace srt{
+    struct srt_packet{
 
+        template<typename packet_type>
+        bool is(uint32_t packet_identify){
+            return packet_type::value(packet_identify);
+        }
+
+        uint32_t get_packet_header() const;
+
+        uint32_t get_sequence() const;
+
+        const char* data() const;
+
+        size_t size() const;
+    };
+
+    struct srt_packet_helper{
+        static control_type get_control_packet_type(uint32_t header);
+    };
+};
 
 #endif//TOOLKIT_SRT_PACKET_HPP
