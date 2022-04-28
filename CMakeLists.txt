@@ -4,7 +4,7 @@ project(ToolKit)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
-add_compile_options(-DASIO_STANDALONE -DASIO_HEADER_ONLY)
+add_definitions(-DASIO_STANDALONE -DASIO_HEADER_ONLY -DSRT_CORE_INTERNAL_DEBUG_LOG -DFMT_HEADER_ONLY)
 
 set(CMAKE_PREFIX_PATH /usr/local/openssl)
 set(LINK_LIB_LIST "")
@@ -27,6 +27,8 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src/Util SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/spdlog SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/net SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/net/ssl SRC_LIST)
+aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/srt SRC_LIST)
+
 add_library(ToolKit STATIC ${SRC_LIST})
 target_link_libraries(ToolKit INTERFACE ${LINK_LIB_LIST})
 target_include_directories(ToolKit PUBLIC ${CMAKE_SOURCE_DIR}/src
