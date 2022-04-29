@@ -36,9 +36,6 @@
 #include "srt_packet.hpp"
 #include "srt_status.hpp"
 
-#ifdef SRT_CORE_INTERNAL_DEBUG_LOG
-    #include "spdlog/logger.hpp"
-#endif
 
 namespace srt{
     /**
@@ -174,6 +171,7 @@ namespace srt{
          */
         const size_t keep_alive_internal = 1000;
         steady_timer keep_alive_timer;
+        bool is_in_no_packet_send_timer = false;
         /**
          * 3.2.4 ACK(Acknowledgment) p25
          *
