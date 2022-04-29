@@ -29,10 +29,9 @@
 namespace srt{
 
     enum srt_error_code{
-        /**
-         * status error
-         */
         status_error,
+        srt_packet_error,
+        srt_control_type_error,
     };
 
     class srt_category : public std::error_category{

@@ -32,6 +32,8 @@ namespace srt{
     std::string srt_category::message(int err) const{
         switch (err) {
             case srt_error_code::status_error: return "srt status error, the srt operation is not permitted in this status";
+            case srt_error_code::srt_packet_error: return "srt packet error, current packet is not permitted with invalid arguments";
+            case srt_error_code::srt_control_type_error: return "srt control type error, current packet is not permitted with invalid arguments";
         }
         return "";
     }
