@@ -23,24 +23,11 @@
 * SOFTWARE.
 */
 #include "srt_packet.hpp"
+#include "Util/endian.hpp"
 namespace srt{
-    uint32_t srt_packet::get_packet_header() const{
-        return 0;
+
+    bool srt_packet::is_control_packet() const{
+        return data()[0] & 0x80;
     }
 
-    uint32_t srt_packet::get_sequence() const {
-        return 0;
-    }
-
-    const char* srt_packet::data() const {
-        return nullptr;
-    }
-
-    size_t srt_packet::size() const {
-        return 0;
-    }
-
-    control_type srt_packet_helper::get_control_packet_type(uint32_t header){
-        return control_type::ack;
-    }
 };
