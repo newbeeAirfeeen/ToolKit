@@ -71,6 +71,13 @@ namespace srt{
     struct srt_packet : public basic_buffer<char>{
     public:
         bool is_control_packet() const;
+        srt_packet();
+        srt_packet(basic_buffer<char>&& buf);
+    };
+
+    struct srt_packet_helper{
+        static std::shared_ptr<srt_packet> make_srt_control_packet(control_type type, uint32_t timestamp, uint32_t socket_id, uint32_t type_info = 0);
+        static std::shared_ptr<srt_packet> make_srt_data_packet();
     };
 
 };

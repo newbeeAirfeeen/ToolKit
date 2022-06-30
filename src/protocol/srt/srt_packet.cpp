@@ -30,4 +30,24 @@ namespace srt{
         return data()[0] & 0x80;
     }
 
+    srt_packet::srt_packet(){}
+
+    srt_packet::srt_packet(basic_buffer<char>&& buf):basic_buffer<char>(std::move(buf)){
+
+    }
+
+    std::shared_ptr<srt_packet> srt_packet_helper::make_srt_control_packet(control_type type, uint32_t timestamp, uint32_t socket_id, uint32_t type_info){
+        auto srt_buf = std::make_shared<srt_packet>();
+        unsigned short control_type = (unsigned short)type | 0x8000;
+        srt_buf->put_be(control_type);
+        srt_buf->put_be(static_cast<unsigned short>(0));
+        srt_buf->put_be(type_info);
+        srt_buf->put_be(timestamp);
+        srt_buf->put_be(socket_id);
+        return srt_buf;
+    }
+
+    std::shared_ptr<srt_packet> srt_packet_helper::make_srt_data_packet(){
+
+    }
 };

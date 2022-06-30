@@ -35,9 +35,20 @@
 #include "srt_packet_profile.hpp"
 #include "srt_packet.hpp"
 #include "srt_status.hpp"
-
+#include "srt_handshake.hpp"
+#include "net/socket_helper.hpp"
 
 namespace srt{
+    //// for socket id generator and destroy.
+    class socket_id{
+    public:
+        socket_id();
+        ~socket_id();
+        bool reset(uint32_t);
+        uint32_t val() const;
+    private:
+        uint32_t value = 0;
+    };
     /**
      * when in this implementation, srt_core is single thread mode, buf use one loop with multiplexing.
      * avoid thread switch. in other hand, guarantee the thread safe.
@@ -55,7 +66,21 @@ namespace srt{
          * @param endpoint
          */
         void bind_local(const endpoint_type& endpoint);
-
+        /**
+         * set connect_time out ,
+         * @param miliseconds
+         */
+        void set_connect_time_out(size_t miliseconds);
+        /**
+         * set max mtu for single packet
+         * @param mtu_size
+         */
+        void set_mtu(uint32_t mtu_size);
+        /**
+         * set max window flow size
+         * @param window_size
+         */
+        void set_window_size(uint32_t window_size);
         /**
          * @description register internal srt core error for socket error so that could handle socket error
          * @param err_func error callback
@@ -79,12 +104,6 @@ namespace srt{
         void loop();
         void loop_l();
         /**
-         * @description: begin_transaction, begin_transaction do @n
-         *          server: begin read from socket, wait client to connect.
-         *          client: begin read from socket
-         */
-        void begin_transaction();
-        /**
          * @description: the internal read function
          */
         void read_internal();
@@ -101,7 +120,23 @@ namespace srt{
         void start_loop_timer();
         void handle_receive_queue_packets();
         void handle_receive_control_packet(const std::shared_ptr<srt_packet>& control_packet);
-        void handle_handshake(const std::shared_ptr<srt_packet>& handshake_packet);
+        void handle_handshake(const control_packet_context& ctx, const std::shared_ptr<srt_packet>& handshake_packet);
+        /**
+         * for client use, induction response
+         */
+        void handle_handshake_induction_client_1(const control_packet_context& ctx, const srt_packet& handshake_packet);
+        /**
+         * for client use, conduction response
+         * @param ctx
+         * @param handshake_packet
+         */
+        void handle_handshake_conduction_client_2(const control_packet_context& ctx, const srt_packet& handshake_packet);
+        /**
+         * for server use,
+         * @param ctx
+         * @param handshake_packet
+         */
+        void handle_handshake_induction_server_1(const control_packet_context& ctx, const srt_packet& handshake_packet);
         void handle_keep_alive(const std::shared_ptr<srt_packet>& keep_alive_packet);
         void handle_ack(const std::shared_ptr<srt_packet>& ack_packet);
         void handle_nak(const std::shared_ptr<srt_packet>& nak_packet);
@@ -112,10 +147,14 @@ namespace srt{
         void handle_peer_error(const std::shared_ptr<srt_packet>& peer_error_packet);
         void handle_user_defined_type(const std::shared_ptr<srt_packet>& user_defined_packet);
         void handle_receive_data_packet(const std::shared_ptr<srt_packet>& data_packet);
-        void put_connect_packet_into_send_queue();
+        void send_connect_packet(const handshake_packet& pkt, bool init_ack_nak);
         void put_keep_alive_packet_into_send_queue();
     private:
-        void do_read_op();
+        /**
+         * we use simple bake different from official algorithm.
+         */
+        void bake(uint32_t& current_cookie);
+    private:
         void do_write_op();
         void do_send_ack_op();
         void do_send_ack_op_l();
@@ -123,6 +162,20 @@ namespace srt{
         void do_send_nak_op_l();
         void do_send_keep_alive_op();
         void do_send_keep_alive_op_l();
+    private:
+        void set_initial_ack(uint32_t seq);
+        inline uint32_t make_pkt_timestamp();
+        inline uint32_t generate_sequence_number();
+    private:
+        void send_reject();
+        void send_srt_packet(const std::shared_ptr<srt_packet>& pkt, bool after_send_keep_alive = false);
+    private:
+        /**
+         * for recv udp socket
+         * @param buf buffer
+         * @param endpoint endpoint
+         */
+        void onRecv(basic_buffer<char>& buf, const endpoint_type& endpoint);
     private:
         /**
          * status init,
@@ -171,7 +224,6 @@ namespace srt{
          */
         const size_t keep_alive_internal = 1000;
         steady_timer keep_alive_timer;
-        bool is_in_no_packet_send_timer = false;
         /**
          * 3.2.4 ACK(Acknowledgment) p25
          *
@@ -220,6 +272,37 @@ namespace srt{
          * the ACKACK also carries the same sequence number.
          */
         steady_timer::time_point last_ack_sent = steady_timer::time_point::min();
+        steady_timer::time_point last_ack_sent_back = steady_timer::time_point::min();
+        /**
+         * for connect timeout for handshake
+         * 5000000 = 5s
+         */
+        size_t connect_time = 5000000;
+        steady_timer connect_timer;
+        /**
+         * whether received induction_1.
+         */
+        bool receive_connect_induction_1 = false;
+        /**
+         * last ack send
+         */
+        uint32_t last_ack_send_seq = 0;
+        /**
+         * last fully ack received
+         */
+        uint32_t last_full_ack_recv_seq = 0;
+        /**
+         * The largest sequence number that HAS BEEN SENT
+         */
+        uint32_t ack_current_send_seq = 0;
+        /**
+         * next ack seq send to peer
+         */
+        uint32_t next_ack_send_seq = 0;
+        /**
+         * last ack seq sent from peer
+         */
+        uint32_t last_ack_send_back = 0;
         /**
          * 3.2.3. Keep-Alive
          * Keep-alive control packets are sent after a certain timeout from the
@@ -229,6 +312,7 @@ namespace srt{
          */
         typename steady_timer::time_point last_any_packet_sent = steady_timer::time_point::min();
         typename steady_timer::time_point last_any_packet_recv = steady_timer::time_point::min();
+        typename steady_timer::time_point socket_start_time = steady_timer::time_point::min();
         /**
          * 4.10 Round-Trip Time Estimation  P54
          *
@@ -252,10 +336,35 @@ namespace srt{
         double RTT = 100;
         double rtt = 0;
         double RTTVar = 50;
+        // for client to handshake
+        socket_id _sock_id;
+        /**
+         * which save handshake context with server/client
+         */
+        handshake_packet handshake_pkt;
         /**
          * error function for internal callback
          */
         std::function<void(const std::error_code&)> error_func;
+        /**
+         * save connect callback
+         */
+        decltype(error_func) connect_func_slot;
+        std::function<void(const control_packet_context&, const srt_packet&)> next_handshake_func;
+        /**
+         * receive buffer
+         */
+        mutable_basic_buffer<char> receive_buffer;
+    };
+
+    class srt_socket_helper{
+        friend class socket_id;
+    private:
+        static uint32_t generator_socket_id();
+        static bool insert_socket_id(uint32_t);
+        static void destroy_socket_id(uint32_t);
+        static std::set<uint32_t> socket_ids;
+        static std::recursive_mutex mtx;
     };
 };
 #endif//TOOLKIT_SRT_CORE_HPP

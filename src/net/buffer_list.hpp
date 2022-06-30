@@ -25,9 +25,9 @@
 #ifndef AHUTIL_BUFFER_LIST_H
 #define AHUTIL_BUFFER_LIST_H
 #include "buffer.hpp"
+#include <algorithm>
 #include <asio/detail/buffer_sequence_adapter.hpp>
 #include <list>
-#include <algorithm>
 template<typename T, typename Traits = std::char_traits<T>, typename allocator = std::allocator<T>>
 class basic_buffer_list : public std::list<basic_buffer<T>,
                                            typename std::allocator_traits<allocator>::template rebind_alloc<basic_buffer<T, Traits, allocator>>> {
@@ -61,6 +61,7 @@ public:
         });
         return buffers_size;
     }
+
 private:
 };
 
@@ -77,6 +78,7 @@ namespace asio {
             enum { is_single_buffer = false };
             enum { is_registered_buffer = false };
             enum { linearisation_storage_size = 8192 };
+
         public:
             explicit buffer_sequence_adapter(const basic_buffer_list<T> &buffers)
                 : count_(0), total_buffer_size_(0) {
@@ -114,6 +116,7 @@ namespace asio {
             static std::basic_string<T> first(const basic_buffer_list<T> &) {
                 return {};
             }
+
         private:
             void init(const basic_buffer_list<T> &buffers) {
                 auto iter = buffers.begin();
@@ -121,7 +124,7 @@ namespace asio {
                 for (; iter != end && count_ < max_buffers; ++iter, ++count_) {
                     total_buffer_size_ += iter->size();
 #ifdef _WIN32
-                    buffer_s[count_].buf = (char*)(iter->data());
+                    buffer_s[count_].buf = (char *) (iter->data());
                     buffer_s[count_].len = iter->size();
 #else
                     buffer_s[count_] = {(void *) iter->data(), iter->size()};

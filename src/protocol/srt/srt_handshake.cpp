@@ -28,6 +28,32 @@
 #include "Util/endian.hpp"
 namespace srt{
 
+    std::shared_ptr<buffer> handshake_packet::to_buffer(const handshake_packet& hsk_pkt){
+        auto hdsk_pkt = std::make_shared<buffer>();
+        /// version
+        hdsk_pkt->put_be(hsk_pkt._version);
+        hdsk_pkt->put_be(hsk_pkt.encryption);
+        hdsk_pkt->put_be(hsk_pkt.extension_field);
+        hdsk_pkt->put_be(hsk_pkt._sequence_number);
+        hdsk_pkt->put_be(hsk_pkt._max_mss);
+        hdsk_pkt->put_be(hsk_pkt._window_size);
+        hdsk_pkt->put_be(static_cast<uint32_t>(hsk_pkt._req_type));
+        hdsk_pkt->put_be(hsk_pkt._socket_id);
+        hdsk_pkt->put_be(hsk_pkt._cookie);
+        ////peer ip
+        if(!hsk_pkt.is_ipv6){
+            hdsk_pkt->put_be(hsk_pkt._peer_ip[0]);
+            hdsk_pkt->put_be(static_cast<uint32_t>(0));
+            hdsk_pkt->put_be(static_cast<uint32_t>(0));
+            hdsk_pkt->put_be(static_cast<uint32_t>(0));
+            return hdsk_pkt;
+        }
+        for(int i = 3; i >= 0;i--){
+            hdsk_pkt->put_be(hsk_pkt._peer_ip[i]);
+        }
+        return hdsk_pkt;
+    }
+
     bool handshake_packet::load(const control_packet_context& ctx, const srt_packet& pkt){
         if(!pkt.is_control_packet()){
             SRT_ERROR_LOG("not control packet");
@@ -49,7 +75,10 @@ namespace srt{
             SRT_ERROR_LOG("the handshake packet is not 4 or 5");
             return false;
         }
-        encryption = load_be16(pointer++);
+        const char* p = (const char*)pointer;
+        encryption = load_be16(p);
+        extension_field = load_be16(p + 2);
+        ++pointer;
         _sequence_number = load_be32(pointer++);
         _max_mss = load_be32(pointer++);
         if( _max_mss > 1500 ){

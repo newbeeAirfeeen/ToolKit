@@ -10,7 +10,8 @@ using namespace std;
 int main(){
 
     logger::initialize("logs/test_logger.log", spdlog::level::info);
-    Info("Info");
+    Info("Info ,{}, {}, {}.{}", 1, "name", 1.1, 2.2);
+
     Warn("warning");
     Error("error");
     Critical("critical");

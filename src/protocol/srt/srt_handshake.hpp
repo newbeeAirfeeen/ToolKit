@@ -46,16 +46,24 @@ namespace srt{
     struct handshake_packet: public handshake_packet_base{
         using pointer = std::shared_ptr<handshake_packet>;
         static constexpr const uint32_t packet_size = 48;
+
+        static std::shared_ptr<buffer> to_buffer(const handshake_packet& hsk_pkt);
+
         bool load(const control_packet_context& ctx, const srt_packet& pkt);
+
         uint32_t _version = 0; //UDT version
         uint16_t encryption = 0;
+        uint16_t extension_field = 0;
         uint32_t _sequence_number = 0; //random initial sequence number
         uint32_t _max_mss = 0; //maximum segment size MTU
         uint32_t _window_size = 0; //flow control window size
         packet_type _req_type = urq_done;
         uint32_t _socket_id = 0;
         uint32_t _cookie = 0;
-        uint8_t  _peer_ip[16] = {0};
+        uint32_t _peer_ip[4] = {0};
+        bool is_ipv6 = false;
     };
+
+
 };
 #endif//TOOLKIT_SRT_HANDSHAKE_HPP
