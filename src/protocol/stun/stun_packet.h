@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: stun_attributes.cpp
+* @file_name: stun_packet.h
 * @date: 2022/07/29
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -23,28 +23,26 @@
 * SOFTWARE.
 */
 
+
+#ifndef TOOLKIT_STUN_PACKET_H
+#define TOOLKIT_STUN_PACKET_H
+#include "stun_method.h"
 #include "stun_attributes.h"
-#include <map>
-namespace stun {
-    const char* get_attribute_name(const attributes &attr) {
-        static const char *empty_string = "";
-        static const std::map<uint16_t, const char *> attributes_map = {
-                {attributes::mapped_address, "mapped_address"},
-                {attributes::username, "username"},
-                {attributes::message_integrity, "message_integrity"},
-                {attributes::error_code, "error_code"},
-                {attributes::unknown_attributes, "unknown_attributes"},
-                {attributes::realm, "realm"},
-                {attributes::nonce, "nonce"},
-                {attributes::xor_mapped_address, "xor_mapped_address"},
-                {attributes::software, "software"},
-                {attributes::alternate_server, "alternate_server"},
-                {attributes::finger_print, "finger_print"},
-        };
-        auto it = attributes_map.find(attr);
-        if (it == attributes_map.end()) {
-            return empty_string;
-        }
-        return it->second;
-    }
-};// namespace stun
+#include "net/buffer.hpp"
+namespace stun{
+
+    struct stun_packet{
+        stun_method _method = binding_request;
+        uint16_t message_length = 0;
+        const uint32_t magic_cookie =  0x2112A442;
+        char transaction[12] = {0};
+    };
+
+    std::shared_ptr<buffer> create_packet(const stun_method& m);
+
+    stun_packet from_buffer(const char* data, size_t length);
+
+    bool is_stun(const char* data, size_t length);
+};
+
+#endif//TOOLKIT_STUN_PACKET_H

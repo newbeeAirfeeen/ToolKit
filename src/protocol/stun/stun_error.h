@@ -26,4 +26,15 @@
 #ifndef TOOLKIT_STUN_ERROR_H
 #define TOOLKIT_STUN_ERROR_H
 
+#include <system_error>
+namespace stun{
+    class category : public std::error_category{
+    public:
+        const char* name() const noexcept override;
+        std::string message(int err) const override;
+    };
+
+    category* generate_category();
+};
+
 #endif//TOOLKIT_STUN_ERROR_H

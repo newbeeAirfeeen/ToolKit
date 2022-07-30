@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: stun_attributes.cpp
+* @file_name: stun_packet.cpp
 * @date: 2022/07/29
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -23,28 +23,21 @@
 * SOFTWARE.
 */
 
-#include "stun_attributes.h"
-#include <map>
-namespace stun {
-    const char* get_attribute_name(const attributes &attr) {
-        static const char *empty_string = "";
-        static const std::map<uint16_t, const char *> attributes_map = {
-                {attributes::mapped_address, "mapped_address"},
-                {attributes::username, "username"},
-                {attributes::message_integrity, "message_integrity"},
-                {attributes::error_code, "error_code"},
-                {attributes::unknown_attributes, "unknown_attributes"},
-                {attributes::realm, "realm"},
-                {attributes::nonce, "nonce"},
-                {attributes::xor_mapped_address, "xor_mapped_address"},
-                {attributes::software, "software"},
-                {attributes::alternate_server, "alternate_server"},
-                {attributes::finger_print, "finger_print"},
-        };
-        auto it = attributes_map.find(attr);
-        if (it == attributes_map.end()) {
-            return empty_string;
-        }
-        return it->second;
+#include "stun_packet.h"
+namespace stun{
+
+    std::shared_ptr<buffer> create_packet(const stun_method& m){
+
     }
-};// namespace stun
+
+    stun_packet from_buffer(const char* data, size_t length){
+        if(!is_stun(data, length)){
+
+        }
+    }
+
+    bool is_stun(const char* data, size_t length){
+
+    }
+
+};

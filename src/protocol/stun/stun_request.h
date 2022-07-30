@@ -27,13 +27,41 @@
 #define TOOLKIT_STUN_REQUEST_HPP
 #include <net/asio.hpp>
 namespace stun{
+    namespace udp{
+        class stun_request : public std::enable_shared_from_this<stun_request>{
+            friend std::shared_ptr<stun_request> create_request(asio::ip::udp::socket& sock, const std::string& address, uint16_t port);
+        public:
+            using resolver = asio::ip::udp::resolver;
+            using query_type = asio::ip::udp::resolver::query;
+            using socket_type = asio::ip::udp::socket;
+            using clock_type = std::chrono::system_clock;
+        public:
+            /// a client SHOULD retransmit a STUN request message starting with an interval
+            /// of RTO
+            void setRTO(uint16_t rto);
+        private:
+            stun_request(socket_type& sock, const query_type& query);
+        private:
+            /// if the success response contains unknown comprehension-required
+            /// attributes, the response is discarded
+            void process_success_response();
+            /// If the error response contains unknown comprehension-required
+            /// attributes, or if the error response does not contain an ERROR-CODE
+            /// attribute, then the transaction is simply considered to have failed.
+            void process_error_response();
+        private:
+            std::shared_ptr<socket_type> _sock;
+            /// initial value for RTO SHOULD be greater than 500ms
+            uint16_t _rto = 500;
+            query_type query;
+            resolver resolver_;
+            asio::basic_waitable_timer<clock_type> timer;
+        };
 
-    class stun_request{
-    public:
-
+        std::shared_ptr<stun_request> create_request(asio::ip::udp::socket& sock, const std::string& address, uint16_t port = 3489);
     };
 
-    static std::shared_ptr<stun_request> create_stun_request(asio::ip::udp::socket& sock);
+
 };
 
 
