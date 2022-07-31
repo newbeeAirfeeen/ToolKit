@@ -24,8 +24,22 @@
 */
 
 #include "stun_attributes.h"
+#include "Util/endian.hpp"
 #include <map>
 namespace stun {
+
+
+    std::string attribute_type::to_bytes(){
+        std::string bytes;
+        uint16_t attr = htons(static_cast<uint16_t>(attribute));
+        uint16_t len = htons(length);
+        bytes.append((const char*)&attr, sizeof(uint16_t));
+        bytes.append((const char*)&len, sizeof(len));
+        bytes.append(value.data(), length);
+        return std::move(bytes);
+    }
+
+
     const char* get_attribute_name(const attributes &attr) {
         static const char *empty_string = "";
         static const std::map<uint16_t, const char *> attributes_map = {

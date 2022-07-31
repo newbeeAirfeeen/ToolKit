@@ -26,6 +26,7 @@
 #ifndef TOOLKIT_STUN_ATTRIBUTES_H
 #define TOOLKIT_STUN_ATTRIBUTES_H
 #include <stdint.h>
+#include <string>
 namespace stun {
     enum attributes {
         /// Comprehension-required range
@@ -67,6 +68,7 @@ namespace stun {
         attributes attribute;
         uint16_t  length;
         std::string value;
+        std::string to_bytes();
     };
     static const char* get_attribute_name(const attributes&);
 };// namespace stun

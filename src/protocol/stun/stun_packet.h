@@ -32,13 +32,20 @@
 namespace stun{
 
     struct stun_packet{
+        friend stun_packet from_buffer(const char*data, size_t length);
+    public:
+        static std::shared_ptr<buffer> create_stun_packet(const stun_packet&);
+    public:
+        explicit stun_packet(const stun_method& m);
+        void set_finger_print(bool on);
+    private:
         stun_method _method = binding_request;
         uint16_t message_length = 0;
         const uint32_t magic_cookie =  0x2112A442;
         char transaction[12] = {0};
+        bool finger_print = false;
     };
 
-    std::shared_ptr<buffer> create_packet(const stun_method& m);
 
     stun_packet from_buffer(const char* data, size_t length);
 

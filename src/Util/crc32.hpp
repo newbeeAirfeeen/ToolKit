@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: stun_packet.cpp
-* @date: 2022/07/29
+* @file_name: crc32.hpp
+* @date: 2022/07/31
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -23,45 +23,14 @@
 * SOFTWARE.
 */
 
-#include "stun_packet.h"
-namespace stun{
+#ifndef TOOLKIT_CRC32_HPP
+#define TOOLKIT_CRC32_HPP
 
-    static void finger_print(const std::shared_ptr<buffer>& buf){
+#include <cstdint>
 
-    }
-
-
-
-    std::shared_ptr<buffer> stun_packet::create_stun_packet(const stun_packet& stun_pkt){
-        auto buf = std::make_shared<buffer>();
+uint32_t crc32(const uint8_t* buffer, uint32_t size, uint32_t init_crc = 0xFFFFFFFF);
+uint32_t mpeg_crc32(const uint8_t *buffer, uint32_t size, uint32_t init_crc = 0xFFFFFFFF);
 
 
 
-        if(stun_pkt.finger_print){
-            finger_print(buf);
-        }
-        return buf;
-    }
-
-
-    stun_packet::stun_packet(const stun_method& m){
-        this->_method = m;
-    }
-
-    void stun_packet::set_finger_print(bool on){
-        this->finger_print = on;
-    }
-
-
-
-    stun_packet from_buffer(const char* data, size_t length){
-        if(!is_stun(data, length)){
-
-        }
-    }
-
-    bool is_stun(const char* data, size_t length){
-
-    }
-
-};
+#endif//TOOLKIT_CRC32_HPP

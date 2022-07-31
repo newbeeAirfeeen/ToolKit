@@ -36,7 +36,7 @@ namespace stun{
         }
     }
 
-    category* category::generate_category(){
+    category* generate_category(){
         static category category_;
         return &category_;
     }
