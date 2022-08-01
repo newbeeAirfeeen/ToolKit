@@ -5,6 +5,7 @@ if(Linux)
         add_compile_options(-O3)
     endif()
 endif()
+
 foreach(item ${TEST_EXE})
     string(REGEX MATCH ".*[/\\](.*).cpp$" item_src ${item})
     message("-- 正在构建 ${item} --> ${CMAKE_MATCH_1} ${CMAKE_EXECUTABLE_SUFFIX}")
