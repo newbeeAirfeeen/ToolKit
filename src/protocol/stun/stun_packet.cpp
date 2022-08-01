@@ -24,7 +24,30 @@
 */
 
 #include "stun_packet.h"
-namespace stun{
+#include "Util/crc32.hpp"
+#include <Util/endian.hpp>
+namespace stun {
+    /// Since all STUN attributes are
+    /// padded to a multiple of 4 bytes, the last 2 bits of this field are
+    /// always zero.
+    static size_t nearest_padding(const std::shared_ptr<buffer> &buf, size_t padding) {
+        size_t n = buf->size();
+        /// ensure the length of buf
+        if (buf->size() < padding) {
+            buf->clear();
+            buf->append(static_cast<size_t>(padding), static_cast<char>(0));
+            return padding;
+        }
+        /// get the nearest padding value of n
+        auto l = padding * (n / padding);
+        if (l < n) {
+            buf->append(static_cast<size_t>(n - l), static_cast<char>(0));
+            auto length = load_be16(buf->data() + 2);
+            length += n - l;
+            set_be16((void *) (buf->data() + 2), static_cast<uint16_t>(length));
+        }
+        return n - l;
+    }
 
     static void finger_print(const std::shared_ptr<buffer>& buf){
 

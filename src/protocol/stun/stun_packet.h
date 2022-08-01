@@ -29,6 +29,7 @@
 #include "stun_method.h"
 #include "stun_attributes.h"
 #include "net/buffer.hpp"
+
 namespace stun{
 
     struct stun_packet{
@@ -43,6 +44,7 @@ namespace stun{
         uint16_t message_length = 0;
         const uint32_t magic_cookie =  0x2112A442;
         char transaction[12] = {0};
+    private:
         bool finger_print = false;
     };
 
