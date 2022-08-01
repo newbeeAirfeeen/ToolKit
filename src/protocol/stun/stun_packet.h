@@ -34,7 +34,7 @@ namespace stun{
     struct stun_packet{
         friend stun_packet from_buffer(const char*data, size_t length);
     public:
-        static std::shared_ptr<buffer> create_stun_packet(const stun_packet&);
+        static std::shared_ptr<buffer> create_packet(const stun_packet&);
     public:
         explicit stun_packet(const stun_method& m);
         void set_finger_print(bool on);
