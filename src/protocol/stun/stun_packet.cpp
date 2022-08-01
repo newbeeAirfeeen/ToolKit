@@ -63,40 +63,65 @@ namespace stun {
         nearest_padding(buf, 4);
     }
 
+    static void put_finger_print(const stun_packet &packet, const std::shared_ptr<buffer> &buf) {
+        /// this must be called in last add attribute
+        constexpr int finger_print_size = 4;
+        constexpr int attribute_header_size = 4;
+        /// TLV
+        if (buf->size() < 4) {
+            throw std::bad_function_call();
+        }
+        /// get the origin length
+        auto origin_length = load_be16(buf->data() + 2);
+        /// write the new length
+        auto new_length = origin_length + finger_print_size + attribute_header_size;
+        set_be16((void *)(buf->data() + 2), new_length);
+        /// calculate the finger_print
+        uint32_t finger_print_ = crc32((const uint8_t *) buf->data(), buf->size());
+        /// set big endian
+        set_be32(&finger_print_, finger_print_);
+        /// recover the origin length
+        set_be16((void *)(buf->data() + 2), origin_length);
+
+        /// add attribute
+        attribute_type attr;
+        attr.attribute = finger_print;
+        attr.length = finger_print_size;
+        attr.value.assign((const char*)&finger_print_, 4);
+        /// add attribute
+        stun_add_attribute(buf, attr);
     }
 
 
 
-    std::shared_ptr<buffer> stun_packet::create_stun_packet(const stun_packet& stun_pkt){
+    std::shared_ptr<buffer> stun_packet::create_packet(const stun_packet &stun_pkt) {
         auto buf = std::make_shared<buffer>();
 
 
-
-        if(stun_pkt.finger_print){
-            finger_print(buf);
+        /// the FINGERPRINT attribute MUST be the last attribute in
+        /// the message, and thus will appear after MESSAGE-INTEGRITY
+        if (stun_pkt.finger_print) {
+            put_finger_print(stun_pkt, buf);
         }
         return buf;
     }
 
 
-    stun_packet::stun_packet(const stun_method& m){
+    stun_packet::stun_packet(const stun_method &m) {
         this->_method = m;
     }
 
-    void stun_packet::set_finger_print(bool on){
+    void stun_packet::set_finger_print(bool on) {
         this->finger_print = on;
     }
 
 
-
-    stun_packet from_buffer(const char* data, size_t length){
-        if(!is_stun(data, length)){
-
+    stun_packet from_buffer(const char *data, size_t length) {
+        if (!is_stun(data, length)) {
         }
     }
 
-    bool is_stun(const char* data, size_t length){
-
+    bool is_stun(const char *data, size_t length) {
     }
 
-};
+};// namespace stun

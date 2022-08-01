@@ -31,6 +31,7 @@ namespace stun {
 
     std::string attribute_type::to_bytes(){
         std::string bytes;
+        bytes.reserve( 4 + value.size());
         uint16_t attr = htons(static_cast<uint16_t>(attribute));
         uint16_t len = htons(length);
         bytes.append((const char*)&attr, sizeof(uint16_t));
