@@ -37,8 +37,10 @@ namespace stun{
     public:
         static std::shared_ptr<buffer> create_packet(const stun_packet&);
     public:
-        explicit stun_packet(const stun_method& m);
         void set_finger_print(bool on);
+#ifdef SSL_ENABLE
+        void set_message_integrity(bool on);
+#endif
     private:
         stun_method _method = binding_request;
         uint16_t message_length = 0;
@@ -46,12 +48,15 @@ namespace stun{
         char transaction[12] = {0};
     private:
         bool finger_print = false;
+        bool message_integrity = false;
     };
 
 
     stun_packet from_buffer(const char* data, size_t length);
 
     bool is_stun(const char* data, size_t length);
+
+    void stun_add_attribute(const std::shared_ptr<buffer>& buf, attribute_type& attr);
 };
 
 #endif//TOOLKIT_STUN_PACKET_H

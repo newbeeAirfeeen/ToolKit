@@ -29,19 +29,19 @@
 namespace stun {
 
 
-    std::string attribute_type::to_bytes(){
+    std::string attribute_type::to_bytes() {
         std::string bytes;
-        bytes.reserve( 4 + value.size());
+        bytes.reserve(4 + value.size());
         uint16_t attr = htons(static_cast<uint16_t>(attribute));
         uint16_t len = htons(length);
-        bytes.append((const char*)&attr, sizeof(uint16_t));
-        bytes.append((const char*)&len, sizeof(len));
+        bytes.append((const char *) &attr, sizeof(uint16_t));
+        bytes.append((const char *) &len, sizeof(len));
         bytes.append(value.data(), length);
         return std::move(bytes);
     }
 
 
-    const char* get_attribute_name(const attributes &attr) {
+    const char *get_attribute_name(const attributes &attr) {
         static const char *empty_string = "";
         static const std::map<uint16_t, const char *> attributes_map = {
                 {attributes::mapped_address, "mapped_address"},

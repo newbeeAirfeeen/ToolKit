@@ -26,21 +26,25 @@
 #ifndef TOOLKIT_STUN_REQUEST_HPP
 #define TOOLKIT_STUN_REQUEST_HPP
 #include <net/asio.hpp>
-namespace stun{
-    namespace udp{
-        class stun_request : public std::enable_shared_from_this<stun_request>{
-            friend std::shared_ptr<stun_request> create_request(asio::ip::udp::socket& sock, const std::string& address, uint16_t port);
+namespace stun {
+    namespace udp {
+        class stun_request : public std::enable_shared_from_this<stun_request> {
+            friend std::shared_ptr<stun_request> create_request(asio::ip::udp::socket &sock, const std::string &address, uint16_t port);
+
         public:
             using resolver = asio::ip::udp::resolver;
             using query_type = asio::ip::udp::resolver::query;
             using socket_type = asio::ip::udp::socket;
             using clock_type = std::chrono::system_clock;
+
         public:
             /// a client SHOULD retransmit a STUN request message starting with an interval
             /// of RTO
             void setRTO(uint16_t rto);
+
         private:
-            stun_request(socket_type& sock, const query_type& query);
+            stun_request(socket_type &sock, const query_type &query);
+
         private:
             /// if the success response contains unknown comprehension-required
             /// attributes, the response is discarded
@@ -49,6 +53,7 @@ namespace stun{
             /// attributes, or if the error response does not contain an ERROR-CODE
             /// attribute, then the transaction is simply considered to have failed.
             void process_error_response();
+
         private:
             std::shared_ptr<socket_type> _sock;
             /// initial value for RTO SHOULD be greater than 500ms
@@ -58,12 +63,11 @@ namespace stun{
             asio::basic_waitable_timer<clock_type> timer;
         };
 
-        std::shared_ptr<stun_request> create_request(asio::ip::udp::socket& sock, const std::string& address, uint16_t port = 3489);
-    };
+        std::shared_ptr<stun_request> create_request(asio::ip::udp::socket &sock, const std::string &address, uint16_t port = 3489);
+    };// namespace udp
 
 
-};
-
+};// namespace stun
 
 
 #endif//TOOLKIT_STUN_REQUEST_HPP

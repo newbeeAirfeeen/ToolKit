@@ -25,13 +25,13 @@
 
 #ifndef TOOLKIT_STUN_H
 #define TOOLKIT_STUN_H
-#include <memory>
-#include "stun_packet.h"
-#include "stun_method.h"
 #include "stun_attributes.h"
 #include "stun_error.h"
+#include "stun_method.h"
+#include "stun_packet.h"
 #include "stun_request.h"
-namespace stun{
+#include <memory>
+namespace stun {
 };
 
 

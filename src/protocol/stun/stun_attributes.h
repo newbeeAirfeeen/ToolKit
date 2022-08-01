@@ -64,13 +64,13 @@ namespace stun {
         finger_print = 0x8028,
     };
 
-    struct attribute_type{
+    struct attribute_type {
         attributes attribute;
-        uint16_t  length;
+        uint16_t length;
         std::string value;
         std::string to_bytes();
     };
-    static const char* get_attribute_name(const attributes&);
+    static const char *get_attribute_name(const attributes &);
 };// namespace stun
 
 

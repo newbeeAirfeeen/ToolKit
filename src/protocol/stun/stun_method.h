@@ -28,8 +28,8 @@
 
 
 enum stun_method {
-    binding_request  =  0x001,
-    shared_secret    =  0x002,
+    binding_request = 0x001,
+    shared_secret = 0x002,
 };
 
 #endif//TOOLKIT_STUN_METHOD_H
