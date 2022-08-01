@@ -13,7 +13,7 @@ int main() {
     auto &pool = event_poller_pool::Instance();
 
     auto server = std::make_shared<tcp_server>();
-#ifdef SSL_ENABLE
+#ifdef OPENSSL_ENABLE
     std::shared_ptr<asio::ssl::context> context = std::make_shared<asio::ssl::context>(asio::ssl::context::method::sslv23_client);
     auto _tls = std::make_shared<tls<tcp_client>>(*event_poller_pool::Instance().get_poller(false), context);
 

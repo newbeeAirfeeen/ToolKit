@@ -268,7 +268,7 @@ private:
 };
 
 
-#ifdef SSL_ENABLE
+#ifdef OPENSSL_ENABLE
 #include <asio/ssl/context.hpp>
 #include <asio/ssl/stream.hpp>
 template<typename sub_type>

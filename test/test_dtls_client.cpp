@@ -1,4 +1,4 @@
-﻿#ifdef SSL_ENABLE
+﻿#ifdef OPENSSL_ENABLE
 #define ASIO_STANDALONE 1
 #define ASIO_HEADER_ONLY 1
 #include <array>

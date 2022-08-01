@@ -5,7 +5,7 @@
 #include "Util/onceToken.h"
 #include <iostream>
 #include <spdlog/logger.hpp>
-#if defined(SSL_ENABLE)
+#if defined(OPENSSL_ENABLE)
 #include <openssl/err.h>
 std::string get_error_string(unsigned long err = ::ERR_get_error()) {
     char buf[4096] = {0};

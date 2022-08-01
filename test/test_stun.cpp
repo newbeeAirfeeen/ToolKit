@@ -50,7 +50,9 @@ int main() {
     SASLprep((uint8_t *)buf.data());
     cout << buf << endl;
     std::string hash = "user:realm:pass";
-    toolkit::MD5 Md5(hash);
+    toolkit::MD5_digest Md5(hash);
+    auto str = Md5.rawdigest();
+    const char* data = str.data();
     cout << std::showbase << std::hex << Md5.hexdigest() << endl;
     return 0;
 }

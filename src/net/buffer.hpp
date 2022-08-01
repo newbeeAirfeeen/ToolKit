@@ -144,6 +144,10 @@ public:
         }
     }
 
+    void reserve(size_t length){
+        _data.reserve(length);
+    }
+
     this_type& append(const base_type& str){
         _data.append(str);
         return *this;

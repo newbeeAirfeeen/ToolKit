@@ -76,7 +76,7 @@ public:
 };
 
 using tcp_client = basic_stream_oried_client<asio::ip::tcp::socket>;
-#ifdef SSL_ENABLE
+#ifdef OPENSSL_ENABLE
 #include "ssl/tls.hpp"
 #endif
 #endif//TOOLKIT_CLIENT_HPP

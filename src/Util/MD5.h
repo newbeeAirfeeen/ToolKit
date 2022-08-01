@@ -49,19 +49,19 @@ namespace toolkit {
 //      MD5(std::string).hexdigest()
 //
 // assumes that char is 8 bit and int is 32 bit
-class MD5
+class MD5_digest
 {
 public:
     typedef unsigned int size_type; // must be 32bit
 
-    MD5();
-    MD5(const std::string& text);
+    MD5_digest();
+    MD5_digest(const std::string& text);
     void update(const unsigned char *buf, size_type length);
     void update(const char *buf, size_type length);
-    MD5& finalize();
+    MD5_digest& finalize();
     std::string hexdigest() const;
     std::string rawdigest() const;
-    friend std::ostream& operator<<(std::ostream&, MD5 md5);
+    friend std::ostream& operator<<(std::ostream&, MD5_digest md5);
 private:
     void init();
     typedef uint8_t uint1; //  8bit

@@ -6,7 +6,7 @@
 int main(){
     using namespace std;
     using namespace toolkit;
-    MD5 md5("127.0.0.1:56702:0");
+    MD5_digest md5("127.0.0.1:56702:0");
     auto str = md5.rawdigest();
     const char*data = str.data();
 

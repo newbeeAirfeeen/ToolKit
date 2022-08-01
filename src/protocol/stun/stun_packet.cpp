@@ -24,8 +24,17 @@
 */
 
 #include "stun_packet.h"
+
+#ifdef SSL_ENABLE
+#include "stun_message_integrity.h"
+#endif
+
+#include "SASL_prep.h"
 #include "stun_finger_print.h"
+
 #include <Util/endian.hpp>
+#include <Util/random.hpp>
+
 namespace stun {
     /// Since all STUN attributes are
     /// padded to a multiple of 4 bytes, the last 2 bits of this field are
@@ -63,12 +72,50 @@ namespace stun {
         nearest_padding(buf, 4);
     }
 
+
+    static void put_string(const std::string& value, const std::shared_ptr<buffer>& buf){
+        auto
+    }
+
+    static void put_username(std::string& username, const std::shared_ptr<buffer>& buf){
+        buf->put_be(static_cast<uint16_t>(attributes::username));
+
+
+        /// It MUST contain a UTF-8 [RFC3629] encoded sequence of less than 513 bytes, and MUST have been processed using SASLprep
+        if( username.size() > 513){
+            throw std::invalid_argument("the username length MUST less than 513");
+        }
+
+        auto ret = SASL_prep((uint8_t*)username.data());
+        if( ret != 0){
+            throw std::invalid_argument("the username' value have invalid character");
+        }
+
+
+
+        buf->put_be(static_cast<uint16_t>(username.size()));
+        return put_string(username, buf);
+    }
+
+
     std::shared_ptr<buffer> stun_packet::create_packet(const stun_packet &stun_pkt) {
         auto buf = std::make_shared<buffer>();
-
+        buf->reserve(128);
+        /// put method into buffer
+        uint16_t m = static_cast<uint16_t>(stun_pkt._method);
+        buf->put_be(static_cast<uint16_t>(m));
+        /// put message length
+        buf->append(static_cast<size_t>(2), 0);
+        /// put magic cookie
+        buf->put_be(static_cast<uint32_t>(stun_pkt.magic_cookie));
+        /// transaction id
+        std::string random_ = std::move(makeRandStr(12, true));
+        buf->append(random_);
 
 #ifdef SSL_ENABLE
         if (stun_pkt.message_integrity) {
+
+            put_message_integrity(stun_pkt, buf, stun_pkt.username, stun_pkt.realm, stun_pkt.password);
         }
 #endif
         /// the FINGERPRINT attribute MUST be the last attribute in
@@ -81,6 +128,22 @@ namespace stun {
 
     void stun_packet::set_finger_print(bool on) {
         this->finger_print = on;
+    }
+
+    void stun_packet::set_username(const std::string& username){
+        this->username = username;
+    }
+
+    void stun_packet::set_password(const std::string& password){
+        this->password = password;
+    }
+
+    void stun_packet::set_realm(const std::string& realm){
+        this->realm = realm;
+    }
+
+    void stun_packet::set_software(const std::string& software){
+        this->software = software;
     }
 
     void stun_packet::set_message_integrity(bool on) {

@@ -38,6 +38,10 @@ namespace stun{
         static std::shared_ptr<buffer> create_packet(const stun_packet&);
     public:
         void set_finger_print(bool on);
+        void set_username(const std::string& username);
+        void set_password(const std::string& password);
+        void set_realm(const std::string& realm);
+        void set_software(const std::string& software);
 #ifdef SSL_ENABLE
         void set_message_integrity(bool on);
 #endif
@@ -49,6 +53,10 @@ namespace stun{
     private:
         bool finger_print = false;
         bool message_integrity = false;
+        std::string username;
+        std::string password;
+        std::string realm;
+        std::string software;
     };
 
 

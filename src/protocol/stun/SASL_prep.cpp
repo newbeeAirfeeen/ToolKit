@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: stun_message_integrity.h
-* @date: 2022/08/01
+* @file_name: SASL_prep.cpp
+* @date: 2022/07/29
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -22,24 +22,39 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
+#include "SASL_prep.h"
 
-#ifndef TOOLKIT_STUN_MESSAGE_INTEGRITY_HPP
-#define TOOLKIT_STUN_MESSAGE_INTEGRITY_HPP
-#ifdef WOLFSSL_ENABLE
-#include <wolfssl/openssl/evp.h>
-#include <wolfssl/openssl/hmac.h>
-#else OPENSSL_ENABLE
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-#endif
 
-#ifdef SSL_ENABLE
-#include <cstdint>
-#include <memory>
-#include <net/buffer.hpp>
-namespace stun {
-    class stun_packet;
-    void put_message_integrity(const stun_packet &pkt, const std::shared_ptr<buffer> &buf, const std::string &username, const std::string &realm, const std::string &password);
-};// namespace stun
-#endif
-#endif//TOOLKIT_STUN_MESSAGE_INTEGRITY_HPP
+int SASL_prep(uint8_t *s) {
+    uint8_t *strin = s;
+    uint8_t *strout = s;
+    for (;;) {
+        uint8_t c = *strin;
+        if (!c) {
+            *strout = 0;
+            break;
+        }
+        switch (c) {
+            case 0xAD:
+                ++strin;
+                break;
+            case 0xA0:
+            case 0x20:
+                *strout = 0x20;
+                ++strout;
+                ++strin;
+                break;
+            case 0x7F:
+                return -1;
+            default:
+                if (c < 0x1F)
+                    return -1;
+                if (c >= 0x80 && c <= 0x9F)
+                    return -1;
+                *strout = c;
+                ++strout;
+                ++strin;
+        };
+    }
+    return 0;
+}

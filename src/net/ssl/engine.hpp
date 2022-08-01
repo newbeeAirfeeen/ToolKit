@@ -26,7 +26,7 @@
 #ifndef TOOLKIT_engine_HPP
 #define TOOLKIT_engine_HPP
 #include <Util/nocopyable.hpp>
-#if defined(SSL_ENABLE)
+#if defined(OPENSSL_ENABLE)
 #include <openssl/ssl.h>
 #include <functional>
 #include <vector>

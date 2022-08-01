@@ -1,7 +1,7 @@
 ﻿#define ASIO_STANDALONE 1
 #define ASIO_HEADER_ONLY 1
 
-#ifdef SSL_ENABLE
+#ifdef OPENSSL_ENABLE
 #include <asio/ssl.hpp>
 #include <asio.hpp>
 #include <functional>
