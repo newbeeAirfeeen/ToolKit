@@ -44,6 +44,12 @@ uint32_t load_be24(const void *p)
    return data[2] | ((uint32_t) data[1] << 8) | ((uint32_t) data[0] << 16);
 }
 
+void set_be16(void *p, uint16_t val){
+    uint8_t *data = (uint8_t *) p;
+    auto _val = htons(val);
+    memcpy(data, (void*)&_val, 2);
+}
+
 void set_be24(void *p, uint32_t val)
 {
    uint8_t *data = (uint8_t *) p;
