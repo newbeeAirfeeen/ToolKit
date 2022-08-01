@@ -49,7 +49,19 @@ namespace stun {
         return n - l;
     }
 
-    static void finger_print(const std::shared_ptr<buffer>& buf){
+    static void stun_add_attribute(const std::shared_ptr<buffer>& buf, attribute_type& attr){
+        if(buf->size() < 4){
+            throw std::bad_function_call();
+        }
+        /// TLV
+        std::string bytes = std::move(attr.to_bytes());
+        buf->append(bytes);
+        auto length = load_be16(buf->data() + 2) + bytes.size();
+        /// update the new length
+        set_be16((void *)(buf->data() + 2), length);
+        /// padding the length
+        nearest_padding(buf, 4);
+    }
 
     }
 
