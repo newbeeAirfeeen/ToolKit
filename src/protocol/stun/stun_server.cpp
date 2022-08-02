@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: stun.h
-* @date: 2022/07/29
+* @file_name: stun_server.cpp
+* @date: 2022/08/02
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -23,20 +23,4 @@
 * SOFTWARE.
 */
 
-#ifndef TOOLKIT_STUN_H
-#define TOOLKIT_STUN_H
-
-#include "stun_error_code.h"
-#include "stun_error.h"
-#include "stun_attributes.h"
-#include "stun_method.h"
-#include "stun_packet.h"
-#include "stun_request.h"
 #include "stun_server.h"
-
-namespace stun {
-
-};
-
-
-#endif//TOOLKIT_STUN_H

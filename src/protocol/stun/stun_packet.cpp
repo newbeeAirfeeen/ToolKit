@@ -31,7 +31,7 @@
 
 #include "SASL_prep.h"
 #include "stun_finger_print.h"
-
+#include "Util/string_view.hpp"
 #include <Util/endian.hpp>
 #include <Util/random.hpp>
 
@@ -116,7 +116,7 @@ namespace stun {
         /// put message length
         buf->append(static_cast<size_t>(2), 0);
         /// put magic cookie
-        buf->put_be(static_cast<uint32_t>(stun_pkt.magic_cookie));
+        buf->put_be(static_cast<uint32_t>(stun_packet::magic_cookie));
         /// transaction id
         std::string random_ = std::move(makeRandStr(12, true));
         buf->append(random_);
@@ -170,13 +170,39 @@ namespace stun {
         this->message_integrity = on;
     }
 
+    const std::string &stun_packet::get_username() const {
+        return this->username;
+    }
+
+    const std::string &stun_packet::get_realm() const {
+        return this->realm;
+    }
+
+    const std::string &stun_packet::get_password() const {
+        return this->password;
+    }
+
+    const std::string &stun_packet::get_software() const {
+        return this->software;
+    }
+
     stun_packet from_buffer(const char *data, size_t length) {
-        if (!is_stun(data, length)) {
+        if (!is_maybe_stun(data, length)) {
+
         }
         return {};
     }
 
-    bool is_stun(const char *data, size_t length) {
+    bool is_maybe_stun(const char *data, size_t length) {
+        /// check header length
+        if( length < 20){
+            return false;
+        }
+
+        /// check magic cookie
+        if(load_be32(data + 4) != stun_packet::magic_cookie){
+            return false;
+        }
 
         return true;
     }

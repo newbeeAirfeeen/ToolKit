@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: stun.h
-* @date: 2022/07/29
+* @file_name: stun_error_code.h
+* @date: 2022/08/02
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -23,20 +23,25 @@
 * SOFTWARE.
 */
 
-#ifndef TOOLKIT_STUN_H
-#define TOOLKIT_STUN_H
-
-#include "stun_error_code.h"
-#include "stun_error.h"
-#include "stun_attributes.h"
-#include "stun_method.h"
-#include "stun_packet.h"
-#include "stun_request.h"
-#include "stun_server.h"
+#ifndef TOOLKIT_STUN_ERROR_CODE_HPP
+#define TOOLKIT_STUN_ERROR_CODE_HPP
 
 namespace stun {
 
-};
+    enum {
+        is_not_stun_packet,   /// is not stun packet.
+        error_code_is_invalid,/// error code is not range of 300-699
+    };
+
+    enum stun_error_code {
+        try_alternate = 300,
+        bad_request = 400,
+        unauthorized = 401,
+        unknown_attribute = 420,
+        stale_nonce = 438,
+        server_error = 500,
+    };
+};// namespace stun
 
 
-#endif//TOOLKIT_STUN_H
+#endif//TOOLKIT_STUN_ERROR_CODE_HPP

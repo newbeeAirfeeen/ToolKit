@@ -52,11 +52,11 @@ TEST(attribute, stun) {
         EXPECT_EQ(pkt_ptr->size(), 88) << "the stun pkt length is not correct";
 
 
-        asio::io_context io;
-        asio::ip::udp::socket sock(io);
-        auto stun_req = stun::udp::create_request(sock, pkt, "0.0.0.0");
-        stun::udp::send_request(stun_req);
-        io.run();
+//        asio::io_context io;
+//        asio::ip::udp::socket sock(io);
+//        auto stun_req = stun::udp::create_request(sock, pkt, "stun.l.google.com", 19302);
+//        stun::udp::send_request(stun_req);
+//        io.run();
     };
     EXPECT_NO_THROW(func());
 }

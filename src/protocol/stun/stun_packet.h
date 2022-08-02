@@ -26,30 +26,38 @@
 
 #ifndef TOOLKIT_STUN_PACKET_H
 #define TOOLKIT_STUN_PACKET_H
-#include "stun_method.h"
-#include "stun_attributes.h"
 #include "net/buffer.hpp"
+#include "stun_attributes.h"
+#include "stun_method.h"
 
-namespace stun{
+namespace stun {
 
-    struct stun_packet{
-        friend stun_packet from_buffer(const char*data, size_t length);
+    struct stun_packet {
+        friend stun_packet from_buffer(const char *data, size_t length);
     public:
-        static std::shared_ptr<buffer> create_packet(const stun_packet&);
+        static constexpr uint32_t magic_cookie = 0x2112A442;
+    public:
+        static std::shared_ptr<buffer> create_packet(const stun_packet &);
+
     public:
         void set_finger_print(bool on);
-        void set_username(const std::string& username);
-        void set_password(const std::string& password);
-        void set_realm(const std::string& realm);
-        void set_software(const std::string& software);
+        void set_username(const std::string &username);
+        void set_password(const std::string &password);
+        void set_realm(const std::string &realm);
+        void set_software(const std::string &software);
 #ifdef SSL_ENABLE
         void set_message_integrity(bool on);
 #endif
+        const std::string &get_username() const;
+        const std::string &get_realm() const;
+        const std::string &get_password() const;
+        const std::string &get_software() const;
+
     private:
         stun_method _method = binding_request;
         uint16_t message_length = 0;
-        const uint32_t magic_cookie =  0x2112A442;
         char transaction[12] = {0};
+
     private:
         bool finger_print = false;
         bool message_integrity = false;
@@ -60,11 +68,11 @@ namespace stun{
     };
 
 
-    stun_packet from_buffer(const char* data, size_t length);
+    stun_packet from_buffer(const char *data, size_t length);
 
-    bool is_stun(const char* data, size_t length);
+    bool is_maybe_stun(const char *data, size_t length);
 
-    void stun_add_attribute(const std::shared_ptr<buffer>& buf, attribute_type& attr);
-};
+    void stun_add_attribute(const std::shared_ptr<buffer> &buf, attribute_type &attr);
+};// namespace stun
 
 #endif//TOOLKIT_STUN_PACKET_H

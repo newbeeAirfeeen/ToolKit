@@ -193,7 +193,7 @@ public:
     }
 
     const_pointer begin() noexcept{
-        return _data.begin() + read_index;
+        return _data.data() + read_index;
     }
 
     size_type capacity() const noexcept{
@@ -209,7 +209,7 @@ public:
     }
 
     const_pointer end(){
-        return _data.end();
+        return _data.data() + _data.size();
     }
 
     int compare(const base_type& str) const noexcept{

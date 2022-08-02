@@ -25,17 +25,34 @@
 
 #ifndef TOOLKIT_STUN_ERROR_H
 #define TOOLKIT_STUN_ERROR_H
-
+#include <net/buffer.hpp>
 #include <system_error>
 /// the error code attribute is used in error response messages.
 namespace stun {
+
+    /// The ERROR-CODE attribute is used in error response messages. It
+    /// contains a numeric error code value in the range of 300 to 699 plus a
+    /// textual reason phrase encoded in UTF-8 [RFC3629], and is consistent
+    /// in its code assignments and semantics with SIP [RFC3261] and HTTP
+    /// [RFC2616].
+    void put_error_code(uint32_t err, const std::shared_ptr<buffer>& buff);
+
+
+    class stun_packet_category : public std::error_category {
+    public:
+        const char *name() const noexcept override;
+        std::string message(int err) const override;
+    };
+
     class category : public std::error_category {
     public:
         const char *name() const noexcept override;
         std::string message(int err) const override;
     };
 
-    category *generate_category();
+    std::error_category *generate_stun_packet_category();
+    std::error_category *generate_category();
+    std::error_code make_stun_error(int err, const std::error_category *_category);
 };// namespace stun
 
 #endif//TOOLKIT_STUN_ERROR_H
