@@ -8,7 +8,7 @@ add_definitions(-DASIO_STANDALONE -DASIO_HEADER_ONLY -DSRT_CORE_INTERNAL_DEBUG_L
 
 
 add_subdirectory(3rdlib/wolfssl)
-
+add_subdirectory(3rdlib/googletest)
 
 add_definitions(-DSSL_ENABLE -DWOLFSSL_ENABLE)
 
@@ -38,4 +38,5 @@ target_link_libraries(${PROJECT_NAME}_static INTERFACE ${LINK_LIB_LIST})
 target_include_directories(${PROJECT_NAME}_static PUBLIC ${CMAKE_SOURCE_DIR}/src
                                    PUBLIC ${CMAKE_SOURCE_DIR}/src/net)
 
+add_subdirectory(example)
 add_subdirectory(test)
