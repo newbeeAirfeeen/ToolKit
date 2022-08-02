@@ -28,7 +28,7 @@
 #ifdef WOLFSSL_ENABLE
 #include <wolfssl/openssl/evp.h>
 #include <wolfssl/openssl/hmac.h>
-#else OPENSSL_ENABLE
+#elif OPENSSL_ENABLE
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #endif

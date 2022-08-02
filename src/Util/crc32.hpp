@@ -28,7 +28,7 @@
 
 #include <cstdint>
 
-uint32_t crc32(const uint8_t* buffer, uint32_t size, uint32_t init_crc = 0xFFFFFFFF);
+uint32_t crc32(const uint8_t* buffer, uint32_t size);
 uint32_t mpeg_crc32(const uint8_t *buffer, uint32_t size, uint32_t init_crc = 0xFFFFFFFF);
 
 

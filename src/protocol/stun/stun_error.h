@@ -27,6 +27,7 @@
 #define TOOLKIT_STUN_ERROR_H
 
 #include <system_error>
+/// the error code attribute is used in error response messages.
 namespace stun {
     class category : public std::error_category {
     public:

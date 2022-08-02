@@ -201,11 +201,11 @@ public:
     }
 
     const_pointer cbegin() const{
-        return begin() + read_index;
+        return _data.data() + read_index;
     }
 
     const_pointer cend() const{
-        return _data.end();
+        return _data.data() + _data.size();
     }
 
     const_pointer end(){

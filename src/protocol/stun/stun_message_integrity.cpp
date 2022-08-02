@@ -79,7 +79,7 @@ namespace stun {
         char sha1_digest[20] = {0};
         auto length = HMAC_SHA1(key.data(), key.size(), buf->data(),
                                 buf->size(), sha1_digest, sizeof(sha1_digest));
-        if (length != 20) {
+        if (length != 1) {
             throw std::runtime_error("put_message_integrity HMAC_SHA1 digest error");
         }
 

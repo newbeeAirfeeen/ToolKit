@@ -48,14 +48,14 @@ namespace stun {
             return padding;
         }
         /// get the nearest padding value of n
-        auto l = padding * (n / padding);
-        if (l < n) {
-            buf->append(static_cast<size_t>(n - l), static_cast<char>(0));
+        auto l = padding * (n / padding) + padding;
+        if (n % padding != 0) {
+            buf->append(static_cast<size_t>(l - n), static_cast<char>(0));
             auto length = load_be16(buf->data() + 2);
-            length += n - l;
+            length += l - n;
             set_be16((void *) (buf->data() + 2), static_cast<uint16_t>(length));
         }
-        return n - l;
+        return l - n;
     }
 
     void stun_add_attribute(const std::shared_ptr<buffer> &buf, attribute_type &attr) {
@@ -72,31 +72,40 @@ namespace stun {
         nearest_padding(buf, 4);
     }
 
-
-    static void put_string(const std::string& value, const std::shared_ptr<buffer>& buf){
-        auto
+    static void put_software(const std::string &software, const std::shared_ptr<buffer> &buf) {
+        attribute_type attr;
+        attr.attribute = attributes::software;
+        attr.length = software.size();
+        attr.value = software;
+        stun_add_attribute(buf, attr);
     }
 
-    static void put_username(std::string& username, const std::shared_ptr<buffer>& buf){
-        buf->put_be(static_cast<uint16_t>(attributes::username));
+    static void put_realm(const std::string &realm, const std::shared_ptr<buffer> &buf) {
+        attribute_type attr;
+        attr.attribute = attributes::realm;
+        attr.length = realm.size();
+        attr.value = realm;
+        stun_add_attribute(buf, attr);
+    }
 
 
+    static void put_username(const std::string &username, const std::shared_ptr<buffer> &buf) {
         /// It MUST contain a UTF-8 [RFC3629] encoded sequence of less than 513 bytes, and MUST have been processed using SASLprep
-        if( username.size() > 513){
+        if (username.size() > 513) {
             throw std::invalid_argument("the username length MUST less than 513");
         }
 
-        auto ret = SASL_prep((uint8_t*)username.data());
-        if( ret != 0){
+        auto ret = SASL_prep((uint8_t *) username.data());
+        if (ret != 0) {
             throw std::invalid_argument("the username' value have invalid character");
         }
 
-
-
-        buf->put_be(static_cast<uint16_t>(username.size()));
-        return put_string(username, buf);
+        attribute_type attr;
+        attr.attribute = attributes::username;
+        attr.length = username.size();
+        attr.value = username;
+        stun_add_attribute(buf, attr);
     }
-
 
     std::shared_ptr<buffer> stun_packet::create_packet(const stun_packet &stun_pkt) {
         auto buf = std::make_shared<buffer>();
@@ -111,10 +120,15 @@ namespace stun {
         /// transaction id
         std::string random_ = std::move(makeRandStr(12, true));
         buf->append(random_);
-
+        /// software
+        if (!stun_pkt.software.empty()) {
+            put_software(stun_pkt.software, buf);
+        }
 #ifdef SSL_ENABLE
+        /// username - nonce - message-integrity
         if (stun_pkt.message_integrity) {
-
+            put_username(stun_pkt.username, buf);
+            put_realm(stun_pkt.realm, buf);
             put_message_integrity(stun_pkt, buf, stun_pkt.username, stun_pkt.realm, stun_pkt.password);
         }
 #endif
@@ -130,19 +144,25 @@ namespace stun {
         this->finger_print = on;
     }
 
-    void stun_packet::set_username(const std::string& username){
+    void stun_packet::set_username(const std::string &username) {
         this->username = username;
     }
 
-    void stun_packet::set_password(const std::string& password){
+    void stun_packet::set_password(const std::string &password) {
         this->password = password;
     }
 
-    void stun_packet::set_realm(const std::string& realm){
+    void stun_packet::set_realm(const std::string &realm) {
+        if (realm.size() > 128) {
+            throw std::invalid_argument("realm MUST be a UTF-8 encoded sequence of less than 128");
+        }
         this->realm = realm;
     }
 
-    void stun_packet::set_software(const std::string& software){
+    void stun_packet::set_software(const std::string &software) {
+        if (software.size() > 128) {
+            throw std::invalid_argument("software MUST be a UTF-8 encoded sequence of less than 128");
+        }
         this->software = software;
     }
 
@@ -153,9 +173,12 @@ namespace stun {
     stun_packet from_buffer(const char *data, size_t length) {
         if (!is_stun(data, length)) {
         }
+        return {};
     }
 
     bool is_stun(const char *data, size_t length) {
+
+        return true;
     }
 
 };// namespace stun

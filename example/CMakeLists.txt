@@ -1,0 +1,21 @@
+﻿aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} TEST_EXE)
+
+if(Linux)
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        add_compile_options(-O3)
+    endif()
+endif()
+
+
+foreach(item ${TEST_EXE})
+    string(REGEX MATCH ".*[/\\](.*).cpp$" item_src ${item})
+    message("-- 正在构建 ${item} --> ${CMAKE_MATCH_1} ${CMAKE_EXECUTABLE_SUFFIX}")
+    add_executable(${CMAKE_MATCH_1} ${item})
+    if(WIN32)
+        target_link_libraries(${CMAKE_MATCH_1} PUBLIC ${LINK_LIB_LIST})
+    else()
+        target_link_libraries(${CMAKE_MATCH_1} PUBLIC ${LINK_LIB_LIST} -lpthread)
+    endif()
+endforeach()
+
+
