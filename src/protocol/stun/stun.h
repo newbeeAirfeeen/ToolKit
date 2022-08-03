@@ -28,6 +28,7 @@
 
 #include "stun_error_code.h"
 #include "stun_error.h"
+#include "stun_address.h"
 #include "stun_attributes.h"
 #include "stun_method.h"
 #include "stun_packet.h"

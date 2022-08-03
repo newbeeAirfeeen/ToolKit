@@ -25,8 +25,9 @@
 
 #ifndef TOOLKIT_STUN_ATTRIBUTES_H
 #define TOOLKIT_STUN_ATTRIBUTES_H
-#include <stdint.h>
+#include <cstdint>
 #include <string>
+#include <net/buffer.hpp>
 namespace stun {
     enum attributes {
         /// Comprehension-required range
@@ -70,7 +71,10 @@ namespace stun {
         std::string value;
         std::string to_bytes();
     };
-    static const char *get_attribute_name(const attributes &);
+
+    void put_unknown_attributes(const std::shared_ptr<buffer>& buff, const std::initializer_list<uint16_t>& attrs);
+
+    const char *get_attribute_name(const attributes &);
 };// namespace stun
 
 

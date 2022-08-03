@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <net/buffer.hpp>
 #include <protocol/stun/stun.h>
+#include <net/asio.hpp>
 void compare_binary(const std::shared_ptr<buffer> &buf, const char *buff, size_t length) {
     EXPECT_GE(buf->size(), length);
     for (int i = 0; i < length; i++) {
@@ -44,19 +45,34 @@ TEST(attribute, stun) {
         try {
             pkt_ptr = stun::stun_packet::create_packet(pkt);
         } catch (const std::exception &e) {
-            EXPECT_EXIT(1, ::testing::ExitedWithCode(1), e.what());
+            //EXPECT_EXIT(1, ::testing::ExitedWithCode(1), e.what());
         }
 
         /// expect padding
         EXPECT_EQ(pkt_ptr->size() % 4, 0) << "the buffer is  not multiple of 4";
         EXPECT_EQ(pkt_ptr->size(), 88) << "the stun pkt length is not correct";
 
-
-//        asio::io_context io;
-//        asio::ip::udp::socket sock(io);
-//        auto stun_req = stun::udp::create_request(sock, pkt, "stun.l.google.com", 19302);
-//        stun::udp::send_request(stun_req);
-//        io.run();
     };
     EXPECT_NO_THROW(func());
 }
+
+
+TEST(xor_mapped_address, stun){
+    uint8_t buf[] = {0x01, 0x01, 0x00, 0x0c, 0x21, 0x12,
+                     0xa4, 0x42, 0x47, 0x4d, 0xcc, 0xe6,
+                      0x79, 0x4a, 0x14, 0x4c, 0x64, 0xd9, 0xc1,
+                      0x8d, 0x00, 0x20, 0x00, 0x08, 0x00, 0x01, 0x1c, 0x59,
+                      0x1d, 0x1e, 0x55, 0xe8};
+    const std::string transaction_id = "\x47\x4d\xcc\xe6\x79\x4a\x14\x4c\x64\xd9\xc1\x8d";
+
+    using namespace stun;
+    /// 60.12.241.170:15691
+    stun_packet pkt;
+    pkt.set_method(stun_method::binding_response);
+    pkt.set_xor_mapped_address("60.12.241.170", 15691);
+    auto pkt_ptr = stun_packet::create_packet(pkt);
+    char* p = (char*)(pkt_ptr->data() + 8);
+    std::copy(transaction_id.begin(), transaction_id.end(), p);
+    compare_binary(pkt_ptr, (const char*)buf, 32);
+}
+

@@ -33,25 +33,38 @@
 namespace stun {
 
     struct stun_packet {
-        friend stun_packet from_buffer(const char *data, size_t length);
+        friend std::shared_ptr<stun_packet> from_buffer(const char *data, size_t length);
+
     public:
         static constexpr uint32_t magic_cookie = 0x2112A442;
+
     public:
         static std::shared_ptr<buffer> create_packet(const stun_packet &);
 
     public:
+        void set_method(const stun_method &m);
         void set_finger_print(bool on);
         void set_username(const std::string &username);
         void set_password(const std::string &password);
         void set_realm(const std::string &realm);
         void set_software(const std::string &software);
+        void set_unknown_attributes(const std::initializer_list<uint16_t> &);
+        void set_alternate_server(const std::string &ip, uint16_t port);
+        void set_mapped_address(const std::string &ip, uint16_t port);
+        void set_xor_mapped_address(const std::string &ip, uint16_t port);
 #ifdef SSL_ENABLE
         void set_message_integrity(bool on);
 #endif
+        stun_method get_method() const;
+        const std::string &get_transaction_id() const;
         const std::string &get_username() const;
         const std::string &get_realm() const;
         const std::string &get_password() const;
         const std::string &get_software() const;
+        const std::initializer_list<uint16_t> &get_unknown_attributes() const;
+        std::pair<const std::string &, uint16_t> get_alternate_server() const;
+        std::pair<const std::string &, uint16_t> get_mapped_address() const;
+        std::pair<const std::string &, uint16_t> get_xor_mapped_address() const;
 
     private:
         stun_method _method = binding_request;
@@ -61,14 +74,21 @@ namespace stun {
     private:
         bool finger_print = false;
         bool message_integrity = false;
+        std::string transaction_id;
+        std::string mapped_address;
+        std::string xor_mapped_address;
+        uint16_t mapped_address_port = 0;
         std::string username;
         std::string password;
         std::string realm;
         std::string software;
+        std::string alternate_server;
+        uint16_t alternate_server_port = 0;
+        std::initializer_list<uint16_t> unknown_attributes;
     };
 
 
-    stun_packet from_buffer(const char *data, size_t length);
+    std::shared_ptr<stun_packet> from_buffer(const char *data, size_t length);
 
     bool is_maybe_stun(const char *data, size_t length);
 

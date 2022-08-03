@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: stun_error_code.h
-* @date: 2022/08/02
+* @file_name: stun_address.h
+* @date: 2022/08/03
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -23,26 +23,15 @@
 * SOFTWARE.
 */
 
-#ifndef TOOLKIT_STUN_ERROR_CODE_HPP
-#define TOOLKIT_STUN_ERROR_CODE_HPP
-
+#ifndef TOOLKIT_STUN_ADDRESS_H
+#define TOOLKIT_STUN_ADDRESS_H
+#include <memory>
+#include <net/buffer.hpp>
+#include "stun_attributes.h"
 namespace stun {
 
-    enum {
-        is_not_stun_packet,    /// is not stun packet.
-        error_code_is_invalid, /// error code is not range of 300-699
-        attribute_is_invalid,  /// attribute is invalid.
-    };
+    void put_mapped_address_or_alternate_server(const attributes& a, const std::shared_ptr<buffer> &buf, const std::string &ip, uint16_t port);
+    void put_xor_mapped_address(const std::shared_ptr<buffer> &buf, const std::string& transaction_id, const std::string &ip, uint16_t port);
 
-    enum stun_error_code {
-        try_alternate = 300,
-        bad_request = 400,
-        unauthorized = 401,
-        unknown_attribute = 420,
-        stale_nonce = 438,
-        server_error = 500,
-    };
-};// namespace stun
-
-
-#endif//TOOLKIT_STUN_ERROR_CODE_HPP
+};    // namespace stun
+#endif//TOOLKIT_STUN_ADDRESS_H

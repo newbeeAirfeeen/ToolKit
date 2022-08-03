@@ -30,8 +30,11 @@
 #endif
 
 #include "SASL_prep.h"
-#include "stun_finger_print.h"
 #include "Util/string_view.hpp"
+#include "stun_address.h"
+#include "stun_error.h"
+#include "stun_error_code.h"
+#include "stun_finger_print.h"
 #include <Util/endian.hpp>
 #include <Util/random.hpp>
 
@@ -120,10 +123,30 @@ namespace stun {
         /// transaction id
         std::string random_ = std::move(makeRandStr(12, true));
         buf->append(random_);
+
+        /// mapped-address
+        if (!stun_pkt.mapped_address.empty()) {
+            put_mapped_address_or_alternate_server(attributes::mapped_address, buf, stun_pkt.mapped_address, stun_pkt.mapped_address_port);
+        } else if (!stun_pkt.xor_mapped_address.empty()) {
+            put_xor_mapped_address(buf, random_, stun_pkt.xor_mapped_address, stun_pkt.mapped_address_port);
+        } else if (!stun_pkt.alternate_server.empty()) {
+            put_mapped_address_or_alternate_server(attributes::alternate_server, buf, stun_pkt.alternate_server, stun_pkt.alternate_server_port);
+        }
+
+
         /// software
         if (!stun_pkt.software.empty()) {
             put_software(stun_pkt.software, buf);
         }
+
+        /// unknown attribute
+        if (stun_pkt.unknown_attributes.size()) {
+            put_unknown_attributes(buf, stun_pkt.unknown_attributes);
+        }
+
+        /// alternate server
+
+
 #ifdef SSL_ENABLE
         /// username - nonce - message-integrity
         if (stun_pkt.message_integrity) {
@@ -138,6 +161,10 @@ namespace stun {
             put_finger_print(stun_pkt, buf);
         }
         return buf;
+    }
+
+    void stun_packet::set_method(const stun_method &m) {
+        this->_method = m;
     }
 
     void stun_packet::set_finger_print(bool on) {
@@ -166,8 +193,35 @@ namespace stun {
         this->software = software;
     }
 
+    void stun_packet::set_unknown_attributes(const std::initializer_list<uint16_t> &) {
+    }
+
+    void stun_packet::set_alternate_server(const std::string &ip, uint16_t port) {
+        this->alternate_server = ip;
+        this->alternate_server_port = port;
+    }
+
+    void stun_packet::set_mapped_address(const std::string &ip, uint16_t port) {
+        this->mapped_address = ip;
+        this->mapped_address_port = port;
+    }
+
+    void stun_packet::set_xor_mapped_address(const std::string &ip, uint16_t port) {
+        this->xor_mapped_address = ip;
+        this->mapped_address_port = port;
+    }
+
+
     void stun_packet::set_message_integrity(bool on) {
         this->message_integrity = on;
+    }
+
+    stun_method stun_packet::get_method() const {
+        return this->_method;
+    }
+
+    const std::string &stun_packet::get_transaction_id() const {
+        return this->transaction_id;
     }
 
     const std::string &stun_packet::get_username() const {
@@ -186,21 +240,42 @@ namespace stun {
         return this->software;
     }
 
-    stun_packet from_buffer(const char *data, size_t length) {
-        if (!is_maybe_stun(data, length)) {
+    const std::initializer_list<uint16_t> &stun_packet::get_unknown_attributes() const {
+        return unknown_attributes;
+    }
 
+    std::pair<const std::string &, uint16_t> stun_packet::get_alternate_server() const {
+        std::pair<const std::string &, uint16_t> pair_ = std::make_pair(std::cref(this->alternate_server), this->alternate_server_port);
+        return pair_;
+    }
+
+    std::pair<const std::string &, uint16_t> stun_packet::get_mapped_address() const {
+        auto _pair = std::make_pair(std::cref(this->mapped_address), this->mapped_address_port);
+        return _pair;
+    }
+
+    std::pair<const std::string &, uint16_t> stun_packet::get_xor_mapped_address() const {
+        auto _pair = std::make_pair(std::cref(this->xor_mapped_address), this->mapped_address_port);
+        return _pair;
+    }
+
+    std::shared_ptr<stun_packet> from_buffer(const char *data, size_t length) {
+        if (!is_maybe_stun(data, length)) {
+            throw std::system_error(make_stun_error(stun::is_not_stun_packet, generate_stun_packet_category()));
         }
-        return {};
+
+
+        return nullptr;
     }
 
     bool is_maybe_stun(const char *data, size_t length) {
         /// check header length
-        if( length < 20){
+        if (length < 20) {
             return false;
         }
 
         /// check magic cookie
-        if(load_be32(data + 4) != stun_packet::magic_cookie){
+        if (load_be32(data + 4) != stun_packet::magic_cookie) {
             return false;
         }
 

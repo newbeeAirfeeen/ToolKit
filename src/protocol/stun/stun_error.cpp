@@ -49,6 +49,8 @@ namespace stun {
                 return "current packet is not stun packet";
             case stun::error_code_is_invalid:
                 return "error code is not range of 300-699";
+            case stun::attribute_is_invalid:
+                return "attribute is invalid for current context";
         }
 
         return "unknown error";
@@ -99,5 +101,10 @@ namespace stun {
     std::error_category *generate_category() {
         static category category_;
         return &category_;
+    }
+
+    std::error_code make_stun_error(int err, const std::error_category *_category){
+        std::error_code e(err, *_category);
+        return e;
     }
 }// namespace stun

@@ -24,7 +24,9 @@
 */
 
 #include "stun_attributes.h"
+#include "stun_packet.h"
 #include "Util/endian.hpp"
+
 #include <map>
 namespace stun {
 
@@ -38,6 +40,20 @@ namespace stun {
         bytes.append((const char *) &len, sizeof(len));
         bytes.append(value.data(), length);
         return std::move(bytes);
+    }
+
+
+
+    void put_unknown_attributes(const std::shared_ptr<buffer>& buf, const std::initializer_list<uint16_t>& attrs){
+        buffer b;
+        for(auto i : attrs) {
+            b.put_be<uint16_t>(i);
+        }
+        attribute_type attr;
+        attr.attribute = attributes::unknown_attributes;
+        attr.value.assign(b.begin(), b.end());
+        attr.length = attr.value.size();
+        stun_add_attribute(buf, attr);
     }
 
 
