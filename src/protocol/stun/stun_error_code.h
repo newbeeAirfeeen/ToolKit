@@ -29,9 +29,10 @@
 namespace stun {
 
     enum {
-        is_not_stun_packet,    /// is not stun packet.
-        error_code_is_invalid, /// error code is not range of 300-699
-        attribute_is_invalid,  /// attribute is invalid.
+        is_not_stun_packet,        /// is not stun packet.
+        error_code_is_invalid,     /// error code is not range of 300-699
+        attribute_is_invalid,      /// attribute is invalid.
+        address_family_is_invalid, /// stun mapped address family is invalid
     };
 
     enum stun_error_code {

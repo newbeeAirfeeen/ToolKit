@@ -24,8 +24,8 @@
 */
 
 #include "stun_attributes.h"
-#include "stun_packet.h"
 #include "Util/endian.hpp"
+#include "stun_packet.h"
 
 #include <map>
 namespace stun {
@@ -42,11 +42,27 @@ namespace stun {
         return std::move(bytes);
     }
 
+    bool is_unknown_attributes(uint16_t type) {
+        switch (type) {
+            case mapped_address:
+            case username:
+            case message_integrity:
+            case error_code:
+            case unknown_attributes:
+            case realm:
+            case nonce:
+            case xor_mapped_address:
+            case software:
+            case alternate_server:
+            case finger_print:
+                return false;
+        }
+        return true;
+    }
 
-
-    void put_unknown_attributes(const std::shared_ptr<buffer>& buf, const std::initializer_list<uint16_t>& attrs){
+    void put_unknown_attributes(const std::shared_ptr<buffer> &buf, const std::vector<uint16_t> &attrs) {
         buffer b;
-        for(auto i : attrs) {
+        for (auto i: attrs) {
             b.put_be<uint16_t>(i);
         }
         attribute_type attr;

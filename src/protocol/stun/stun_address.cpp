@@ -29,6 +29,7 @@
 #include "stun_error.h"
 #include "stun_error_code.h"
 #include "stun_packet.h"
+#include "Util/endian.hpp"
 #include <algorithm>
 #include <array>
 namespace stun {
@@ -111,5 +112,13 @@ namespace stun {
         attr.value.append(b.data(), b.size());
         attr.length = attr.value.size();
         stun_add_attribute(buf, attr);
+    }
+
+    void get_mapped_address(const std::shared_ptr<stun_packet>& pkt, const char* data, size_t length){
+        auto family = load_be16(data);
+        if(family != ipv4_family && family != ipv6_family){
+            throw std::system_error(make_stun_error(stun::address_family_is_invalid, generate_stun_packet_category()));
+        }
+
     }
 };// namespace stun

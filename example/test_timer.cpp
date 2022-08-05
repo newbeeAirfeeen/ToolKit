@@ -3,24 +3,41 @@
 //
 #include <event_poller.hpp>
 #include <iostream>
+#include <net/asio.hpp>
+#include <thread>
 using namespace std;
 int main(){
-    logger::initialize("logs/test_timer.log", spdlog::level::trace);
-    {
-        auto ev_poller = std::make_shared<event_poller>();
-        ev_poller->start();
-        ev_poller->execute_delay_task(std::chrono::milliseconds(1000), []() -> size_t{
 
-            cout << "Hello,world" << endl;
-            return 1000;
-        });
 
-        ev_poller->execute_delay_task(std::chrono::milliseconds(5000), []()->size_t{
-            cout << "5秒一次" << endl;
-            return 5000;
-        });
-        cin.get();
-    }
 
+    asio::io_context t;
+    asio::io_context t2;
+
+    asio::ip::udp::socket sock(t);
+
+
+
+    std::thread ths([&](){
+        t.run();
+    });
+
+
+    std::thread thss([&](){
+        t.run();
+    });
+
+
+    t2.run();
+
+
+
+
+
+
+
+
+
+    ths.join();
+    thss.join();
     return 0;
 }

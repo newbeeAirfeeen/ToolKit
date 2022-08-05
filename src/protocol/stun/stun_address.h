@@ -29,9 +29,10 @@
 #include <net/buffer.hpp>
 #include "stun_attributes.h"
 namespace stun {
-
+    class stun_packet;
     void put_mapped_address_or_alternate_server(const attributes& a, const std::shared_ptr<buffer> &buf, const std::string &ip, uint16_t port);
     void put_xor_mapped_address(const std::shared_ptr<buffer> &buf, const std::string& transaction_id, const std::string &ip, uint16_t port);
 
+    void get_mapped_address(const std::shared_ptr<stun_packet>& pkt, const char* data, size_t length);
 };    // namespace stun
 #endif//TOOLKIT_STUN_ADDRESS_H

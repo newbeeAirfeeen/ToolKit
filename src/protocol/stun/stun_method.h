@@ -26,11 +26,14 @@
 #ifndef TOOLKIT_STUN_METHOD_H
 #define TOOLKIT_STUN_METHOD_H
 
+#include <cstdint>
+namespace stun{
+    enum stun_method {
+        binding_request  =  0x001,
+        shared_secret    =  0x002,
+        binding_response =  0x101,
+    };
 
-enum stun_method {
-    binding_request  =  0x001,
-    shared_secret    =  0x002,
-    binding_response =  0x101,
+    bool is_stun_method(uint16_t value);
 };
-
 #endif//TOOLKIT_STUN_METHOD_H

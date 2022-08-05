@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <string>
 #include <net/buffer.hpp>
+#include <vector>
 namespace stun {
     enum attributes {
         /// Comprehension-required range
@@ -72,7 +73,9 @@ namespace stun {
         std::string to_bytes();
     };
 
-    void put_unknown_attributes(const std::shared_ptr<buffer>& buff, const std::initializer_list<uint16_t>& attrs);
+    bool is_unknown_attributes(uint16_t type);
+
+    void put_unknown_attributes(const std::shared_ptr<buffer>& buff, const std::vector<uint16_t>& attrs);
 
     const char *get_attribute_name(const attributes &);
 };// namespace stun

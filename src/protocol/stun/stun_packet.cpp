@@ -124,12 +124,14 @@ namespace stun {
         std::string random_ = std::move(makeRandStr(12, true));
         buf->append(random_);
 
-        /// mapped-address
         if (!stun_pkt.mapped_address.empty()) {
+            /// mapped-address
             put_mapped_address_or_alternate_server(attributes::mapped_address, buf, stun_pkt.mapped_address, stun_pkt.mapped_address_port);
         } else if (!stun_pkt.xor_mapped_address.empty()) {
+            /// xor_mapped_address
             put_xor_mapped_address(buf, random_, stun_pkt.xor_mapped_address, stun_pkt.mapped_address_port);
         } else if (!stun_pkt.alternate_server.empty()) {
+            /// alternate-server
             put_mapped_address_or_alternate_server(attributes::alternate_server, buf, stun_pkt.alternate_server, stun_pkt.alternate_server_port);
         }
 
@@ -143,9 +145,6 @@ namespace stun {
         if (stun_pkt.unknown_attributes.size()) {
             put_unknown_attributes(buf, stun_pkt.unknown_attributes);
         }
-
-        /// alternate server
-
 
 #ifdef SSL_ENABLE
         /// username - nonce - message-integrity
@@ -193,7 +192,8 @@ namespace stun {
         this->software = software;
     }
 
-    void stun_packet::set_unknown_attributes(const std::initializer_list<uint16_t> &) {
+    void stun_packet::set_unknown_attributes(const std::vector<uint16_t> &attrs) {
+        this->unknown_attributes = attrs;
     }
 
     void stun_packet::set_alternate_server(const std::string &ip, uint16_t port) {
@@ -240,7 +240,7 @@ namespace stun {
         return this->software;
     }
 
-    const std::initializer_list<uint16_t> &stun_packet::get_unknown_attributes() const {
+    const std::vector<uint16_t> &stun_packet::get_unknown_attributes() const {
         return unknown_attributes;
     }
 
@@ -262,6 +262,52 @@ namespace stun {
     std::shared_ptr<stun_packet> from_buffer(const char *data, size_t length) {
         if (!is_maybe_stun(data, length)) {
             throw std::system_error(make_stun_error(stun::is_not_stun_packet, generate_stun_packet_category()));
+        }
+
+        auto stun_pkt = std::make_shared<stun_packet>();
+        auto m = load_be16((const void *) data);
+        if (!is_stun_method(m)) {
+            throw std::system_error(make_stun_error(stun::is_not_stun_packet, generate_stun_packet_category()));
+        }
+        auto pkt_length = load_be16((const void *) (data + 2));
+        stun_pkt->_method = static_cast<stun_method>(m);
+        stun_pkt->transaction_id.assign(data + 8, 12);
+        auto *pointer = data + 20;
+        auto *end = data + length;
+
+        while (pointer != end && (end - pointer > 4)) {
+            /// T
+            auto type = load_be16(pointer);
+            pointer += 2;
+            /// L
+            auto attr_length = load_be16(pointer);
+            uint32_t padding = 0;
+            /// if have padding
+            if (attr_length % 4 != 0) {
+                padding = attr_length / 4 * 4 + padding - attr_length;
+            }
+            pointer += 2;
+            /// V
+            switch (type) {
+                case mapped_address:
+                    break;
+                case username:
+                    break;
+                case message_integrity:
+                    break;
+                case error_code:
+                case unknown_attributes:
+                case realm:
+                case nonce:
+                case xor_mapped_address:
+                case software:
+                case alternate_server:
+                case finger_print:
+                default: {
+                    stun_pkt->unknown_attributes.push_back(type);
+                }
+            }
+            pointer += attr_length + padding;
         }
 
 

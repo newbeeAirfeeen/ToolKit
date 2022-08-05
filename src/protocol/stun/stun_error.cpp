@@ -51,6 +51,8 @@ namespace stun {
                 return "error code is not range of 300-699";
             case stun::attribute_is_invalid:
                 return "attribute is invalid for current context";
+            case stun::address_family_is_invalid:
+                return "stun mapped address family is invalid";
         }
 
         return "unknown error";

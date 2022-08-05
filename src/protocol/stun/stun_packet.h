@@ -29,7 +29,6 @@
 #include "net/buffer.hpp"
 #include "stun_attributes.h"
 #include "stun_method.h"
-
 namespace stun {
 
     struct stun_packet {
@@ -48,7 +47,7 @@ namespace stun {
         void set_password(const std::string &password);
         void set_realm(const std::string &realm);
         void set_software(const std::string &software);
-        void set_unknown_attributes(const std::initializer_list<uint16_t> &);
+        void set_unknown_attributes(const std::vector<uint16_t> &);
         void set_alternate_server(const std::string &ip, uint16_t port);
         void set_mapped_address(const std::string &ip, uint16_t port);
         void set_xor_mapped_address(const std::string &ip, uint16_t port);
@@ -61,7 +60,7 @@ namespace stun {
         const std::string &get_realm() const;
         const std::string &get_password() const;
         const std::string &get_software() const;
-        const std::initializer_list<uint16_t> &get_unknown_attributes() const;
+        const std::vector<uint16_t> &get_unknown_attributes() const;
         std::pair<const std::string &, uint16_t> get_alternate_server() const;
         std::pair<const std::string &, uint16_t> get_mapped_address() const;
         std::pair<const std::string &, uint16_t> get_xor_mapped_address() const;
@@ -84,7 +83,7 @@ namespace stun {
         std::string software;
         std::string alternate_server;
         uint16_t alternate_server_port = 0;
-        std::initializer_list<uint16_t> unknown_attributes;
+        std::vector<uint16_t> unknown_attributes;
     };
 
 
