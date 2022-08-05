@@ -34,7 +34,7 @@
 
 template<typename Key, typename Value>
 class deadline_timer_queue : public std::enable_shared_from_this<deadline_timer_queue<Key, Value>> {
-    friend std::shared_ptr<deadline_timer_queue<Key, Value>> create_deadline_timer_queue(const std::chrono::milliseconds &, asio::io_context &ex);
+    friend std::shared_ptr<deadline_timer_queue<Key, Value>> create_deadline_timer_queue(asio::io_context &ex);
 
 public:
     typedef asio::io_context executor_type;
@@ -43,47 +43,29 @@ public:
     typedef std::enable_shared_from_this<deadline_timer_queue<Key, Value>> base_type;
     typedef std::chrono::system_clock clock_type;
 public:
-    void set_deliver_duration(const std::chrono::milliseconds &m) {
-        std::weak_ptr<deadline_timer_queue<key_type, value_type>> self(base_type::shared_from_this());
-        executor.post([self, m]() {
-            auto stronger_self = self.lock();
-            if (!stronger_self) {
-                return;
-            }
-            stronger_self->deadline_duration = m;
-        });
+    void set_deliver_duration(uint64_t deliver_duration) {
+        this->deliver_duration = deliver_duration;
     }
 
     void enqueue(Key&& key, value_type&& value) {
-        std::weak_ptr<deadline_timer_queue<key_type, value_type>> self(base_type::shared_from_this());
-        auto insert_time = clock_type::now().time_since_epoch().count();
-        uint64_t expired_time = clock_type::now().time_since_epoch().count() + deadline_duration.count();
-        executor.post([self, expired_time, insert_time]() {
-            auto stronger_self = self.lock();
-            if (!stronger_self) {
-                return;
-            }
-            auto now = clock_type::now();
 
-        });
     }
 
-    template<typename F, typename... Args>
-    void set_on_deliver(F &&f, Args &&...args) {
+
+    void set_on_deliver(const std::function<void()>&) {
     }
 
 private:
-    deadline_timer_queue(const std::chrono::milliseconds &m, executor_type &ex) : deadline_duration(m), executor(ex), deadline_timer(ex) {}
+    deadline_timer_queue(const std::chrono::milliseconds &m, executor_type &ex) :executor(ex) {}
 private:
     std::map<key_type, value_type> queue_cache;
-    asio::system_timer deadline_timer;
     executor_type &executor;
-    std::chrono::milliseconds deadline_duration;
+    uint64_t deliver_duration = 0;
 };
 
 template<typename Key, typename Value>
-std::shared_ptr<deadline_timer_queue<Key, Value>> create_deadline_timer_queue(const std::chrono::milliseconds &m, asio::io_context &ex) {
-    std::shared_ptr<deadline_timer_queue<Key, Value>> queue(new deadline_timer_queue<Key, Value>(m, std::ref(ex)));
+std::shared_ptr<deadline_timer_queue<Key, Value>> create_deadline_timer_queue(asio::io_context &ex) {
+    std::shared_ptr<deadline_timer_queue<Key, Value>> queue(new deadline_timer_queue<Key, Value>(std::ref(ex)));
     return queue;
 }
 

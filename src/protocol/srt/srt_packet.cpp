@@ -48,6 +48,6 @@ namespace srt{
     }
 
     std::shared_ptr<srt_packet> srt_packet_helper::make_srt_data_packet(){
-
+        return nullptr;
     }
 };

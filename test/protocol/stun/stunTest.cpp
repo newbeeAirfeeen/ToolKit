@@ -7,7 +7,7 @@
 #include <net/asio.hpp>
 void compare_binary(const std::shared_ptr<buffer> &buf, const char *buff, size_t length) {
     EXPECT_GE(buf->size(), length);
-    for (int i = 0; i < length; i++) {
+    for (size_t i = 0; i < length; i++) {
         EXPECT_EQ(buf->operator[](i), buff[i]);
     }
 }
@@ -46,6 +46,7 @@ TEST(attribute, stun) {
             pkt_ptr = stun::stun_packet::create_packet(pkt);
         } catch (const std::exception &e) {
             //EXPECT_EXIT(1, ::testing::ExitedWithCode(1), e.what());
+            e;
         }
 
         /// expect padding

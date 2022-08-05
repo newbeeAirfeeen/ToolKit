@@ -37,7 +37,7 @@
 #include "stun_finger_print.h"
 #include <Util/endian.hpp>
 #include <Util/random.hpp>
-
+#include <functional>
 namespace stun {
     /// Since all STUN attributes are
     /// padded to a multiple of 4 bytes, the last 2 bits of this field are
@@ -55,7 +55,7 @@ namespace stun {
         if (n % padding != 0) {
             buf->append(static_cast<size_t>(l - n), static_cast<char>(0));
             auto length = load_be16(buf->data() + 2);
-            length += l - n;
+            length +=  static_cast<uint16_t>(l - n);
             set_be16((void *) (buf->data() + 2), static_cast<uint16_t>(length));
         }
         return l - n;
@@ -70,7 +70,7 @@ namespace stun {
         buf->append(bytes);
         auto length = load_be16(buf->data() + 2) + bytes.size();
         /// update the new length
-        set_be16((void *) (buf->data() + 2), length);
+        set_be16((void *) (buf->data() + 2),  static_cast<uint16_t>(length));
         /// padding the length
         nearest_padding(buf, 4);
     }
@@ -78,7 +78,7 @@ namespace stun {
     static void put_software(const std::string &software, const std::shared_ptr<buffer> &buf) {
         attribute_type attr;
         attr.attribute = attributes::software;
-        attr.length = software.size();
+        attr.length =  static_cast<uint16_t>(software.size());
         attr.value = software;
         stun_add_attribute(buf, attr);
     }
@@ -86,7 +86,7 @@ namespace stun {
     static void put_realm(const std::string &realm, const std::shared_ptr<buffer> &buf) {
         attribute_type attr;
         attr.attribute = attributes::realm;
-        attr.length = realm.size();
+        attr.length = static_cast<uint16_t>(realm.size());
         attr.value = realm;
         stun_add_attribute(buf, attr);
     }
@@ -105,7 +105,7 @@ namespace stun {
 
         attribute_type attr;
         attr.attribute = attributes::username;
-        attr.length = username.size();
+        attr.length = static_cast<uint16_t>(username.size());
         attr.value = username;
         stun_add_attribute(buf, attr);
     }

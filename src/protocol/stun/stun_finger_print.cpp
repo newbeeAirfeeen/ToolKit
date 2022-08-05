@@ -7,6 +7,7 @@
 #include "net/buffer.hpp"
 #include "stun_packet.h"
 #include <cstdint>
+#include <functional>
 namespace stun {
 
     constexpr int finger_print_size = 4;

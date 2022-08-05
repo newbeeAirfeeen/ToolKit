@@ -62,7 +62,7 @@ namespace stun {
         attribute_type attr;
         attr.attribute = a;
         attr.value.assign(b.begin(), b.end());
-        attr.length = attr.value.size();
+        attr.length = static_cast<uint16_t>(attr.value.size());
         stun_add_attribute(buf, attr);
     }
     /// X-Port is computed by taking the mapped port in host byte order,
@@ -110,7 +110,7 @@ namespace stun {
         attribute_type attr;
         attr.attribute = attributes::xor_mapped_address;
         attr.value.append(b.data(), b.size());
-        attr.length = attr.value.size();
+        attr.length = static_cast<uint16_t>(attr.value.size());
         stun_add_attribute(buf, attr);
     }
 

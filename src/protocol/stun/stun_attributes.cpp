@@ -68,7 +68,7 @@ namespace stun {
         attribute_type attr;
         attr.attribute = attributes::unknown_attributes;
         attr.value.assign(b.begin(), b.end());
-        attr.length = attr.value.size();
+        attr.length = static_cast<uint16_t>(attr.value.size());
         stun_add_attribute(buf, attr);
     }
 

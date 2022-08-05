@@ -79,6 +79,7 @@ void event_poller::run(){
             _io_context.run();
         }
         catch(const thread_quit_exception& e){
+            e;
             break;
         }
         catch(const std::exception& e){

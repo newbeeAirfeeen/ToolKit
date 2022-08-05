@@ -218,19 +218,21 @@ namespace toolkit{
 
 
 namespace std{
+#if 0
   //hash from msvc
   template<> struct hash<toolkit::basic_string_view<char>>{
       size_t operator()(const toolkit::basic_string_view<char>& view) const{
-         constexpr size_t offset_basis = 14695981039346656037ULL;
-         constexpr size_t prime        = 1099511628211ULL;
-         size_t val = offset_basis;
-         for(size_t idx = 0; idx < view.size();++idx){
-           val ^= static_cast<size_t>(view[idx]);
+         constexpr uint64_t offset_basis = 14695981039346656037ULL;
+         constexpr uint64_t prime        = 1099511628211ULL;
+         uint64_t val = offset_basis;
+         for(uint64_t idx = 0; idx < static_cast<uint64_t>(view.size());++idx){
+           val ^= static_cast<uint64_t>(view[idx]);
            val *= prime;
          }
-         return val;
+         return static_cast<size_t>(val);
       }
   };
+#endif
 }
 
 #endif

@@ -12,7 +12,9 @@
 #include <cstring>
 #include <cstdlib>
 
-
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
 /*
 * Used to do unaligned loads on archs that don't support them. GCC can mostly
 * optimize these away.

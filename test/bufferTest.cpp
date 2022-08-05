@@ -3,7 +3,7 @@
 //
 #include <gtest/gtest.h>
 #include <net/buffer.hpp>
-
+#include <algorithm>
 
 bool compare_string(const buffer &buf, const char *data, size_t length) {
 
@@ -63,7 +63,7 @@ TEST(set_and_get, buffer) {
 
     buffer buf;
     buf.reserve(1024);
-    EXPECT_GT(buf.capacity(), 1024);
+    EXPECT_GT(buf.capacity(), static_cast<size_t>(1024));
 
     buf.put_be<uint16_t>(0x0002);
     buf.put_be<uint16_t>(0x0004);

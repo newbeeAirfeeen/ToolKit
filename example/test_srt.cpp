@@ -1,6 +1,6 @@
 ﻿
  /// Created by 沈昊 on 2022/4/26.
-
+/*
 #include <protocol/srt/srt.hpp>
 #include <event_poller_pool.hpp>
 void test_address(){
@@ -23,7 +23,7 @@ void test_connect(){
 
     core->async_connect(peer, [](const std::error_code& e){
         Info(e.message());
-
+e
     });
     event_poller_pool::Instance().wait();
 }
@@ -37,3 +37,7 @@ int main(){
     return 0;
 }
 
+*/
+int main(){
+    return 0;
+}

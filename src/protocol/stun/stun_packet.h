@@ -31,7 +31,7 @@
 #include "stun_method.h"
 namespace stun {
 
-    struct stun_packet {
+    class stun_packet {
         friend std::shared_ptr<stun_packet> from_buffer(const char *data, size_t length);
 
     public:

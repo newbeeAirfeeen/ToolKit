@@ -29,7 +29,7 @@
 #include <string>
 #include <type_traits>
 #include <ostream>
-#include <asio/detail/buffer_sequence_adapter.hpp>
+#include "asio/detail/buffer_sequence_adapter.hpp"
 template<typename T>
 struct return_type{
     using type = typename std::remove_reference<typename std::remove_pointer<typename std::remove_cv<T>::type>::type>::type;

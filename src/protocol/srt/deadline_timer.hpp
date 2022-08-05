@@ -84,7 +84,7 @@ private:
         auto iter = triggered_sets.begin();
         for (; iter != triggered_sets.end(); iter = triggered_sets.begin()) {
             /// expired
-            if (now >= iter->first) {
+            if (static_cast<uint64_t>(now) >= iter->first) {
                 expired_func(std::cref(iter->second));
                 triggered_sets.erase(iter);
             } else {

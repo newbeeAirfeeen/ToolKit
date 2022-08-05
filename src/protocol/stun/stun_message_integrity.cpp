@@ -28,7 +28,7 @@
 #include "Util/MD5.h"
 #include "Util/endian.hpp"
 #include "stun_packet.h"
-
+#include <functional>
 static size_t HMAC_SHA1(const char *key, size_t length, const char *data, size_t data_length, void *out, size_t out_length) {
     HMAC_CTX *ctx = new HMAC_CTX;
     HMAC_CTX_init(ctx);

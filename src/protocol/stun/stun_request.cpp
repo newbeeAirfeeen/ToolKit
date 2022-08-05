@@ -26,7 +26,7 @@ namespace stun {
                 auto address = asio::ip::make_address(this->query.host_name());
                 asio::ip::udp::endpoint endpoint(address, std::stoi(query.service_name()));
                 connecting(endpoint);
-            } catch (const std::exception &e) {
+            } catch (...) {
                 /// if not direct host , resolve it.
                 resolver_.async_resolve(query, [self](const std::error_code &e, const asio::ip::udp::resolver::results_type &result) {
                     auto stronger_self = self.lock();

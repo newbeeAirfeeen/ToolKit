@@ -34,7 +34,7 @@ namespace stun {
         attr.value.append(1, static_cast<char>(err % 100));
         /// reason phrase
         attr.value += c.message(err);
-        attr.length = attr.value.size();
+        attr.length = static_cast<uint16_t>(attr.value.size());
         stun_add_attribute(buf, attr);
     }
 

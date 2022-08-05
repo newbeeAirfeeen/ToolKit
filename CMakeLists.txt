@@ -7,18 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 add_definitions(-DASIO_STANDALONE -DASIO_HEADER_ONLY -DSRT_CORE_INTERNAL_DEBUG_LOG -DFMT_HEADER_ONLY -DOPENSSL_EXTRA)
 
 
+if(WIN32)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_WIN32_WINNT=0x0601)
+    set(CMAKE_C_FLAGS_DEBUG  /MTd)
+    set(CMAKE_CXX_FLAGS_DEBUG /MTd)
+endif()
+
+
+
 add_subdirectory(3rdlib/wolfssl)
 add_subdirectory(3rdlib/googletest)
 
 add_definitions(-DSSL_ENABLE -DWOLFSSL_ENABLE)
 
 include_directories(${CMAKE_SOURCE_DIR}/3rdlib/wolfssl)
-
-if(WIN32)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-endif()
-
-
 
 
 #添加包含路径
