@@ -83,7 +83,7 @@ namespace srt{
      * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
      *                 Figure 4: Control packet structure
      */
-    struct control_packet_context{
+    class control_packet_context{
     public:
         explicit control_packet_context(const srt_packet& pkt);
         control_type get_control_type() const;

@@ -692,7 +692,7 @@ namespace srt {
     }
 
     inline uint32_t srt_core::generate_sequence_number(){
-        std::default_random_engine generator(::time(nullptr));
+        std::default_random_engine generator(static_cast<uint32_t>(::time(nullptr)));
         std::uniform_int_distribution<uint32_t> distribution(0,0x3FFFFFFF);
         return distribution(generator);
     }

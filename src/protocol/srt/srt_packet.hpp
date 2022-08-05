@@ -68,7 +68,7 @@
  */
 namespace srt{
 
-    struct srt_packet : public basic_buffer<char>{
+    class srt_packet : public basic_buffer<char>{
     public:
         bool is_control_packet() const;
         srt_packet();
