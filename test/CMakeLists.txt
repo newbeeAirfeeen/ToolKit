@@ -15,7 +15,7 @@ endforeach()
 
 include(GoogleTest)
 add_subdirectory(protocol/stun)
-
+add_subdirectory(protocol/srt)
 foreach (item ${TEST_LIST})
     gtest_discover_tests(${item})
 endforeach()

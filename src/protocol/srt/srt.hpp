@@ -24,6 +24,7 @@
 */
 #ifndef TOOLKIT_SRT_HPP
 #define TOOLKIT_SRT_HPP
+#include "deadline_timer_queue.hpp"
 #include "srt_packet_profile.hpp"
 #include "srt_packet.hpp"
 #include "srt_status.hpp"
