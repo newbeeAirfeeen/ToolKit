@@ -554,7 +554,7 @@ namespace srt {
         for(;;){
             std::string cookie_str = sock.remote_endpoint().address().to_string() + ":" + std::to_string(sock.remote_endpoint().port()) + ":" + std::to_string(timestamp.count() + index);
             SRT_INFO_LOG("handshake bake result: {}", cookie_str);
-            toolkit::MD5 md5(cookie_str);
+            toolkit::MD5_digest md5(cookie_str);
             std::string raw_digest = md5.rawdigest();
             current_cookie = *(uint32_t*)raw_digest.data();
             /**
