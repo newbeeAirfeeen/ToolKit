@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: srt_packet_common.hpp
+* @file_name: srt_extension.h
 * @date: 2022/04/29
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -22,28 +22,22 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_SRT_PACKET_COMMON_HPP
-#define TOOLKIT_SRT_PACKET_COMMON_HPP
-#ifdef SRT_CORE_INTERNAL_DEBUG_LOG
-#include "spdlog/logger.hpp"
-#ifdef SRT_CORE_INTERNAL_DEBUG_LOG
-#define SRT_TRACE_LOG(...) Trace(__VA_ARGS__)
-#define SRT_DEBUG_LOG(...) Debug(__VA_ARGS__)
-#define SRT_INFO_LOG(...) Info(__VA_ARGS__)
-#define SRT_WARN_LOG(...) Warn(__VA_ARGS__)
-#define SRT_ERROR_LOG(...) Error(__VA_ARGS__)
-#else
-#define SRT_TRACE_LOG(...)
-#define SRT_DEBUG_LOG(...)
-#define SRT_INFO_LOG(...)
-#define SRT_WARN_LOG(...)
-#define SRT_ERROR_LOG(...)
-#endif
-#endif
+
+#ifndef TOOLKIT_SRT_EXTENSION_H
+#define TOOLKIT_SRT_EXTENSION_H
+
+
 namespace srt{
-    class srt_packet;
-    class control_packet_context;
+
+    enum extension_type{
+        HS_REQ  = 0x00000001,
+        KM_REQ  = 0X00000002,
+        CONFIG  = 0X00000004,
+    };
+
+
+
 };
 
 
-#endif//TOOLKIT_SRT_PACKET_COMMON_HPP
+#endif//TOOLKIT_SRT_EXTENSION_H
