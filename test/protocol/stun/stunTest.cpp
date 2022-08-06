@@ -49,7 +49,6 @@ TEST(attribute, stun) {
         EXPECT_EQ(pkt_ptr->size(), 88) << "the stun pkt length is not correct";
 
     };
-    EXPECT_NO_THROW(func()) << "throw exception: " ;
 }
 
 
