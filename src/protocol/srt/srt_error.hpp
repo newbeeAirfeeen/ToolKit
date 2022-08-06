@@ -26,27 +26,27 @@
 #define TOOLKIT_SRT_ERROR_HPP
 #include <string>
 #include <system_error>
-namespace srt{
+namespace srt {
 
-    enum srt_error_code{
+    enum srt_error_code {
         status_error,
         srt_packet_error,
         srt_control_type_error,
     };
 
-    class srt_category : public std::error_category{
+    class srt_category : public std::error_category {
     public:
-        const char* name() const noexcept override;
+        const char *name() const noexcept override;
         std::string message(int err) const override;
     };
 
-    class srt_error : public std::system_error{
+    class srt_error : public std::system_error {
     public:
         explicit srt_error(std::error_code);
     };
 
-    std::error_category* generator_srt_category();
+    std::error_category *generator_srt_category();
     std::error_code make_srt_error(int err);
-};
+};// namespace srt
 
 #endif//TOOLKIT_SRT_ERROR_HPP

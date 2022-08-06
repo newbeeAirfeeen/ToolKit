@@ -26,8 +26,8 @@
 #define TOOLKIT_SRT_CORE_HPP
 #include "net/socket_helper.hpp"
 #include "srt_control_type.h"
-#include "srt_handshake.hpp"
-#include "srt_packet.hpp"
+#include "srt_handshake.h"
+#include "srt_packet.h"
 #include "srt_status.hpp"
 #include <Util/nocopyable.hpp>
 #include <chrono>

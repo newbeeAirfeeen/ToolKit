@@ -25,9 +25,9 @@
 #include "srt_control_type.h"
 
 
-namespace srt{
-    bool is_control_type(uint16_t val){
-        switch (val){
+namespace srt {
+    bool is_control_type(uint16_t val) {
+        switch (val) {
             case control_type::handshake:
             case control_type::keepalive:
             case control_type::ack:
@@ -43,4 +43,4 @@ namespace srt{
                 return false;
         }
     }
-};
+};// namespace srt

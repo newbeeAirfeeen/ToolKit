@@ -22,7 +22,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include "srt_packet.hpp"
+#include "srt_packet.h"
 #include "srt_control_type.h"
 #include "srt_error.hpp"
 #include "Util/endian.hpp"
@@ -47,7 +47,7 @@ namespace srt{
         this->packet_position_flag = flag;
     }
 
-    bool srt_packet::set_in_order(bool on){
+    void srt_packet::set_in_order(bool on){
         this->in_order = static_cast<uint8_t>(on);
     }
 
@@ -125,7 +125,7 @@ namespace srt{
         buff->reserve(1500);
         if(pkt.is_control){
             /// control type
-            buff->put_be<uint16_t>(static_cast<uint16_t>(pkt.get_control_type()) & 0x8000);
+            buff->put_be<uint16_t>(static_cast<uint16_t>(pkt.get_control_type()) | 0x8000);
             /// sub type
             buff->put_be<uint16_t>(static_cast<uint16_t>(0));
             buff->put_be<uint32_t>(pkt.get_type_information());
@@ -143,18 +143,20 @@ namespace srt{
         /// destination socket id
         buff->put_be<uint32_t>(pkt.get_socket_id());
         /// data
-        buff->append(pkt.get_data());
+        if(!pkt.get_data().empty())
+            buff->append(pkt.get_data());
+        return buff;
     }
 
     std::shared_ptr<srt_packet> from_buffer(const char*data, size_t length){
-        if(length < 32){
+        if(length < 16){
             return nullptr;
         }
         auto pkt = std::make_shared<srt_packet>();
         bool control = data[0] & 0x80;
         pkt->set_control(control);
         if(control){
-            uint16_t _control_type = load_be16(data) & 0x8000;
+            uint16_t _control_type = load_be16(data) & 0x7FFF;
             if(!is_control_type(_control_type)){
                 throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
             }
@@ -177,7 +179,8 @@ namespace srt{
 
         pkt->set_timestamp(load_be32(data + 8));
         pkt->set_socket_id(load_be32(data + 12));
-        pkt->set_data(data + 32, length - 32);
+        pkt->set_data(data + 16, length - 16);
+        return pkt;
     }
 
     void update_packet_data_flag(const srt_packet& pkt, const std::shared_ptr<buffer>& ptr){

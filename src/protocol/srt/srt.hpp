@@ -28,7 +28,7 @@
 #include "srt_control_type.h"
 #include "srt_core.hpp"
 #include "srt_error.hpp"
-#include "srt_packet.hpp"
+#include "srt_packet.h"
 #include "srt_status.hpp"
 
 #endif//TOOLKIT_SRT_HPP

@@ -25,7 +25,7 @@
 #include "srt_core.hpp"
 #include "Util/MD5.h"
 #include "srt_error.hpp"
-#include "srt_handshake.hpp"
+#include "srt_handshake.h"
 #include <random>
 namespace srt {
     srt_core::srt_core(event_poller &poller, asio::ip::udp::socket &sock, bool is_server)
@@ -250,32 +250,32 @@ namespace srt {
     }
 
     void srt_core::handle_receive_control_packet(const std::shared_ptr<srt_packet> &control_packet) {
-        control_packet_context ctx(*control_packet);
-        switch (ctx.get_control_type()) {
-            case control_type::handshake:
-                return handle_handshake(ctx, control_packet);
-            case control_type::keepalive:
-                return handle_keep_alive(control_packet);
-            case control_type::ack:
-                return handle_ack(control_packet);
-            case control_type::nak:
-                return handle_nak(control_packet);
-            case control_type::congestion_warning:
-                return handle_congestion_warn(control_packet);
-            case control_type::shutdown:
-                return handle_shutdown(control_packet);
-            case control_type::ack_ack:
-                return handle_ack_ack(control_packet);
-            case control_type::dro_preq:
-                return handle_dro_req(control_packet);
-            case control_type::peer_error:
-                return handle_peer_error(control_packet);
-            case control_type::user_defined_type:
-                return handle_user_defined_type(control_packet);
-            default: {
-                SRT_WARN_LOG("srt receive unknown packet control type which ignored");
-            }
-        }
+        //control_packet_context ctx(*control_packet);
+//        switch (ctx.get_control_type()) {
+//            case control_type::handshake:
+//                return handle_handshake(ctx, control_packet);
+//            case control_type::keepalive:
+//                return handle_keep_alive(control_packet);
+//            case control_type::ack:
+//                return handle_ack(control_packet);
+//            case control_type::nak:
+//                return handle_nak(control_packet);
+//            case control_type::congestion_warning:
+//                return handle_congestion_warn(control_packet);
+//            case control_type::shutdown:
+//                return handle_shutdown(control_packet);
+//            case control_type::ack_ack:
+//                return handle_ack_ack(control_packet);
+//            case control_type::dro_preq:
+//                return handle_dro_req(control_packet);
+//            case control_type::peer_error:
+//                return handle_peer_error(control_packet);
+//            case control_type::user_defined_type:
+//                return handle_user_defined_type(control_packet);
+//            default: {
+//                SRT_WARN_LOG("srt receive unknown packet control type which ignored");
+//            }
+//        }
     }
 
 
@@ -400,32 +400,32 @@ namespace srt {
         handshake_pkt._version = 5;
         //handshake_pkt.type = ...
         uint32_t type_info_field = 0;
-        auto l_to_c_handshake = srt_packet_helper::make_srt_control_packet(control_type::handshake,
-                                                                         make_pkt_timestamp(),
-                                                                           handshake_pkt._socket_id,
-                                                                           type_info_field);
-        /// version
-        l_to_c_handshake->put_be(handshake_pkt._version);
-        /// encryption field
-        l_to_c_handshake->put_be(static_cast<unsigned short>(0));
-        /// extension field
-        l_to_c_handshake->put_be(static_cast<unsigned short>(0));
-        /// sequence number
-        l_to_c_handshake->put_be(handshake_pkt._sequence_number);
-        /// mtu size
-        l_to_c_handshake->put_be(handshake_pkt._max_mss);
-        /// handshake window size
-        l_to_c_handshake->put_be(handshake_pkt._window_size);
-        /// handshake type
-        l_to_c_handshake->put_be(static_cast<uint32_t>(handshake_packet_base::packet_type::urq_induction));
-        /// srt socket id
-        l_to_c_handshake->put_be(handshake_pkt._socket_id);
-        /// cookie
-        l_to_c_handshake->put_be(handshake_pkt._cookie);
-        /// peer_ip
-        l_to_c_handshake->append((const char*)handshake_pkt._peer_ip, 16);
-        /// send srt packet
-        send_srt_packet(l_to_c_handshake);
+//        auto l_to_c_handshake = srt_packet_helper::make_srt_control_packet(control_type::handshake,
+//                                                                         make_pkt_timestamp(),
+//                                                                           handshake_pkt._socket_id,
+//                                                                           type_info_field);
+//        /// version
+//        l_to_c_handshake->put_be(handshake_pkt._version);
+//        /// encryption field
+//        l_to_c_handshake->put_be(static_cast<unsigned short>(0));
+//        /// extension field
+//        l_to_c_handshake->put_be(static_cast<unsigned short>(0));
+//        /// sequence number
+//        l_to_c_handshake->put_be(handshake_pkt._sequence_number);
+//        /// mtu size
+//        l_to_c_handshake->put_be(handshake_pkt._max_mss);
+//        /// handshake window size
+//        l_to_c_handshake->put_be(handshake_pkt._window_size);
+//        /// handshake type
+//        l_to_c_handshake->put_be(static_cast<uint32_t>(handshake_packet_base::packet_type::urq_induction));
+//        /// srt socket id
+//        l_to_c_handshake->put_be(handshake_pkt._socket_id);
+//        /// cookie
+//        l_to_c_handshake->put_be(handshake_pkt._cookie);
+//        /// peer_ip
+//        l_to_c_handshake->append((const char*)handshake_pkt._peer_ip, 16);
+//        /// send srt packet
+//        send_srt_packet(l_to_c_handshake);
     }
 
     void srt_core::handle_keep_alive(const std::shared_ptr<srt_packet> &keep_alive_packet) {
@@ -461,36 +461,36 @@ namespace srt {
     }
 
     void srt_core::send_connect_packet(const handshake_packet& pkt, bool init_ack_nak) {
-        auto copy_pkt = std::make_shared<handshake_packet>(pkt);
-        SRT_TRACE_LOG("put connect packet into send queue");
-        /**
-         * id = 0, connection request
-         */
-        auto connect_pkt = srt_packet_helper::make_srt_control_packet(control_type::handshake,
-                                                                      make_pkt_timestamp(), 0, 0);
-        auto handshake_buffer = handshake_packet::to_buffer(pkt);
-        connect_pkt->append(handshake_buffer->data(), handshake_buffer->size());
-
-        /// set initial ack
-        if(init_ack_nak)
-            set_initial_ack(handshake_pkt._sequence_number);
-        /// send srt packet to peer
-        send_srt_packet(connect_pkt);
-        auto stronger_self(shared_from_this());
-        /// set connect timeout for receive connect sent back.
-        connect_timer.expires_after(std::chrono::milliseconds(250));
-        connect_timer.async_wait([stronger_self, copy_pkt, init_ack_nak](const std::error_code& e){
-            if(e){
-                SRT_TRACE_LOG("connect timer manually triggered");
-                return;
-            }
-            if( stronger_self->connect_time < 250 * 1000){
-                return stronger_self->error_func(std::make_error_code(std::errc::connection_refused));
-            }
-            stronger_self->connect_time -= 250 * 1000;
-            //send next connect packet.
-            stronger_self->send_connect_packet(*copy_pkt, init_ack_nak);
-        });
+//        auto copy_pkt = std::make_shared<handshake_packet>(pkt);
+//        SRT_TRACE_LOG("put connect packet into send queue");
+//        /**
+//         * id = 0, connection request
+//         */
+//        auto connect_pkt = srt_packet_helper::make_srt_control_packet(control_type::handshake,
+//                                                                      make_pkt_timestamp(), 0, 0);
+//        auto handshake_buffer = handshake_packet::to_buffer(pkt);
+//        connect_pkt->append(handshake_buffer->data(), handshake_buffer->size());
+//
+//        /// set initial ack
+//        if(init_ack_nak)
+//            set_initial_ack(handshake_pkt._sequence_number);
+//        /// send srt packet to peer
+//        send_srt_packet(connect_pkt);
+//        auto stronger_self(shared_from_this());
+//        /// set connect timeout for receive connect sent back.
+//        connect_timer.expires_after(std::chrono::milliseconds(250));
+//        connect_timer.async_wait([stronger_self, copy_pkt, init_ack_nak](const std::error_code& e){
+//            if(e){
+//                SRT_TRACE_LOG("connect timer manually triggered");
+//                return;
+//            }
+//            if( stronger_self->connect_time < 250 * 1000){
+//                return stronger_self->error_func(std::make_error_code(std::errc::connection_refused));
+//            }
+//            stronger_self->connect_time -= 250 * 1000;
+//            //send next connect packet.
+//            stronger_self->send_connect_packet(*copy_pkt, init_ack_nak);
+//        });
     }
 
     void srt_core::put_keep_alive_packet_into_send_queue() {
@@ -574,20 +574,20 @@ namespace srt {
             this->do_send_keep_alive_op();
         });
         for (const auto &item: send_queue) {
-            auto packet_ref = item.second;
-            sock.async_send(asio::buffer(item.second->data(), item.second->size()),
-                            [stronger_self, packet_ref, visitor](const std::error_code &e, size_t length) {
-                if (e) {
-                    /**
-                          * if write error, cancel all operation for socket.
-                          */
-                    stronger_self->sock.cancel();
-                    return stronger_self->error_func(e);
-                }
-                //when send packet, save packet_ref in send_lost_queue
-
-                //stronger_self->send_lost_queue[packet_ref->get_sequence()] = std::move(packet_ref); });
-                    });
+//            auto packet_ref = item.second;
+//            sock.async_send(asio::buffer(item.second->data(), item.second->size()),
+//                            [stronger_self, packet_ref, visitor](const std::error_code &e, size_t length) {
+//                if (e) {
+//                    /**
+//                          * if write error, cancel all operation for socket.
+//                          */
+//                    stronger_self->sock.cancel();
+//                    return stronger_self->error_func(e);
+//                }
+//                //when send packet, save packet_ref in send_lost_queue
+//
+//                //stronger_self->send_lost_queue[packet_ref->get_sequence()] = std::move(packet_ref); });
+//                    });
         }
         //clear send_queue
         send_queue.clear();
@@ -715,18 +715,18 @@ namespace srt {
                 stronger_self->do_send_keep_alive_op();
             }
         };
-        this->sock.async_send(asio::buffer(pkt->data(), pkt->size()), func);
+        //this->sock.async_send(asio::buffer(pkt->data(), pkt->size()), func);
     }
 
     void srt_core::onRecv(basic_buffer<char>& buf, const endpoint_type& endpoint){
-        auto srt_pkt = std::make_shared<srt_packet>(std::move(buf));
-        if(!srt_pkt->size()){
-            return;
-        }
-        if(srt_pkt->is_control_packet()){
-            return handle_receive_control_packet(srt_pkt);
-        }
-        handle_receive_data_packet(srt_pkt);
+//        auto srt_pkt = std::make_shared<srt_packet>(std::move(buf));
+//        if(!srt_pkt->size()){
+//            return;
+//        }
+//        if(srt_pkt->is_control_packet()){
+//            return handle_receive_control_packet(srt_pkt);
+//        }
+//        handle_receive_data_packet(srt_pkt);
     }
 
     //// for generator socket id and destroy

@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: srt_handshake.hpp
+* @file_name: srt_handshake.h
 * @date: 2022/04/29
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -22,48 +22,42 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_SRT_HANDSHAKE_HPP
-#define TOOLKIT_SRT_HANDSHAKE_HPP
+#ifndef TOOLKIT_SRT_HANDSHAKE_H
+#define TOOLKIT_SRT_HANDSHAKE_H
+#include <memory>
 #include <net/buffer.hpp>
-#include "srt_packet_common.hpp"
-#include <tuple>
-namespace srt{
+#include "net/asio.hpp"
+namespace srt {
 
-    class handshake_packet_base{
+    class handshake_context {
     public:
-        /**
-         * Handshake Type Page 13.
-         */
-        enum packet_type{
-            urq_done        = 0xFFFFFFFD,
-            urq_induction   = 0x00000001, // First part for client-server connection
-            urq_wave_a_hand = 0x00000000, // First part for rendezvous connection
-            urq_conclusion  = 0xFFFFFFFF, // Second part of handshake negotiation
-            urq_agreement   = 0xFFFFFFFE,
+        enum packet_type {
+            urq_done = 0xFFFFFFFD,
+            urq_induction = 0x00000001,  // First part for client-server connection
+            urq_wave_a_hand = 0x00000000,// First part for rendezvous connection
+            urq_conclusion = 0xFFFFFFFF, // Second part of handshake negotiation
+            urq_agreement = 0xFFFFFFFE,
         };
-    };
 
-    struct handshake_packet: public handshake_packet_base{
-        using pointer = std::shared_ptr<handshake_packet>;
+    public:
         static constexpr const uint32_t packet_size = 48;
-
-        static std::shared_ptr<buffer> to_buffer(const handshake_packet& hsk_pkt);
-
-        bool load(const control_packet_context& ctx, const srt_packet& pkt);
-
-        uint32_t _version = 0; //UDT version
+    public:
+        uint32_t _version = 0;//UDT version
         uint16_t encryption = 0;
         uint16_t extension_field = 0;
-        uint32_t _sequence_number = 0; //random initial sequence number
-        uint32_t _max_mss = 0; //maximum segment size MTU
-        uint32_t _window_size = 0; //flow control window size
+        uint32_t _sequence_number = 0;//random initial sequence number
+        uint32_t _max_mss = 0;        //maximum segment size MTU
+        uint32_t _window_size = 0;    //flow control window size
         packet_type _req_type = urq_done;
         uint32_t _socket_id = 0;
         uint32_t _cookie = 0;
-        uint32_t _peer_ip[4] = {0};
-        bool is_ipv6 = false;
+        asio::ip::address address;
     };
 
+    bool is_handshake_packet_type(uint32_t);
 
-};
-#endif//TOOLKIT_SRT_HANDSHAKE_HPP
+    std::shared_ptr<handshake_context> from_buffer(const char *data, size_t length) noexcept;
+    std::string to_buffer(const handshake_context &_handshake) noexcept;
+    size_t to_buffer(const handshake_context &_handshake, char *out, size_t length) noexcept;
+};    // namespace srt
+#endif//TOOLKIT_SRT_HANDSHAKE_H

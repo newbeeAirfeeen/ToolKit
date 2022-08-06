@@ -22,8 +22,8 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_SRT_PACKET_HPP
-#define TOOLKIT_SRT_PACKET_HPP
+#ifndef TOOLKIT_SRT_PACKET_H
+#define TOOLKIT_SRT_PACKET_H
 #include "srt_control_type.h"
 #include <cstdint>
 #include <memory>
@@ -97,7 +97,7 @@ namespace srt{
          ///    */
          void set_packet_sequence_number(uint32_t);
          void set_packet_position_flag(uint8_t);
-         bool set_in_order(bool on);
+         void set_in_order(bool on);
          void set_key_encryption_flag(uint8_t encryption);
          void set_retransmitted(bool on);
          void set_message_number(uint32_t time_stamp);
@@ -192,4 +192,4 @@ namespace srt{
     void update_packet_data_flag(const srt_packet& pkt, const std::shared_ptr<buffer>& ptr);
 };
 
-#endif//TOOLKIT_SRT_PACKET_HPP
+#endif//TOOLKIT_SRT_PACKET_H

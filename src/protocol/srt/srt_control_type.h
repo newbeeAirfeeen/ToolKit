@@ -24,6 +24,7 @@
 */
 #ifndef TOOLKIT_SRT_CONTROL_TYPE_H
 #define TOOLKIT_SRT_CONTROL_TYPE_H
+#include <cstdint>
 namespace srt{
     /**
      * +====================+==============+=========+======================+

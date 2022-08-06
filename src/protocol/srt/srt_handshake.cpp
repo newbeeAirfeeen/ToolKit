@@ -22,79 +22,95 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include "srt_handshake.hpp"
+#include "srt_handshake.h"
 #include "Util/endian.hpp"
 #include "srt_control_type.h"
-#include "srt_packet.hpp"
-namespace srt{
+#include "srt_packet.h"
+namespace srt {
 
-    std::shared_ptr<buffer> handshake_packet::to_buffer(const handshake_packet& hsk_pkt){
-        auto hdsk_pkt = std::make_shared<buffer>();
-        /// version
-        hdsk_pkt->put_be(hsk_pkt._version);
-        hdsk_pkt->put_be(hsk_pkt.encryption);
-        hdsk_pkt->put_be(hsk_pkt.extension_field);
-        hdsk_pkt->put_be(hsk_pkt._sequence_number);
-        hdsk_pkt->put_be(hsk_pkt._max_mss);
-        hdsk_pkt->put_be(hsk_pkt._window_size);
-        hdsk_pkt->put_be(static_cast<uint32_t>(hsk_pkt._req_type));
-        hdsk_pkt->put_be(hsk_pkt._socket_id);
-        hdsk_pkt->put_be(hsk_pkt._cookie);
-        ////peer ip
-        if(!hsk_pkt.is_ipv6){
-            hdsk_pkt->put_be(hsk_pkt._peer_ip[0]);
-            hdsk_pkt->put_be(static_cast<uint32_t>(0));
-            hdsk_pkt->put_be(static_cast<uint32_t>(0));
-            hdsk_pkt->put_be(static_cast<uint32_t>(0));
-            return hdsk_pkt;
+    bool is_handshake_packet_type(uint32_t p) {
+        switch (p) {
+            case handshake_context::urq_induction:
+            case handshake_context::urq_wave_a_hand:
+            case handshake_context::urq_conclusion:
+            case handshake_context::urq_agreement:
+                return true;
+            default:
+                return false;
         }
-        for(int i = 3; i >= 0;i--){
-            hdsk_pkt->put_be(hsk_pkt._peer_ip[i]);
-        }
-        return hdsk_pkt;
     }
 
-    bool handshake_packet::load(const control_packet_context& ctx, const srt_packet& pkt){
-        if(!pkt.is_control_packet()){
-            SRT_ERROR_LOG("not control packet");
-            return false;
+    std::shared_ptr<handshake_context> from_buffer(const char *data, size_t length) noexcept {
+        if (length < 48) {
+            return nullptr;
+        }
+        const auto *pointer = (const uint32_t *) data;
+        auto handshake = std::make_shared<handshake_context>();
+        handshake->_version = load_be32(pointer++);
+        const auto *p = (const uint16_t *) pointer;
+        handshake->encryption = load_be16(p++);
+        handshake->extension_field = load_be16(p);
+        pointer++;
+        handshake->_sequence_number = load_be32(pointer++);
+        handshake->_max_mss = load_be32(pointer++);
+        handshake->_window_size = load_be32(pointer++);
+        handshake->_req_type = static_cast<handshake_context::packet_type>(load_be32(pointer++));
+        if (!is_handshake_packet_type(handshake->_req_type)) {
+            return nullptr;
         }
 
-        if(ctx.get_control_type() != srt::control_type::handshake){
-            SRT_ERROR_LOG("the packet is not handshake control type");
-            return false;
+        handshake->_socket_id = load_be32(pointer++);
+        handshake->_cookie = load_be32(pointer++);
+        /// ipv4
+        if (pointer[1] == 0 && pointer[2] == 0 && pointer[3] == 0) {
+            handshake->address = asio::ip::make_address_v4(*pointer);
+        }
+        /// ipv6
+        else {
+
+            std::string address((const char *) pointer, 16);
+            std::array<unsigned char, 16> arr = {0};
+            std::copy(address.rbegin(), address.rend(), arr.begin());
+            handshake->address = asio::ip::make_address_v6(arr);
+        }
+        return handshake;
+    }
+
+    std::string to_buffer(const handshake_context &_handshake) noexcept {
+        std::string data;
+        data.resize(48);
+        to_buffer(_handshake, (char *) data.data(), data.size());
+        return data;
+    }
+
+    size_t to_buffer(const handshake_context &_handshake, char *out, size_t length) noexcept {
+        if (length < 48) {
+            return 0;
         }
 
-        if(ctx.size() < static_cast<size_t>(handshake_packet::packet_size)){
-            SRT_ERROR_LOG("the handshake packet size must greater than 48");
-            return false;
-        }
-        const auto* pointer = (const uint32_t*)ctx.data();
-        _version = load_be32(pointer++);
-        if(_version != 4 && _version != 5){
-            SRT_ERROR_LOG("the handshake packet is not 4 or 5");
-            return false;
-        }
-        const char* p = (const char*)pointer;
-        encryption = load_be16(p);
-        extension_field = load_be16(p + 2);
+        auto *pointer = (uint32_t *) out;
+        set_be32(pointer++, _handshake._version);
+        auto *p = (uint16_t *) pointer;
+        set_be16(p++, _handshake.encryption);
+        set_be16(p, _handshake.extension_field);
         ++pointer;
-        _sequence_number = load_be32(pointer++);
-        _max_mss = load_be32(pointer++);
-        if( _max_mss > 1500 ){
-            SRT_ERROR_LOG("maximum mss is greater than 1500");
-            return false;
+        set_be32(pointer++, _handshake._sequence_number);
+        set_be32(pointer++, _handshake._max_mss);
+        set_be32(pointer++, _handshake._window_size);
+        set_be32(pointer++, static_cast<uint32_t>(_handshake._req_type));
+        set_be32(pointer++, _handshake._socket_id);
+        set_be32(pointer++, _handshake._cookie);
+        if(_handshake.address.is_v4()){
+            set_be32(pointer++, _handshake.address.to_v4().to_uint());
+            set_be32(pointer++, 0);
+            set_be32(pointer++, 0);
+            set_be32(pointer++, 0);
         }
-        _window_size = load_be32(pointer++);
-        _req_type = (handshake_packet::packet_type)load_be32(pointer++);
-        if(((uint32_t)_req_type) < 0xFFFFFFFD && ((uint32_t)_req_type) > 0x00000001){
-            SRT_ERROR_LOG("unknown request type");
-            return false;
+        else{
+            auto* ap = (unsigned char*)pointer;
+            auto ad = _handshake.address.to_v6().to_bytes();
+            std::copy(ad.begin(), ad.end(), ap);
+            pointer += 4;
         }
-        _socket_id = load_be32(pointer++);
-        _cookie = load_be32(pointer++);
-        memcpy(_peer_ip, pointer, 16);
-        return true;
     }
-
-};
+};// namespace srt

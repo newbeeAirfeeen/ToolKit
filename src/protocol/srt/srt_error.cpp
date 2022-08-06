@@ -23,30 +23,33 @@
 * SOFTWARE.
 */
 #include "srt_error.hpp"
-namespace srt{
+namespace srt {
 
-    const char* srt_category::name() const noexcept{
+    const char *srt_category::name() const noexcept {
         return "srt_error";
     }
 
-    std::string srt_category::message(int err) const{
+    std::string srt_category::message(int err) const {
         switch (err) {
-            case srt_error_code::status_error: return "srt status error, the srt operation is not permitted in this status";
-            case srt_error_code::srt_packet_error: return "srt packet error, current packet is not permitted with invalid arguments";
-            case srt_error_code::srt_control_type_error: return "srt control type error, current packet is not permitted with invalid arguments";
+            case srt_error_code::status_error:
+                return "srt status error, the srt operation is not permitted in this status";
+            case srt_error_code::srt_packet_error:
+                return "srt packet error, current packet is not permitted with invalid arguments";
+            case srt_error_code::srt_control_type_error:
+                return "srt control type error, current packet is not permitted with invalid arguments";
         }
         return "unknown";
     }
 
-    srt_error::srt_error(std::error_code e): std::system_error(e){}
+    srt_error::srt_error(std::error_code e) : std::system_error(e) {}
 
-    std::error_category* generator_srt_category(){
+    std::error_category *generator_srt_category() {
         static srt_category c;
         return &c;
     }
 
-    std::error_code make_srt_error(int err){
+    std::error_code make_srt_error(int err) {
         std::error_code code(err, *generator_srt_category());
         return code;
     }
-};
+};// namespace srt
