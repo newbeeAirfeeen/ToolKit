@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: err.cpp
+* @file_name: srt_error.cpp
 * @date: 2022/04/26
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -22,7 +22,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include "err.hpp"
+#include "srt_error.hpp"
 namespace srt{
 
     const char* srt_category::name() const noexcept{
@@ -35,13 +35,18 @@ namespace srt{
             case srt_error_code::srt_packet_error: return "srt packet error, current packet is not permitted with invalid arguments";
             case srt_error_code::srt_control_type_error: return "srt control type error, current packet is not permitted with invalid arguments";
         }
-        return "";
+        return "unknown";
     }
 
     srt_error::srt_error(std::error_code e): std::system_error(e){}
 
+    std::error_category* generator_srt_category(){
+        static srt_category c;
+        return &c;
+    }
+
     std::error_code make_srt_error(int err){
-        std::error_code code(err, srt_category());
+        std::error_code code(err, *generator_srt_category());
         return code;
     }
 };

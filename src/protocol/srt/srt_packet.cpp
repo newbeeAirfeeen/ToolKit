@@ -23,31 +23,180 @@
 * SOFTWARE.
 */
 #include "srt_packet.hpp"
+#include "srt_control_type.h"
+#include "srt_error.hpp"
 #include "Util/endian.hpp"
 namespace srt{
-
-    bool srt_packet::is_control_packet() const{
-        return data()[0] & 0x80;
+    void srt_packet::set_control(bool is_control){
+        this->is_control = is_control;
     }
 
-    srt_packet::srt_packet(){}
-
-    srt_packet::srt_packet(basic_buffer<char>&& buf):basic_buffer<char>(std::move(buf)){
-
+    void srt_packet::set_timestamp(uint32_t timestamp){
+        this->time_stamp = timestamp;
     }
 
-    std::shared_ptr<srt_packet> srt_packet_helper::make_srt_control_packet(control_type type, uint32_t timestamp, uint32_t socket_id, uint32_t type_info){
-        auto srt_buf = std::make_shared<srt_packet>();
-        unsigned short control_type = (unsigned short)type | 0x8000;
-        srt_buf->put_be(control_type);
-        srt_buf->put_be(static_cast<unsigned short>(0));
-        srt_buf->put_be(type_info);
-        srt_buf->put_be(timestamp);
-        srt_buf->put_be(socket_id);
-        return srt_buf;
+    void srt_packet::set_socket_id(uint32_t sock_id){
+        this->destination_socket_id = sock_id;
     }
 
-    std::shared_ptr<srt_packet> srt_packet_helper::make_srt_data_packet(){
-        return nullptr;
+    void srt_packet::set_packet_sequence_number(uint32_t number){
+        this->packet_sequence_number = number;
+    }
+
+    void srt_packet::set_packet_position_flag(uint8_t flag){
+        this->packet_position_flag = flag;
+    }
+
+    bool srt_packet::set_in_order(bool on){
+        this->in_order = static_cast<uint8_t>(on);
+    }
+
+    void srt_packet::set_key_encryption_flag(uint8_t encryption){
+        this->encryption_flag = encryption;
+    }
+
+    void srt_packet::set_retransmitted(bool on){
+        this->transmitted_packet_flag = on;
+    }
+
+    void srt_packet::set_message_number(uint32_t message_number){
+        this->message_number = message_number;
+    }
+
+    bool srt_packet::get_control() const{
+        return this->is_control;
+    }
+
+    uint32_t srt_packet::get_time_stamp() const{
+        return this->time_stamp;
+    }
+
+    uint32_t srt_packet::get_socket_id() const{
+        return this->destination_socket_id;
+    }
+
+    uint32_t srt_packet::get_packet_sequence_number()const{
+        return this->packet_sequence_number;
+    }
+
+    uint8_t srt_packet::get_packet_position_flag() const{
+        return this->packet_position_flag;
+    }
+
+    bool srt_packet::get_key_based_encryption_flag() const{
+        return this->encryption_flag;
+    }
+
+    bool srt_packet::is_retransmitted() const{
+        return this->transmitted_packet_flag;
+    }
+
+    uint32_t srt_packet::get_message_number() const{
+        return this->message_number;
+    }
+
+    void srt_packet::set_data(const char* _data, size_t length){
+        this->data.assign(_data, length);
+    }
+
+    const std::string& srt_packet::get_data() const{
+        return this->data;
+    }
+
+    void srt_packet::set_control_type(control_type type){
+        this->_control_type_ = type;
+    }
+
+    void srt_packet::set_type_information(uint32_t type_information){
+        this->type_information = type_information;
+    }
+
+    control_type srt_packet::get_control_type() const{
+        return this->_control_type_;
+    }
+
+    uint32_t srt_packet::get_type_information() const{
+        return this->type_information;
+    }
+
+
+    std::shared_ptr<buffer> create_packet(const srt_packet& pkt){
+        auto buff = std::make_shared<buffer>();
+        buff->reserve(1500);
+        if(pkt.is_control){
+            /// control type
+            buff->put_be<uint16_t>(static_cast<uint16_t>(pkt.get_control_type()) & 0x8000);
+            /// sub type
+            buff->put_be<uint16_t>(static_cast<uint16_t>(0));
+            buff->put_be<uint32_t>(pkt.get_type_information());
+        }
+        else{
+            /// sequence number
+            buff->put_be<uint32_t>(pkt.get_packet_sequence_number() & 0x7FFFFFFF);
+            /// flag + message_number
+            uint32_t flag = (pkt.get_packet_position_flag() << 6) | (pkt.get_key_based_encryption_flag() << 3) | (pkt.is_retransmitted() << 2);
+            uint32_t message_number = (flag << 26) | (pkt.get_message_number() | 0x3FFFFFFF);
+            buff->put_be<uint32_t>(message_number);
+        }
+        /// timestamp
+        buff->put_be<uint32_t>(pkt.get_time_stamp());
+        /// destination socket id
+        buff->put_be<uint32_t>(pkt.get_socket_id());
+        /// data
+        buff->append(pkt.get_data());
+    }
+
+    std::shared_ptr<srt_packet> from_buffer(const char*data, size_t length){
+        if(length < 32){
+            return nullptr;
+        }
+        auto pkt = std::make_shared<srt_packet>();
+        bool control = data[0] & 0x80;
+        pkt->set_control(control);
+        if(control){
+            uint16_t _control_type = load_be16(data) & 0x8000;
+            if(!is_control_type(_control_type)){
+                throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
+            }
+            pkt->set_control_type(static_cast<control_type>(_control_type));
+            pkt->set_type_information(load_be32(data + 4));
+        }
+        else{
+            pkt->set_packet_sequence_number(load_be32(data));
+            uint8_t position = data[5] & 0xc0;
+            uint8_t in_order = data[5] & 0x20;
+            uint8_t key_entry= data[5] & 0x18;
+            uint8_t retransmit = data[5] & 0x04;
+            pkt->set_packet_position_flag(position);
+            pkt->set_in_order(static_cast<bool>(in_order));
+            pkt->set_key_encryption_flag(key_entry);
+            pkt->set_retransmitted(static_cast<bool>(retransmit));
+            pkt->set_message_number(load_be32(data + 5) & 0x3FFFFFFF);
+
+        }
+
+        pkt->set_timestamp(load_be32(data + 8));
+        pkt->set_socket_id(load_be32(data + 12));
+        pkt->set_data(data + 32, length - 32);
+    }
+
+    void update_packet_data_flag(const srt_packet& pkt, const std::shared_ptr<buffer>& ptr){
+        if( pkt.get_control() ){
+            return;
+        }
+
+        if(!ptr){
+            return;
+        }
+
+        if(ptr->size() < 8){
+            return;
+        }
+
+        uint32_t flag = (pkt.get_packet_position_flag() << 6) | (pkt.get_key_based_encryption_flag() << 3) | (pkt.is_retransmitted() << 2);
+        uint32_t message_number = (flag << 26) | (pkt.get_message_number() | 0x3FFFFFFF);
+
+        char* pointer = (char*)ptr->data() + 4;
+        set_be32(pointer, message_number);
     }
 };

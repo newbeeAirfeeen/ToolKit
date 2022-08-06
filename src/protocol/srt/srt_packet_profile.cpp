@@ -22,12 +22,12 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include "srt_packet_profile.hpp"
-#include "srt_packet.hpp"
 #include "Util/endian.hpp"
-#include "err.hpp"
-#include <type_traits>
+#include "srt_control_type.h"
+#include "srt_error.hpp"
+#include "srt_packet.hpp"
 #include <new>
+#include <type_traits>
 namespace srt{
 
     control_packet_context::control_packet_context(const srt_packet& pkt){

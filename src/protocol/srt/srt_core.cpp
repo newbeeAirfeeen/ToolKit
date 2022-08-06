@@ -23,9 +23,9 @@
 * SOFTWARE.
 */
 #include "srt_core.hpp"
-#include "err.hpp"
-#include "srt_handshake.hpp"
 #include "Util/MD5.h"
+#include "srt_error.hpp"
+#include "srt_handshake.hpp"
 #include <random>
 namespace srt {
     srt_core::srt_core(event_poller &poller, asio::ip::udp::socket &sock, bool is_server)

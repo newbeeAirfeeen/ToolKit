@@ -24,19 +24,19 @@
 */
 #ifndef TOOLKIT_SRT_CORE_HPP
 #define TOOLKIT_SRT_CORE_HPP
-#include <net/asio.hpp>
-#include <chrono>
-#include <Util/nocopyable.hpp>
-#include <net/event_poller.hpp>
-#include <memory>
-#include <set>
-#include <map>
-#include <net/buffer.hpp>
-#include "srt_packet_profile.hpp"
+#include "net/socket_helper.hpp"
+#include "srt_control_type.h"
+#include "srt_handshake.hpp"
 #include "srt_packet.hpp"
 #include "srt_status.hpp"
-#include "srt_handshake.hpp"
-#include "net/socket_helper.hpp"
+#include <Util/nocopyable.hpp>
+#include <chrono>
+#include <map>
+#include <memory>
+#include <net/asio.hpp>
+#include <net/buffer.hpp>
+#include <net/event_poller.hpp>
+#include <set>
 
 namespace srt{
     //// for socket id generator and destroy.

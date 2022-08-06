@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: srt.hpp
+* @file_name: srt_error.hpp
 * @date: 2022/04/26
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -22,13 +22,31 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_SRT_HPP
-#define TOOLKIT_SRT_HPP
-#include "deadline_timer_queue.hpp"
-#include "srt_control_type.h"
-#include "srt_core.hpp"
-#include "srt_error.hpp"
-#include "srt_packet.hpp"
-#include "srt_status.hpp"
+#ifndef TOOLKIT_SRT_ERROR_HPP
+#define TOOLKIT_SRT_ERROR_HPP
+#include <string>
+#include <system_error>
+namespace srt{
 
-#endif//TOOLKIT_SRT_HPP
+    enum srt_error_code{
+        status_error,
+        srt_packet_error,
+        srt_control_type_error,
+    };
+
+    class srt_category : public std::error_category{
+    public:
+        const char* name() const noexcept override;
+        std::string message(int err) const override;
+    };
+
+    class srt_error : public std::system_error{
+    public:
+        explicit srt_error(std::error_code);
+    };
+
+    std::error_category* generator_srt_category();
+    std::error_code make_srt_error(int err);
+};
+
+#endif//TOOLKIT_SRT_ERROR_HPP

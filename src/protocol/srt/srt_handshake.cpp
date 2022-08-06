@@ -23,9 +23,9 @@
 * SOFTWARE.
 */
 #include "srt_handshake.hpp"
-#include "srt_packet_profile.hpp"
-#include "srt_packet.hpp"
 #include "Util/endian.hpp"
+#include "srt_control_type.h"
+#include "srt_packet.hpp"
 namespace srt{
 
     std::shared_ptr<buffer> handshake_packet::to_buffer(const handshake_packet& hsk_pkt){

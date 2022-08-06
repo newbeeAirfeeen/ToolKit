@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: err.hpp
-* @date: 2022/04/26
+* @file_name: srt_control_type.cpp
+* @date: 2022/04/27
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -22,31 +22,25 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_ERR_HPP
-#define TOOLKIT_ERR_HPP
-#include <string>
-#include <system_error>
+#include "srt_control_type.h"
+
+
 namespace srt{
-
-    enum srt_error_code{
-        status_error,
-        srt_packet_error,
-        srt_control_type_error,
-    };
-
-    class srt_category : public std::error_category{
-    public:
-        const char* name() const noexcept override;
-        std::string message(int err) const override;
-    };
-
-    class srt_error : public std::system_error{
-    public:
-        explicit srt_error(std::error_code);
-    };
-
-
-    std::error_code make_srt_error(int err);
+    bool is_control_type(uint16_t val){
+        switch (val){
+            case control_type::handshake:
+            case control_type::keepalive:
+            case control_type::ack:
+            case control_type::nak:
+            case control_type::congestion_warning:
+            case control_type::shutdown:
+            case control_type::ack_ack:
+            case control_type::dro_preq:
+            case control_type::peer_error:
+            case control_type::user_defined_type:
+                return true;
+            default:
+                return false;
+        }
+    }
 };
-
-#endif//TOOLKIT_ERR_HPP
