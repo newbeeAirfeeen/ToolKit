@@ -41,45 +41,65 @@ public:
     typedef std::pair<uint64_t, Value> value_type;
     typedef std::enable_shared_from_this<deadline_timer_queue<Key, Value>> base_type;
     typedef std::chrono::system_clock clock_type;
-    typedef std::function<void(const key_type&, const value_type&)> deliver_callback_type;
+    typedef std::function<void(const key_type &, const value_type &)> deliver_callback_type;
+
 public:
     void set_deliver_duration(size_t d) {
         this->deliver_duration = d;
     }
 
-    void enqueue(Key&& key, value_type&& value) {
-
+    void enqueue(Key &&key, value_type &&value) {
     }
 
-    void set_max_size(size_t size){
+    void set_max_size(size_t size) {
         this->que_max_size = size;
     }
 
-    void set_on_deliver(const deliver_callback_type& f) {
+    void set_on_deliver(const deliver_callback_type &f) {
         this->on_out_of_queue = f;
     }
 
-    void set_out_of_queue(const deliver_callback_type& f){
+    void set_out_of_queue(const deliver_callback_type &f) {
         this->on_deliver = f;
     }
 
-    void set_enable_drop_too_late(bool on){
+    void set_enable_drop_too_late(bool on) {
         this->_enable_drop_too_late = on;
     }
 
     /// 小于这个时间戳的都会被drop, ms 单位
-    void update_time_to(uint64_t ms){
+    void update_time_from_now() {
         std::weak_ptr<deadline_timer_queue<key_type, value_type>> self(base_type::shared_from_this());
-        executor.post([ms, self](){
+        executor.post([self]() {
             auto stronger_self = self.lock();
-            if(!stronger_self){
+            if (!stronger_self) {
                 return;
             }
-
+            /// 得到当前的时间，小于 当前这个时间点 - deliver_duration 的都会被丢弃
+            auto deadline = std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now().time_since_epoch()).count() - stronger_self->deliver_duration;
+            /// 移除时间点之前的所有元素
+            stronger_self->timer.up_time_to(deadline);
+            auto *first_element = stronger_self->timer.get_first_element();
+            /// 如果为空, 则清空所有包
+            if (!first_element) {
+                stronger_self->queue_cache.clear();
+                return;
+            }
+            /// 找到时间点之前的所有序号
+            auto iter = stronger_self->queue_cache.upper_bound(first_element->second.first);
+            if( iter == stronger_self->queue_cache.end()){
+                return;
+            }
+            /// 删除对应序号的包
+            stronger_self->queue_cache.erase(stronger_self->queue_cache.begin(), iter);
+            /// 更新定时器
+            stronger_self->timer.update_timer();
         });
     }
+
 private:
-    deadline_timer_queue(const std::chrono::milliseconds &m, executor_type &ex) :executor(ex) {}
+    deadline_timer_queue(const std::chrono::milliseconds &m, executor_type &ex) : executor(ex), timer(ex) {}
+
 private:
     /// 包缓冲区
     std::map<key_type, value_type> queue_cache;

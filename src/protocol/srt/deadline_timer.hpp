@@ -32,13 +32,15 @@
 #include <ratio>
 template<typename TAG>
 class deadline_timer : public std::enable_shared_from_this<deadline_timer<TAG>> {
-    template<typename T> friend std::shared_ptr<deadline_timer<T>> create_deadline_timer(asio::io_context &io);
+    template<typename T>
+    friend std::shared_ptr<deadline_timer<T>> create_deadline_timer(asio::io_context &io);
 
 public:
     typedef std::chrono::steady_clock clock_type;
     typedef std::enable_shared_from_this<deadline_timer<TAG>> base_type;
     typedef TAG tag_type;
-
+    typedef typename std::multimap<uint64_t, tag_type>::iterator iterator;
+    typedef const iterator const_iterator;
 public:
     //// ms
     void add_expired_from_now(uint64_t ms, tag_type tag) {
@@ -65,18 +67,10 @@ public:
         });
     }
 
-    void stop(){
-        std::weak_ptr<deadline_timer> self(base_type::shared_from_this());
-        executor.post([self]() {
-            auto stronger_self = self.lock();
-            if (!stronger_self) {
-                return;
-            }
-            stronger_self->timer.cancel();
-        });
+    void stop() {
+        timer.cancel();
     }
-private:
-    explicit deadline_timer(asio::io_context &io) : executor(io), timer(io) {}
+
     void update_timer() {
         std::weak_ptr<deadline_timer> self(base_type::shared_from_this());
         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now().time_since_epoch()).count();
@@ -106,6 +100,23 @@ private:
             }
         }
     }
+
+    void up_time_to(uint64_t ms) {
+        auto it = triggered_sets.upper_bound(ms);
+        if (it != triggered_sets.end())
+            triggered_sets.erase(triggered_sets.begin(), it);
+    }
+
+    const TAG* get_first_element() const{
+        static TAG* tag = nullptr;
+        if(!triggered_sets.empty()){
+            return &triggered_sets.cbegin();
+        }
+        return tag;
+    }
+
+private:
+    explicit deadline_timer(asio::io_context &io) : executor(io), timer(io) {}
 
 private:
     asio::io_context &executor;
