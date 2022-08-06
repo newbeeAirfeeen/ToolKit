@@ -26,12 +26,11 @@
 #ifndef TOOLKIT_DEADLINE_TIMER_QUEUE_HPP
 #define TOOLKIT_DEADLINE_TIMER_QUEUE_HPP
 #include "deadline_timer.hpp"
-#include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
 #include <net/asio.hpp>
-
+#include <utility>
 template<typename Key, typename Value>
 class deadline_timer_queue : public std::enable_shared_from_this<deadline_timer_queue<Key, Value>> {
     friend std::shared_ptr<deadline_timer_queue<Key, Value>> create_deadline_timer_queue(asio::io_context &ex);
@@ -42,25 +41,59 @@ public:
     typedef std::pair<uint64_t, Value> value_type;
     typedef std::enable_shared_from_this<deadline_timer_queue<Key, Value>> base_type;
     typedef std::chrono::system_clock clock_type;
+    typedef std::function<void(const key_type&, const value_type&)> deliver_callback_type;
 public:
-    void set_deliver_duration(uint64_t deliver_duration) {
-        this->deliver_duration = deliver_duration;
+    void set_deliver_duration(size_t d) {
+        this->deliver_duration = d;
     }
 
     void enqueue(Key&& key, value_type&& value) {
 
     }
 
-
-    void set_on_deliver(const std::function<void()>&) {
+    void set_max_size(size_t size){
+        this->que_max_size = size;
     }
 
+    void set_on_deliver(const deliver_callback_type& f) {
+        this->on_out_of_queue = f;
+    }
+
+    void set_out_of_queue(const deliver_callback_type& f){
+        this->on_deliver = f;
+    }
+
+    void set_enable_drop_too_late(bool on){
+        this->_enable_drop_too_late = on;
+    }
+
+    /// 小于这个时间戳的都会被drop, ms 单位
+    void update_time_to(uint64_t ms){
+        std::weak_ptr<deadline_timer_queue<key_type, value_type>> self(base_type::shared_from_this());
+        executor.post([ms, self](){
+            auto stronger_self = self.lock();
+            if(!stronger_self){
+                return;
+            }
+
+        });
+    }
 private:
     deadline_timer_queue(const std::chrono::milliseconds &m, executor_type &ex) :executor(ex) {}
 private:
+    /// 包缓冲区
     std::map<key_type, value_type> queue_cache;
     executor_type &executor;
-    uint64_t deliver_duration = 0;
+    /// 包递送间隔
+    size_t deliver_duration = 100;
+    /// 队列最大容量
+    size_t que_max_size = 8192;
+    /// 包溢出回调
+    deliver_callback_type on_out_of_queue;
+    /// 递送回调
+    deliver_callback_type on_deliver;
+    deadline_timer<std::pair<key_type, value_type>> timer;
+    bool _enable_drop_too_late = true;
 };
 
 template<typename Key, typename Value>

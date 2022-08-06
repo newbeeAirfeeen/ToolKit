@@ -32,8 +32,7 @@
 #include <ratio>
 template<typename TAG>
 class deadline_timer : public std::enable_shared_from_this<deadline_timer<TAG>> {
-    template<typename T>
-    friend std::shared_ptr<deadline_timer<T>> create_deadline_timer(asio::io_context &io);
+    template<typename T> friend std::shared_ptr<deadline_timer<T>> create_deadline_timer(asio::io_context &io);
 
 public:
     typedef std::chrono::steady_clock clock_type;

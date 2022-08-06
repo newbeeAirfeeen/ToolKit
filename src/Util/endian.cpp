@@ -14,6 +14,8 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
+#else
+#include <arpa/inet.h>
 #endif
 /*
 * Used to do unaligned loads on archs that don't support them. GCC can mostly

@@ -42,19 +42,14 @@ TEST(attribute, stun) {
         // tlv = 4 + 8 = 12;
         pkt.set_software("software");
 
-        try {
-            pkt_ptr = stun::stun_packet::create_packet(pkt);
-        } catch (const std::exception &e) {
-            //EXPECT_EXIT(1, ::testing::ExitedWithCode(1), e.what());
-            e;
-        }
+        pkt_ptr = stun::stun_packet::create_packet(pkt);
 
         /// expect padding
         EXPECT_EQ(pkt_ptr->size() % 4, 0) << "the buffer is  not multiple of 4";
         EXPECT_EQ(pkt_ptr->size(), 88) << "the stun pkt length is not correct";
 
     };
-    EXPECT_NO_THROW(func());
+    EXPECT_NO_THROW(func()) << "throw exception: " ;
 }
 
 

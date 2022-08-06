@@ -4,34 +4,39 @@
 #include <iostream>
 #include <net/asio.hpp>
 #include <protocol/srt/deadline_timer_queue.hpp>
-#include <thread>
 #include <spdlog/logger.hpp>
+#include <thread>
 using namespace std;
 int main() {
 
     logger::initialize("logs/test_timer.log", spdlog::level::trace);
     asio::io_context context;
 
-    static std::atomic<int> counts{0};
     auto timer = create_deadline_timer<std::string>(context);
 
 
+    static int couple = 1;
     timer->set_on_expired([timer](const std::string& str) {
-        Info("tag: {}", str);
+        Info("tag {}:{}", couple++, str);
     });
 
-    timer->add_expired_from_now(1000, "1000");
-    timer->add_expired_from_now(1225, "1225");
-    timer->add_expired_from_now(1445, "1445");
-    timer->add_expired_from_now(1678, "1678");
-    timer->add_expired_from_now(2111, "2111");
-    timer->add_expired_from_now(210, "210");
-    timer->add_expired_from_now(111, "111");
-    timer->add_expired_from_now(120, "120");
-    timer->add_expired_from_now(240, "240");
-    timer->add_expired_from_now(11240, "11240");
-
-
+    auto begin = std::chrono::steady_clock::now();
+    std::thread t([&](){
+        auto begin = std::chrono::steady_clock::now();
+        for(int i = 0 ;i < 1000 * 10000;i++){
+            timer->add_expired_from_now(120, std::to_string(120));
+            std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        }
+    });
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     context.run();
+    t.join();
+
+    auto end = std::chrono::steady_clock::now();
+
+    auto spend = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / 1000 * 1.0;
+
+    Warn("time past {} s", spend);
+
     return 0;
 }
