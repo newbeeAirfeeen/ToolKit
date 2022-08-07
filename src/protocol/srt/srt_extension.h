@@ -25,6 +25,8 @@
 
 #ifndef TOOLKIT_SRT_EXTENSION_H
 #define TOOLKIT_SRT_EXTENSION_H
+#include "net/buffer.hpp"
+#include "srt_handshake.h"
 #include <cstdint>
 #include <utility>
 namespace srt {
@@ -114,17 +116,31 @@ namespace srt {
         STREAM = 0x00000040,       /// flag is identifies transmission mode, if flag is set, buffer mode used, otherwise, message mode.
         PACKET_FILTER = 0x00000080,/// indicates if the peer supports packet filter, MUST be set.
     };
-
+#if 0
     size_t set_TSBPD_flag(uint32_t peer_ms, char *data, size_t length);
     size_t set_TLPKTDROP_flag(bool on, char *data, size_t length);
     size_t set_PERIODICNAK_flag(bool on, char *data, size_t length);
     size_t set_REXMIT_flag(char *data, size_t length);
 
-    class flag_helper {
-    public:
-        static size_t set_flag(char *data, size_t length, uint32_t TSBPD, bool TLPKDROP = true, bool PERIODICNAK = true);
-        static void get_flag(const char *data, size_t length, uint32_t &TSBPD, bool &TLPKDROP, bool &PERIODICNAK);
+    void set_config_string(const std::shared_ptr<buffer>& buff, extension_message_flag flag, const std::string& data);
+    void set_config_string(const std::shared_ptr<buffer>& buff, extension_message_flag flag, const char* data, size_t length);
+#endif
+
+    struct extension_field {
+        uint32_t version = 0;
+        uint32_t flags = 0;
+        uint16_t receiver_tlpktd_delay = 0;
+        uint16_t sender_tlpktd_delay = 0;
+        bool drop = true;
+        bool nak = true;
+        std::string stream_id;
     };
+
+
+    /// HSREQ + STREAM_ID
+    size_t set_extension(handshake_context &ctx, const std::shared_ptr<buffer> &buff, uint16_t ts, bool drop = true, bool nak = true, const std::string &stream_id = "");
+    std::shared_ptr<extension_field> get_extension(const handshake_context &ctx, const std::shared_ptr<buffer> &buff);
+
 };// namespace srt
 
 

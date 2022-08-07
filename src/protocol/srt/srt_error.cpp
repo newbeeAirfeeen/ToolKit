@@ -37,6 +37,12 @@ namespace srt {
                 return "srt packet error, current packet is not permitted with invalid arguments";
             case srt_error_code::srt_control_type_error:
                 return "srt control type error, current packet is not permitted with invalid arguments";
+            case srt_error_code::srt_stream_id_too_long:
+                return "stream_id length is too long to load it";
+            case srt_error_code::srt_KM_REQ_is_not_support:
+                return "at the this point, KE_REQ is not support";
+            case srt_error_code::srt_unknown_extension_field:
+                return "unknown srt extension field";
         }
         return "unknown";
     }

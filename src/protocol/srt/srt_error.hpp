@@ -32,6 +32,9 @@ namespace srt {
         status_error,
         srt_packet_error,
         srt_control_type_error,
+        srt_stream_id_too_long,
+        srt_KM_REQ_is_not_support,
+        srt_unknown_extension_field,
     };
 
     class srt_category : public std::error_category {

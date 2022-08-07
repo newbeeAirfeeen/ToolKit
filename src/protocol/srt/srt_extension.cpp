@@ -24,6 +24,8 @@
 */
 #include "srt_extension.h"
 #include "Util/endian.hpp"
+#include "srt_error.hpp"
+#include <algorithm>
 namespace srt {
 
     bool extension_flag(uint32_t type_information) {
@@ -73,22 +75,23 @@ namespace srt {
         }
         return {static_cast<extension_type>(type), block_size};
     }
+#if 0
     /// when invoke this, out must be initial
-    size_t set_TSBPD_flag(uint32_t peer_ms, char *out, size_t length) {
-        if (length < 16) {
+    size_t set_TSBPD_flag(uint32_t peer_ms, char *data, size_t length) {
+        if (length < 16 || peer_ms == 0) {
             return 0;
         }
 
-        auto *exten_type = (uint16_t *) out;
-        auto *ex_length = (uint16_t *) (out + 2);
-        auto *version = (uint32_t *) out + 4;
-        auto *flag = (uint32_t *) (out + 8);
-        auto *receiver_delay = (uint16_t *) (out + 12);
-        auto *sender_delay = (uint16_t *) (out + 14);
+        auto *extension_type = (uint16_t *) data;
+        auto *extension_length = (uint16_t *) (data + 2);
+        auto *version = (uint32_t *) (data + 4);
+        auto *flag = (uint32_t *) (data + 8);
+        auto *receiver_delay = (uint16_t *) (data + 12);
+        auto *sender_delay = (uint16_t *) (data + 14);
 
-        set_be16(exten_type, static_cast<uint16_t>(SRT_CMD_HS_REQ));
+        set_be16(extension_type, static_cast<uint16_t>(SRT_CMD_HS_REQ));
         /// the length of the extension contents field in four-byte blocks
-        set_be16(ex_length, static_cast<uint16_t>(3));
+        set_be16(extension_length, static_cast<uint16_t>(3));
         /// SRT 1.4.4
         set_be32(version, 0x010404);
         auto old_flag = load_be32(flag);
@@ -100,7 +103,17 @@ namespace srt {
     }
 
     size_t set_TLPKTDROP_flag(bool on, char *data, size_t length) {
-        return 0;
+        if (length < 16) {
+            return 0;
+        }
+
+        auto *flag = (uint32_t *) (data + 8);
+        auto old_flag = load_be32(flag);
+        if( on )
+            old_flag |= static_cast<uint32_t>(extension_message_flag::TLPKTDROP);
+        else
+            old_flag ^= static_cast<uint32_t>(extension_message_flag::TLPKTDROP);
+        return 4;
     }
 
     size_t set_PERIODICNAK_flag(bool on, char *data, size_t length) {
@@ -111,9 +124,135 @@ namespace srt {
         return 0;
     }
 
-    size_t flag_helper::set_flag(char *data, size_t length, uint32_t TSBPD, bool TLPKDROP, bool PERIODICNAK) {
+    void set_config_string(const std::shared_ptr<buffer> &buff, extension_message_flag flag, const std::string &data) {
     }
 
-    void flag_helper::get_flag(const char *data, size_t length, uint32_t &TSBPD, bool &TLPKDROP, bool &PERIODICNAK) {
+    void set_config_string(const std::shared_ptr<buffer> &buff, extension_message_flag flag, const char *data, size_t length) {
     }
+
+#endif
+    size_t set_extension(handshake_context &ctx, const std::shared_ptr<buffer> &buf, uint16_t ts, bool drop, bool nak, const std::string &stream_id) {
+        auto origin_size = buf->size();
+        auto space = 20 + (stream_id.size() + 3) / 4;
+        buf->reserve(space);
+        /// cache
+        char data[16] = {0};
+        auto *extension_type = (uint16_t *) data;
+        auto *extension_length = (uint16_t *) (data + 2);
+        auto *version = (uint32_t *) (data + 4);
+        auto *flag = (uint32_t *) (data + 8);
+        auto *receiver_delay = (uint16_t *) (data + 12);
+        auto *sender_delay = (uint16_t *) (data + 14);
+
+        set_be16(extension_type, static_cast<uint16_t>(SRT_CMD_HS_REQ));
+        /// the length of the extension contents field in four-byte blocks
+        set_be16(extension_length, static_cast<uint16_t>(3));
+        /// SRT 1.4.4
+        set_be32(version, 0x010404);
+        auto flags = load_be32(flag) | static_cast<uint32_t>(TSBPDRCV) | static_cast<uint32_t>(TSBPDSND);
+
+        /// set drop
+        if (drop)
+            flags |= static_cast<uint32_t>(extension_message_flag::TLPKTDROP);
+        else
+            flags ^= static_cast<uint32_t>(extension_message_flag::TLPKTDROP);
+
+        /// set nak report
+        if (nak)
+            flags |= static_cast<uint32_t>(extension_message_flag::PERIODICNAK);
+        else
+            flags ^= static_cast<uint32_t>(extension_message_flag::PERIODICNAK);
+
+        /// set transmit
+        flags |= static_cast<uint32_t>(extension_message_flag::REXMITFLG);
+
+        //// MUST set
+        flags |= static_cast<uint32_t>(extension_message_flag::PACKET_FILTER);
+        flags |= static_cast<uint32_t>(extension_message_flag::CRYPT);
+
+        set_be32(flag, flags);
+        set_be16(receiver_delay, static_cast<uint16_t>(ts));
+        set_be16(sender_delay, static_cast<uint16_t>(0));
+
+
+        /// stream id
+        if (!stream_id.empty()) {
+            if (stream_id.size() > 728) {
+                throw std::system_error(make_srt_error(srt_error_code::srt_stream_id_too_long));
+            }
+            /// 设置config 为 config
+            ctx.extension_field |= extension_flag::CONFIG;
+            /// 单位为4的字节块
+            size_t word_size = (stream_id.size() + 3) / 4;
+            /// 填充的字节数
+            size_t aligned_byte_size = word_size * 4 - stream_id.size();
+            /// 放入extension type
+            buf->put_be<uint16_t>(static_cast<uint16_t>(extension_type::SRT_CMD_SID));
+            /// 放入extension length
+            buf->put_be<uint16_t>(word_size);
+            buf->append(stream_id);
+            /// 放入填充的字节数
+            if (aligned_byte_size)
+                buf->append(static_cast<size_t>(aligned_byte_size), 0);
+        }
+        return buf->size() - origin_size;
+    }
+
+    std::shared_ptr<extension_field> get_extension(const handshake_context &ctx, const std::shared_ptr<buffer> &buff) {
+        if (buff->size() < 48) {
+            throw std::system_error(make_srt_error(srt_packet_error));
+        }
+
+        //// remove handshake content;
+        buff->remove(48);
+        auto extension = std::make_shared<extension_field>();
+        /// stream id
+        const char set_end[] = {'\0'};
+        while (buff->size() > 4) {
+            auto extension_type_ = buff->get_be<uint16_t>();
+            if (!is_extension_type(extension_type_)) {
+                throw std::system_error(make_srt_error(srt_error_code::srt_unknown_extension_field));
+            }
+
+            auto extension_ = static_cast<extension_type>(extension_type_);
+            uint32_t extension_block_size = buff->get_be<uint16_t>() * 4;
+            if (buff->size() < extension_block_size) {
+                throw std::system_error(make_srt_error(srt_packet_error));
+            }
+            /// 解析HS_REQ
+            if (is_HS_REQ_set(ctx.extension_field) && (extension_ == extension_type::SRT_CMD_HS_REQ || extension_ == extension_type::SRT_CMD_HS_RSP)) {
+                extension->version = buff->get_be<uint32_t>();
+                extension->flags = buff->get_be<uint32_t>();
+                /// tlpktd
+                if (extension->flags & (extension_message_flag::TSBPDSND | extension_message_flag::TSBPDRCV)) {
+                    extension->receiver_tlpktd_delay = buff->get_be<uint16_t>();
+                    extension->sender_tlpktd_delay = buff->get_be<uint16_t>();
+                }
+                /// drop
+                extension->drop = static_cast<bool>(extension->flags & (extension_message_flag::TLPKTDROP));
+                /// nak
+                extension->nak = static_cast<bool>(extension->flags & (extension_message_flag::PERIODICNAK));
+            }
+            /// 不支持加密
+            else if (is_KM_REQ_set(ctx.extension_field) && extension_ == extension_type::SRT_CMD_KM_RSP) {
+                throw std::system_error(make_srt_error(srt_KM_REQ_is_not_support));
+            }
+            else if (is_CONFIG_set(ctx.extension_field) && (extension_ == extension_type::SRT_CMD_SID)) {
+                auto it = std::find_first_of(buff->data(), buff->data() + extension_block_size, set_end, set_end + 1);
+                if (it == nullptr) {
+                    extension->stream_id.assign(buff->data(), extension_block_size);
+                } else {
+                    extension->stream_id.assign(buff->data(), it);
+                }
+            }
+            else{
+                /// 其余暂时先忽略
+                buff->remove(extension_block_size);
+            }
+        }
+        /// 恢复之
+        buff->backward();
+        return extension;
+    }
+
 }// namespace srt
