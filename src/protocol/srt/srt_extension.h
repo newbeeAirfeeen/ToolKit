@@ -25,19 +25,107 @@
 
 #ifndef TOOLKIT_SRT_EXTENSION_H
 #define TOOLKIT_SRT_EXTENSION_H
+#include <cstdint>
+#include <utility>
+namespace srt {
 
-
-namespace srt{
-
-    enum extension_type{
-        HS_REQ  = 0x00000001,
-        KM_REQ  = 0X00000002,
-        CONFIG  = 0X00000004,
+    enum extension_flag {
+        HS_REQ = 0x00000001,
+        KM_REQ = 0X00000002,
+        CONFIG = 0X00000004,
     };
 
+    /// At this point the Listener still does not know if the caller
+    /// is SRT or UDT, and it responds with the same set of values regardless
+    /// of whether the Caller is SRT or UDT.
+    /// if the party is SRT, it does interpret the values in version and extension field.
+    /// if it receives value 5 in version, it understands that it come from an SRT party.
+    /// it also checks the following
+    ///     1. whether the extension flags contains the magic value 0x4A17, otherwise the connection is rejected.
+    ///     2. whether the encryption flags contains a non-zero value
+
+    bool extension_flag(uint32_t type);
+    bool is_HS_REQ_set(uint32_t type);
+    bool is_KM_REQ_set(uint32_t type);
+    bool is_CONFIG_set(uint32_t type);
+
+    /// +=======+====================+===================+
+    /// | Value |     Extension Type | HS Extension Flag |
+    /// +=======+====================+===================+
+    /// |   1   |     SRT_CMD_HSREQ  |       HSREQ       |
+    /// +-------+--------------------+-------------------+
+    /// |   2   |     SRT_CMD_HSRSP  |       HSREQ       |
+    /// +-------+--------------------+-------------------+
+    /// |   3   |     SRT_CMD_KMREQ  |       KMREQ       |
+    /// +-------+--------------------+-------------------+
+    /// |   4   |     SRT_CMD_KMRSP  |       KMREQ       |
+    /// +-------+--------------------+-------------------+
+    /// |   5   |     SRT_CMD_SID    |       CONFIG      |
+    /// +-------+--------------------+-------------------+
+    /// |   6   | SRT_CMD_CONGESTION |       CONFIG      |
+    /// +-------+--------------------+-------------------+
+    /// |   7   |    SRT_CMD_FILTER  |       CONFIG      |
+    /// +-------+--------------------+-------------------+
+    /// |   8   |    SRT_CMD_GROUP   |       CONFIG      |
+    /// +-------+--------------------+-------------------+
+    enum extension_type {
+        SRT_NULL_EXTENSION_ = -1,
+        SRT_CMD_HS_REQ = 1,
+        SRT_CMD_HS_RSP = 2,
+        SRT_CMD_KM_REQ = 3,
+        SRT_CMD_KM_RSP = 4,
+        SRT_CMD_SID = 5,
+        SRT_CMD_CONGESTION = 6,
+        SRT_CMD_FILTER = 7,
+        SRT_CMD_GROUP = 8,
+    };
+
+    bool is_extension_type(uint32_t type);
+    std::pair<extension_type, uint32_t> find_extension_block(const char *data, size_t length);
 
 
-};
+    /// +============+===============+
+    /// | Bitmask    |      Flag     |
+    /// +============+===============+
+    /// | 0x00000001 |    TSBPDSND   |
+    /// +------------+---------------+
+    /// | 0x00000002 |    TSBPDRCV   |
+    /// +------------+---------------+
+    /// | 0x00000004 |     CRYPT     |
+    /// +------------+---------------+
+    /// | 0x00000008 |   TLPKTDROP   |
+    /// +------------+---------------+
+    /// | 0x00000010 |  PERIODICNAK  |
+    /// +------------+---------------+
+    /// | 0x00000020 |   REXMITFLG   |
+    /// +------------+---------------+
+    /// | 0x00000040 |    STREAM     |
+    /// +------------+---------------+
+    /// | 0x00000080 | PACKET_FILTER |
+    /// +------------+---------------+
+
+    enum extension_message_flag {
+        TSBPDSND = 0x00000001,     /// for sending,
+        TSBPDRCV = 0x00000002,     /// for receiving,
+        CRYPT = 0x00000004,        /// for crypt.
+        TLPKTDROP = 0x00000008,    /// for too late packet drop mechanism,
+        PERIODICNAK = 0x00000010,  /// for periodic nak packets
+        REXMITFLG = 0x00000020,    /// flag MUST be set.
+        STREAM = 0x00000040,       /// flag is identifies transmission mode, if flag is set, buffer mode used, otherwise, message mode.
+        PACKET_FILTER = 0x00000080,/// indicates if the peer supports packet filter, MUST be set.
+    };
+
+    size_t set_TSBPD_flag(uint32_t peer_ms, char *data, size_t length);
+    size_t set_TLPKTDROP_flag(bool on, char *data, size_t length);
+    size_t set_PERIODICNAK_flag(bool on, char *data, size_t length);
+    size_t set_REXMIT_flag(char *data, size_t length);
+
+    class flag_helper {
+    public:
+        static size_t set_flag(char *data, size_t length, uint32_t TSBPD, bool TLPKDROP = true, bool PERIODICNAK = true);
+        static void get_flag(const char *data, size_t length, uint32_t &TSBPD, bool &TLPKDROP, bool &PERIODICNAK);
+    };
+};// namespace srt
 
 
 #endif//TOOLKIT_SRT_EXTENSION_H

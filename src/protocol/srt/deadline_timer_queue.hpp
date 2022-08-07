@@ -87,7 +87,7 @@ public:
             }
             /// 找到时间点之前的所有序号
             auto iter = stronger_self->queue_cache.upper_bound(first_element->second.first);
-            if( iter == stronger_self->queue_cache.end()){
+            if (iter == stronger_self->queue_cache.end()) {
                 return;
             }
             /// 删除对应序号的包

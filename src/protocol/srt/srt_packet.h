@@ -24,10 +24,10 @@
 */
 #ifndef TOOLKIT_SRT_PACKET_H
 #define TOOLKIT_SRT_PACKET_H
+#include "net/buffer.hpp"
 #include "srt_control_type.h"
 #include <cstdint>
 #include <memory>
-#include "net/buffer.hpp"
 /**
  * The SRT Protocol draft-sharabayko-srt-01
  *
@@ -67,61 +67,64 @@
  *               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
-namespace srt{
+namespace srt {
 
     class srt_packet {
-        friend std::shared_ptr<buffer> create_packet(const srt_packet&);
-        friend std::shared_ptr<srt_packet> from_buffer(const char*data, size_t length);
+        friend std::shared_ptr<buffer> create_packet(const srt_packet &) noexcept;
+        friend std::shared_ptr<srt_packet> from_buffer(const char *data, size_t length);
+
     public:
-         void set_control(bool is_control);
-         void set_timestamp(uint32_t timestamp);
-         void set_socket_id(uint32_t sock_id);
-         /// data  packet
-         ///    /**
-         ///    * 0                   1                   2                   3
-         ///    * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-         ///    * +-+-+-+-+-+-+-+-+-+-+-+-+- SRT Header +-+-+-+-+-+-+-+-+-+-+-+-+-+
-         ///    * |0|                  Packet Sequence Number                     |
-         ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         ///    * |P P|O|K K|R|            Message Number                         |
-         ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         ///    * |                           Timestamp                           |
-         ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         ///    * |                     Destination Socket ID                     |
-         ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         ///    * |                                                               |
-         ///    * +                            Data                               +
-         ///    * |                                                               |
-         ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         ///    *               Figure 3: Data packet structure
-         ///    */
-         void set_packet_sequence_number(uint32_t);
-         void set_packet_position_flag(uint8_t);
-         void set_in_order(bool on);
-         void set_key_encryption_flag(uint8_t encryption);
-         void set_retransmitted(bool on);
-         void set_message_number(uint32_t time_stamp);
-         bool get_control() const;
-         uint32_t get_time_stamp() const;
-         uint32_t get_socket_id() const;
-         uint32_t get_packet_sequence_number()const;
-         uint8_t get_packet_position_flag() const;
-         bool get_key_based_encryption_flag() const;
-         bool is_retransmitted() const;
-         uint32_t get_message_number() const;
-         void set_data(const char* data, size_t length);
-         const std::string& get_data() const;
+        void set_control(bool is_control);
+        void set_timestamp(uint32_t timestamp);
+        void set_socket_id(uint32_t sock_id);
+        /// data  packet
+        ///    /**
+        ///    * 0                   1                   2                   3
+        ///    * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        ///    * +-+-+-+-+-+-+-+-+-+-+-+-+- SRT Header +-+-+-+-+-+-+-+-+-+-+-+-+-+
+        ///    * |0|                  Packet Sequence Number                     |
+        ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        ///    * |P P|O|K K|R|            Message Number                         |
+        ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        ///    * |                           Timestamp                           |
+        ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        ///    * |                     Destination Socket ID                     |
+        ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        ///    * |                                                               |
+        ///    * +                            Data                               +
+        ///    * |                                                               |
+        ///    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        ///    *               Figure 3: Data packet structure
+        ///    */
+        void set_packet_sequence_number(uint32_t);
+        void set_packet_position_flag(uint8_t);
+        void set_in_order(bool on);
+        void set_key_encryption_flag(uint8_t encryption);
+        void set_retransmitted(bool on);
+        void set_message_number(uint32_t time_stamp);
+        bool get_control() const;
+        uint32_t get_time_stamp() const;
+        uint32_t get_socket_id() const;
+        uint32_t get_packet_sequence_number() const;
+        uint8_t get_packet_position_flag() const;
+        bool get_key_based_encryption_flag() const;
+        bool is_retransmitted() const;
+        uint32_t get_message_number() const;
+        void set_data(const char *data, size_t length);
+        const std::string &get_data() const;
         /// control packet
-         void set_control_type(control_type);
-         void set_type_information(uint32_t);
-         control_type get_control_type() const;
-         uint32_t get_type_information() const;
-     private:
+        void set_control_type(control_type);
+        void set_type_information(uint32_t);
+        control_type get_control_type() const;
+        uint32_t get_type_information() const;
+
+    private:
         bool is_control = false;
         /// Timestamp: 32 bits. @See section 3
         uint32_t time_stamp = 0;
         /// Destination Socket ID: 32 bits. @See Section 3
         uint32_t destination_socket_id = 0;
+
     private:
         /// data packet
         /// flags
@@ -182,14 +185,13 @@ namespace srt{
         /// Type-specific Information: 32 bits. The use of this field depends o
         /// the particular control packet type. Handshake packets do not use
         /// this field.
-        uint32_t  type_information = 0;
-
+        uint32_t type_information = 0;
     };
 
 
-    std::shared_ptr<buffer> create_packet(const srt_packet&);
-    std::shared_ptr<srt_packet> from_buffer(const char*data, size_t length);
-    void update_packet_data_flag(const srt_packet& pkt, const std::shared_ptr<buffer>& ptr);
-};
+    std::shared_ptr<buffer> create_packet(const srt_packet &) noexcept;
+    std::shared_ptr<srt_packet> from_buffer(const char *data, size_t length);
+    void update_packet_data_flag(const srt_packet &pkt, const std::shared_ptr<buffer> &ptr) noexcept;
+};// namespace srt
 
 #endif//TOOLKIT_SRT_PACKET_H

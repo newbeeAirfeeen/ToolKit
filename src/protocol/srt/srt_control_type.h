@@ -25,7 +25,7 @@
 #ifndef TOOLKIT_SRT_CONTROL_TYPE_H
 #define TOOLKIT_SRT_CONTROL_TYPE_H
 #include <cstdint>
-namespace srt{
+namespace srt {
     /**
      * +====================+==============+=========+======================+
      * | Packet Type        |  Control Type  |   Subtype   |    Section     |
@@ -51,19 +51,19 @@ namespace srt{
      * | User-Defined Type  |    0x7FFF      |      -      |     N/A        |
      * +--------------------+--------------+---------+----------------------+
      */
-    enum control_type{
-        handshake          = 0x0000,
-        keepalive          = 0x0001,
-        ack                = 0x0002,
-        nak                = 0x0003,
+    enum control_type {
+        handshake = 0x0000,
+        keepalive = 0x0001,
+        ack = 0x0002,
+        nak = 0x0003,
         congestion_warning = 0x0004,
-        shutdown           = 0x0005,
-        ack_ack            = 0x0006,
-        dro_preq           = 0x0007,
-        peer_error         = 0x0008,
-        user_defined_type  = 0x7FFF,
+        shutdown = 0x0005,
+        ack_ack = 0x0006,
+        dro_preq = 0x0007,
+        peer_error = 0x0008,
+        user_defined_type = 0x7FFF,
     };
 
     bool is_control_type(uint16_t val);
-};
+};    // namespace srt
 #endif//TOOLKIT_SRT_CONTROL_TYPE_H

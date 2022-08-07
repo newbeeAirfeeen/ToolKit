@@ -22,6 +22,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
+#if 0
 #ifndef TOOLKIT_SRT_CORE_HPP
 #define TOOLKIT_SRT_CORE_HPP
 #include "net/socket_helper.hpp"
@@ -38,14 +39,15 @@
 #include <net/event_poller.hpp>
 #include <set>
 
-namespace srt{
+namespace srt {
     //// for socket id generator and destroy.
-    class socket_id{
+    class socket_id {
     public:
         socket_id();
         ~socket_id();
         bool reset(uint32_t);
         uint32_t val() const;
+
     private:
         uint32_t value = 0;
     };
@@ -54,18 +56,19 @@ namespace srt{
      * avoid thread switch. in other hand, guarantee the thread safe.
      * for this version, srt only support caller-listener mode
      */
-    class srt_core : public noncopyable, public std::enable_shared_from_this<srt_core>{
+    class srt_core : public noncopyable, public std::enable_shared_from_this<srt_core> {
     public:
         using socket_type = asio::ip::udp::socket;
         using steady_timer = asio::steady_timer;
         using endpoint_type = typename asio::ip::udp::socket::endpoint_type;
+
     public:
-        srt_core(event_poller& poller, asio::ip::udp::socket& sock, bool is_server = true);
+        srt_core(event_poller &poller, asio::ip::udp::socket &sock, bool is_server = true);
         /**
          * @description bind local endpoint
          * @param endpoint
          */
-        void bind_local(const endpoint_type& endpoint);
+        void bind_local(const endpoint_type &endpoint);
         /**
          * set connect_time out ,
          * @param miliseconds
@@ -85,17 +88,18 @@ namespace srt{
          * @description register internal srt core error for socket error so that could handle socket error
          * @param err_func error callback
          */
-        void register_error_function(const std::function<void(const std::error_code&)>& err_func);
+        void register_error_function(const std::function<void(const std::error_code &)> &err_func);
         /**
          * @description connect endpoint asynchronous. the callback is result of connection
          * @param endpoint the peer endpoint.
          * @param connect_func connections result callback.
          */
-        void async_connect(const endpoint_type& endpoint, const std::function<void(const std::error_code&)>& connect_func);
-        void async_receive(buffer& buf, const std::function<void(size_t, const std::error_code&)>& receive_func);
-        void async_send(buffer& buf, const std::function<void(size_t, const std::error_code&)>& send_func);
-        void async_shutdown(const std::function<void(const std::error_code&)>& shutdown_func);
+        void async_connect(const endpoint_type &endpoint, const std::function<void(const std::error_code &)> &connect_func);
+        void async_receive(buffer &buf, const std::function<void(size_t, const std::error_code &)> &receive_func);
+        void async_send(buffer &buf, const std::function<void(size_t, const std::error_code &)> &send_func);
+        void async_shutdown(const std::function<void(const std::error_code &)> &shutdown_func);
         void close();
+
     private:
         /**
          * the internal handle execution srt core loop @n
@@ -115,45 +119,48 @@ namespace srt{
          * connect internal callback for asio
          * @param connect_func
          */
-        void async_connect_l(const std::error_code& e, const std::function<void(const std::error_code&)>& connect_func);
+        void async_connect_l(const std::error_code &e, const std::function<void(const std::error_code &)> &connect_func);
+
     private:
         void start_loop_timer();
         void handle_receive_queue_packets();
-        void handle_receive_control_packet(const std::shared_ptr<srt_packet>& control_packet);
-        void handle_handshake(const control_packet_context& ctx, const std::shared_ptr<srt_packet>& handshake_packet);
-        /**
-         * for client use, induction response
-         */
-        void handle_handshake_induction_client_1(const control_packet_context& ctx, const srt_packet& handshake_packet);
-        /**
-         * for client use, conduction response
-         * @param ctx
-         * @param handshake_packet
-         */
-        void handle_handshake_conduction_client_2(const control_packet_context& ctx, const srt_packet& handshake_packet);
-        /**
-         * for server use,
-         * @param ctx
-         * @param handshake_packet
-         */
-        void handle_handshake_induction_server_1(const control_packet_context& ctx, const srt_packet& handshake_packet);
-        void handle_keep_alive(const std::shared_ptr<srt_packet>& keep_alive_packet);
-        void handle_ack(const std::shared_ptr<srt_packet>& ack_packet);
-        void handle_nak(const std::shared_ptr<srt_packet>& nak_packet);
-        void handle_congestion_warn(const std::shared_ptr<srt_packet>& congestion_packet);
-        void handle_shutdown(const std::shared_ptr<srt_packet>& shutdown_packet);
-        void handle_ack_ack(const std::shared_ptr<srt_packet>& ack_ack_packet);
-        void handle_dro_req(const std::shared_ptr<srt_packet>& dro_req_packet);
-        void handle_peer_error(const std::shared_ptr<srt_packet>& peer_error_packet);
-        void handle_user_defined_type(const std::shared_ptr<srt_packet>& user_defined_packet);
-        void handle_receive_data_packet(const std::shared_ptr<srt_packet>& data_packet);
-        void send_connect_packet(const handshake_packet& pkt, bool init_ack_nak);
+        void handle_receive_control_packet(const std::shared_ptr<srt_packet> &control_packet);
+//        void handle_handshake(const control_packet_context &ctx, const std::shared_ptr<srt_packet> &handshake_packet);
+//        /**
+//         * for client use, induction response
+//         */
+//        void handle_handshake_induction_client_1(const control_packet_context &ctx, const srt_packet &handshake_packet);
+//        /**
+//         * for client use, conduction response
+//         * @param ctx
+//         * @param handshake_packet
+//         */
+//        void handle_handshake_conduction_client_2(const control_packet_context &ctx, const srt_packet &handshake_packet);
+//        /**
+//         * for server use,
+//         * @param ctx
+//         * @param handshake_packet
+//         */
+//        void handle_handshake_induction_server_1(const control_packet_context &ctx, const srt_packet &handshake_packet);
+        void handle_keep_alive(const std::shared_ptr<srt_packet> &keep_alive_packet);
+        void handle_ack(const std::shared_ptr<srt_packet> &ack_packet);
+        void handle_nak(const std::shared_ptr<srt_packet> &nak_packet);
+        void handle_congestion_warn(const std::shared_ptr<srt_packet> &congestion_packet);
+        void handle_shutdown(const std::shared_ptr<srt_packet> &shutdown_packet);
+        void handle_ack_ack(const std::shared_ptr<srt_packet> &ack_ack_packet);
+        void handle_dro_req(const std::shared_ptr<srt_packet> &dro_req_packet);
+        void handle_peer_error(const std::shared_ptr<srt_packet> &peer_error_packet);
+        void handle_user_defined_type(const std::shared_ptr<srt_packet> &user_defined_packet);
+        void handle_receive_data_packet(const std::shared_ptr<srt_packet> &data_packet);
+//        void send_connect_packet(const handshake_packet &pkt, bool init_ack_nak);
         void put_keep_alive_packet_into_send_queue();
+
     private:
         /**
          * we use simple bake different from official algorithm.
          */
-        void bake(uint32_t& current_cookie);
+        void bake(uint32_t &current_cookie);
+
     private:
         void do_write_op();
         void do_send_ack_op();
@@ -162,20 +169,24 @@ namespace srt{
         void do_send_nak_op_l();
         void do_send_keep_alive_op();
         void do_send_keep_alive_op_l();
+
     private:
         void set_initial_ack(uint32_t seq);
         inline uint32_t make_pkt_timestamp();
         inline uint32_t generate_sequence_number();
+
     private:
         void send_reject();
-        void send_srt_packet(const std::shared_ptr<srt_packet>& pkt, bool after_send_keep_alive = false);
+        void send_srt_packet(const std::shared_ptr<srt_packet> &pkt, bool after_send_keep_alive = false);
+
     private:
         /**
          * for recv udp socket
          * @param buf buffer
          * @param endpoint endpoint
          */
-        void onRecv(basic_buffer<char>& buf, const endpoint_type& endpoint);
+        void onRecv(basic_buffer<char> &buf, const endpoint_type &endpoint);
+
     private:
         /**
          * status init,
@@ -210,11 +221,11 @@ namespace srt{
         /**
          * socket with srt is used for send packet.
          */
-        asio::ip::udp::socket& sock;
+        asio::ip::udp::socket &sock;
         /**
          * the binder thread(the binder loop)
          */
-        event_poller& poller;
+        event_poller &poller;
         /**
          * 3.2.3 Keep-alive p22
          * Keep-alive control packets are sent after a certain timeout from the last time any packet
@@ -341,24 +352,25 @@ namespace srt{
         /**
          * which save handshake context with server/client
          */
-        handshake_packet handshake_pkt;
+        ///handshake_packet handshake_pkt;
         /**
          * error function for internal callback
          */
-        std::function<void(const std::error_code&)> error_func;
+        std::function<void(const std::error_code &)> error_func;
         /**
          * save connect callback
          */
         decltype(error_func) connect_func_slot;
-        std::function<void(const control_packet_context&, const srt_packet&)> next_handshake_func;
+        ///std::function<void(const control_packet_context &, const srt_packet &)> next_handshake_func;
         /**
          * receive buffer
          */
         mutable_basic_buffer<char> receive_buffer;
     };
 
-    class srt_socket_helper{
+    class srt_socket_helper {
         friend class socket_id;
+
     private:
         static uint32_t generator_socket_id();
         static bool insert_socket_id(uint32_t);
@@ -366,5 +378,6 @@ namespace srt{
         static std::set<uint32_t> socket_ids;
         static std::recursive_mutex mtx;
     };
-};
+};    // namespace srt
 #endif//TOOLKIT_SRT_CORE_HPP
+#endif

@@ -41,6 +41,7 @@ public:
     typedef TAG tag_type;
     typedef typename std::multimap<uint64_t, tag_type>::iterator iterator;
     typedef const iterator const_iterator;
+
 public:
     //// ms
     void add_expired_from_now(uint64_t ms, tag_type tag) {
@@ -107,9 +108,9 @@ public:
             triggered_sets.erase(triggered_sets.begin(), it);
     }
 
-    const TAG* get_first_element() const{
-        static TAG* tag = nullptr;
-        if(!triggered_sets.empty()){
+    const TAG *get_first_element() const {
+        static TAG *tag = nullptr;
+        if (!triggered_sets.empty()) {
             return &triggered_sets.cbegin();
         }
         return tag;

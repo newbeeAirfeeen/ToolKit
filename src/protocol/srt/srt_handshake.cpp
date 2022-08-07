@@ -40,7 +40,7 @@ namespace srt {
         }
     }
 
-    std::shared_ptr<handshake_context> from_buffer(const char *data, size_t length) noexcept {
+    std::shared_ptr<handshake_context> handshake_context::from_buffer(const char *data, size_t length) noexcept {
         if (length < 48) {
             return nullptr;
         }
@@ -76,14 +76,14 @@ namespace srt {
         return handshake;
     }
 
-    std::string to_buffer(const handshake_context &_handshake) noexcept {
+    std::string handshake_context::to_buffer(const handshake_context &_handshake) noexcept {
         std::string data;
         data.resize(48);
         to_buffer(_handshake, (char *) data.data(), data.size());
         return data;
     }
 
-    size_t to_buffer(const handshake_context &_handshake, char *out, size_t length) noexcept {
+    size_t handshake_context::to_buffer(const handshake_context &_handshake, char *out, size_t length) noexcept {
         if (length < 48) {
             return 0;
         }
@@ -100,14 +100,13 @@ namespace srt {
         set_be32(pointer++, static_cast<uint32_t>(_handshake._req_type));
         set_be32(pointer++, _handshake._socket_id);
         set_be32(pointer++, _handshake._cookie);
-        if(_handshake.address.is_v4()){
+        if (_handshake.address.is_v4()) {
             set_be32(pointer++, _handshake.address.to_v4().to_uint());
             set_be32(pointer++, 0);
             set_be32(pointer++, 0);
             set_be32(pointer++, 0);
-        }
-        else{
-            auto* ap = (unsigned char*)pointer;
+        } else {
+            auto *ap = (unsigned char *) pointer;
             auto ad = _handshake.address.to_v6().to_bytes();
             std::copy(ad.begin(), ad.end(), ap);
             pointer += 4;

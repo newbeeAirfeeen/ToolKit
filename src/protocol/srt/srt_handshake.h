@@ -24,9 +24,9 @@
 */
 #ifndef TOOLKIT_SRT_HANDSHAKE_H
 #define TOOLKIT_SRT_HANDSHAKE_H
+#include "net/asio.hpp"
 #include <memory>
 #include <net/buffer.hpp>
-#include "net/asio.hpp"
 namespace srt {
 
     class handshake_context {
@@ -41,6 +41,7 @@ namespace srt {
 
     public:
         static constexpr const uint32_t packet_size = 48;
+
     public:
         uint32_t _version = 0;//UDT version
         uint16_t encryption = 0;
@@ -52,12 +53,13 @@ namespace srt {
         uint32_t _socket_id = 0;
         uint32_t _cookie = 0;
         asio::ip::address address;
+
+        static std::shared_ptr<handshake_context> from_buffer(const char *data, size_t length) noexcept;
+        static std::string to_buffer(const handshake_context &_handshake) noexcept;
+        static size_t to_buffer(const handshake_context &_handshake, char *out, size_t length) noexcept;
     };
 
     bool is_handshake_packet_type(uint32_t);
 
-    std::shared_ptr<handshake_context> from_buffer(const char *data, size_t length) noexcept;
-    std::string to_buffer(const handshake_context &_handshake) noexcept;
-    size_t to_buffer(const handshake_context &_handshake, char *out, size_t length) noexcept;
 };    // namespace srt
 #endif//TOOLKIT_SRT_HANDSHAKE_H
