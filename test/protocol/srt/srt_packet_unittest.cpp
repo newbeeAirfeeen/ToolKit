@@ -3,7 +3,7 @@
 //
 #include <gtest/gtest.h>
 #include <protocol/srt/srt_packet.h>
-
+#include <string>
 bool compare(const char* data1, size_t len1, const char* data2, size_t len2){
 
     EXPECT_EQ(len1, len2);
@@ -17,6 +17,20 @@ bool compare(const char* data1, size_t len1, const char* data2, size_t len2){
 
     return true;
 }
+
+TEST(rfind, string){
+    const char* str = "shenhao is the best";
+    std::string str1 = "shenhao is the best boy";
+    str1.erase(str1.rfind(' '));
+    compare(str1.data(), str1.size(), str, 19);
+    const char* compare_st = "shen";
+    char buf[] = {'s', 'h', 'e', 'n', 0, 0, 0, 0};
+    str1.assign(buf, 8);
+    str1.erase(str1.find_first_of(static_cast<char>(0)));
+    compare(str1.data(), str1.size(), compare_st, 4);
+}
+
+
 
 TEST(srt_packet, srt) {
 

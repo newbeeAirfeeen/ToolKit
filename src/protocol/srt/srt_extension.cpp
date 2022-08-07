@@ -131,6 +131,30 @@ namespace srt {
     }
 
 #endif
+    static void set_ext_string(const std::shared_ptr<buffer> &buff, const char *data, uint32_t length) {
+        const auto *pointer = (const uint32_t *) data;
+        length = length / 4;
+        for (uint32_t i = 0; i < length; i++) {
+            buff->put_be<uint32_t>(*pointer++);
+        }
+    }
+
+    static void get_ext_string(const uint32_t *data, uint32_t block_size, std::string &stream_id) {
+        uint32_t i = 0;
+        for (i = 0; i < block_size; i++) {
+            uint32_t raw = load_be32(data++);
+            stream_id.append((const char *) &raw, sizeof(uint32_t));
+        }
+        if(i <= 0){
+            return;
+        }
+        /// 找到第一次出现0的位置
+        i =  stream_id.find_first_of(static_cast<char>(0), (i - 1) * 4);
+        if (i != std::string::npos) {
+            stream_id.erase(i);
+        }
+    }
+
     size_t set_extension(handshake_context &ctx, const std::shared_ptr<buffer> &buf, uint16_t ts, bool drop, bool nak, const std::string &stream_id) {
         auto origin_size = buf->size();
         auto space = 20 + (stream_id.size() + 3) / 4;
@@ -190,13 +214,12 @@ namespace srt {
             buf->put_be<uint16_t>(static_cast<uint16_t>(extension_type::SRT_CMD_SID));
             /// 放入extension length
             buf->put_be<uint16_t>(word_size);
-            buf->append(stream_id);
-            /// 放入填充的字节数
-            if (aligned_byte_size)
-                buf->append(static_cast<size_t>(aligned_byte_size), 0);
+            /// 大小端倒序
+            set_ext_string(buf, stream_id.data(), static_cast<uint32_t>(stream_id.size() + aligned_byte_size));
         }
         return buf->size() - origin_size;
     }
+
 
     std::shared_ptr<extension_field> get_extension(const handshake_context &ctx, const std::shared_ptr<buffer> &buff) {
         if (buff->size() < 48) {
@@ -236,16 +259,9 @@ namespace srt {
             /// 不支持加密
             else if (is_KM_REQ_set(ctx.extension_field) && extension_ == extension_type::SRT_CMD_KM_RSP) {
                 throw std::system_error(make_srt_error(srt_KM_REQ_is_not_support));
-            }
-            else if (is_CONFIG_set(ctx.extension_field) && (extension_ == extension_type::SRT_CMD_SID)) {
-                auto it = std::find_first_of(buff->data(), buff->data() + extension_block_size, set_end, set_end + 1);
-                if (it == nullptr) {
-                    extension->stream_id.assign(buff->data(), extension_block_size);
-                } else {
-                    extension->stream_id.assign(buff->data(), it);
-                }
-            }
-            else{
+            } else if (is_CONFIG_set(ctx.extension_field) && (extension_ == extension_type::SRT_CMD_SID)) {
+                get_ext_string((const uint32_t *) buff->data(), extension_block_size / 4, std::ref(extension->stream_id));
+            } else {
                 /// 其余暂时先忽略
                 buff->remove(extension_block_size);
             }
