@@ -2,9 +2,9 @@
 // Created by 沈昊 on 2022/8/2.
 //
 #include <gtest/gtest.h>
+#include <net/asio.hpp>
 #include <net/buffer.hpp>
 #include <protocol/stun/stun.h>
-#include <net/asio.hpp>
 void compare_binary(const std::shared_ptr<buffer> &buf, const char *buff, size_t length) {
     EXPECT_GE(buf->size(), length);
     for (size_t i = 0; i < length; i++) {
@@ -47,17 +47,16 @@ TEST(attribute, stun) {
         /// expect padding
         EXPECT_EQ(pkt_ptr->size() % 4, 0) << "the buffer is  not multiple of 4";
         EXPECT_EQ(pkt_ptr->size(), 88) << "the stun pkt length is not correct";
-
     };
 }
 
 
-TEST(xor_mapped_address, stun){
+TEST(xor_mapped_address, stun) {
     uint8_t buf[] = {0x01, 0x01, 0x00, 0x0c, 0x21, 0x12,
                      0xa4, 0x42, 0x47, 0x4d, 0xcc, 0xe6,
-                      0x79, 0x4a, 0x14, 0x4c, 0x64, 0xd9, 0xc1,
-                      0x8d, 0x00, 0x20, 0x00, 0x08, 0x00, 0x01, 0x1c, 0x59,
-                      0x1d, 0x1e, 0x55, 0xe8};
+                     0x79, 0x4a, 0x14, 0x4c, 0x64, 0xd9, 0xc1,
+                     0x8d, 0x00, 0x20, 0x00, 0x08, 0x00, 0x01, 0x1c, 0x59,
+                     0x1d, 0x1e, 0x55, 0xe8};
     const std::string transaction_id = "\x47\x4d\xcc\xe6\x79\x4a\x14\x4c\x64\xd9\xc1\x8d";
 
     using namespace stun;
@@ -66,8 +65,7 @@ TEST(xor_mapped_address, stun){
     pkt.set_method(stun_method::binding_response);
     pkt.set_xor_mapped_address("60.12.241.170", 15691);
     auto pkt_ptr = stun_packet::create_packet(pkt);
-    char* p = (char*)(pkt_ptr->data() + 8);
+    char *p = (char *) (pkt_ptr->data() + 8);
     std::copy(transaction_id.begin(), transaction_id.end(), p);
-    compare_binary(pkt_ptr, (const char*)buf, 32);
+    compare_binary(pkt_ptr, (const char *) buf, 32);
 }
-

@@ -70,13 +70,13 @@ namespace srt {
 
             std::string address((const char *) pointer, 16);
             std::array<unsigned char, 16> arr = {0};
-            std::copy(address.rbegin(), address.rend(), arr.begin());
+            std::copy(address.begin(), address.end(), arr.begin());
             handshake->address = asio::ip::make_address_v6(arr);
         }
         return handshake;
     }
 
-    std::string handshake_context::to_buffer(const handshake_context &_handshake) noexcept {
+    std::string handshake_context::to_buffer_1(const handshake_context &_handshake) noexcept {
         std::string data;
         data.resize(48);
         to_buffer(_handshake, (char *) data.data(), data.size());
@@ -101,15 +101,27 @@ namespace srt {
         set_be32(pointer++, _handshake._socket_id);
         set_be32(pointer++, _handshake._cookie);
         if (_handshake.address.is_v4()) {
-            set_be32(pointer++, _handshake.address.to_v4().to_uint());
+            /// 主机字节序
+            auto val = _handshake.address.to_v4().to_uint();
+            set_be32(&val, val);
+            set_be32(pointer++, val);
             set_be32(pointer++, 0);
             set_be32(pointer++, 0);
             set_be32(pointer++, 0);
         } else {
+            /// 主机字节序
             auto *ap = (unsigned char *) pointer;
             auto ad = _handshake.address.to_v6().to_bytes();
-            std::copy(ad.begin(), ad.end(), ap);
+            std::copy(ad.rbegin(), ad.rend(), ap);
             pointer += 4;
         }
+        return 48;
+    }
+
+    void handshake_context::to_buffer(const handshake_context& ctx, const std::shared_ptr<buffer>& buff) noexcept {
+        std::string data;
+        data.resize(48);
+        to_buffer(ctx, (char *) data.data(), data.size());
+        buff->append(data);
     }
 };// namespace srt

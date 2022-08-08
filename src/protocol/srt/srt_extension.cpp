@@ -145,12 +145,12 @@ namespace srt {
             uint32_t raw = load_be32(data++);
             stream_id.append((const char *) &raw, sizeof(uint32_t));
         }
-        if(i <= 0){
+        if (i <= 0) {
             return;
         }
         /// 找到第一次出现0的位置
-        i =  stream_id.find_first_of(static_cast<char>(0), (i - 1) * 4);
-        if (i != std::string::npos) {
+        i = stream_id.find_first_of(static_cast<char>(0), (i - 1) * 4);
+        if (static_cast<size_t>(i) != std::string::npos) {
             stream_id.erase(i);
         }
     }
@@ -198,7 +198,7 @@ namespace srt {
         set_be16(receiver_delay, static_cast<uint16_t>(ts));
         set_be16(sender_delay, static_cast<uint16_t>(0));
 
-
+        buf->append(data, 16);
         /// stream id
         if (!stream_id.empty()) {
             if (stream_id.size() > 728) {
@@ -222,12 +222,12 @@ namespace srt {
 
 
     std::shared_ptr<extension_field> get_extension(const handshake_context &ctx, const std::shared_ptr<buffer> &buff) {
-        if (buff->size() < 48) {
-            throw std::system_error(make_srt_error(srt_packet_error));
-        }
+        /// if (buff->size() < 48) {
+        ///    throw std::system_error(make_srt_error(srt_packet_error));
+        /// }
 
         //// remove handshake content;
-        buff->remove(48);
+        /// buff->remove(48);
         auto extension = std::make_shared<extension_field>();
         /// stream id
         const char set_end[] = {'\0'};
@@ -261,6 +261,7 @@ namespace srt {
                 throw std::system_error(make_srt_error(srt_KM_REQ_is_not_support));
             } else if (is_CONFIG_set(ctx.extension_field) && (extension_ == extension_type::SRT_CMD_SID)) {
                 get_ext_string((const uint32_t *) buff->data(), extension_block_size / 4, std::ref(extension->stream_id));
+                buff->remove(extension_block_size);
             } else {
                 /// 其余暂时先忽略
                 buff->remove(extension_block_size);
