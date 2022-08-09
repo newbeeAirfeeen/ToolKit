@@ -77,10 +77,8 @@ public:
             /// expired
             if (static_cast<uint64_t>(now) >= iter->first) {
                 /// 这里不能删除，如果回调函数中可能有继续增加任务的操作，迭代器可能会失效
-                Info("execute");
                 expired_func(std::cref(iter->second));
             } else {
-                Info("no triggered");
                 /// 如果没有超时.重新恢复
                 triggered_sets.insert(iter, _tmp_.end());
                 /// 如果为空，直接返回
