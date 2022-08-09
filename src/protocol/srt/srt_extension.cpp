@@ -167,7 +167,7 @@ namespace srt {
         auto *flag = (uint32_t *) (data + 8);
         auto *receiver_delay = (uint16_t *) (data + 12);
         auto *sender_delay = (uint16_t *) (data + 14);
-
+        ctx.extension_field = extension_flag::HS_REQ;
         set_be16(extension_type, static_cast<uint16_t>(SRT_CMD_HS_REQ));
         /// the length of the extension contents field in four-byte blocks
         set_be16(extension_length, static_cast<uint16_t>(3));

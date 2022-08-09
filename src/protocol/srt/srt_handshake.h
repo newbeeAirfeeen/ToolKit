@@ -54,6 +54,7 @@ namespace srt {
         uint32_t _cookie = 0;
         asio::ip::address address;
 
+        static void update_extension_field(const handshake_context& ctx, const std::shared_ptr<buffer>& b);
         static std::shared_ptr<handshake_context> from_buffer(const char *data, size_t length) noexcept;
         static std::string to_buffer_1(const handshake_context &_handshake) noexcept;
         static size_t to_buffer(const handshake_context &_handshake, char *out, size_t length) noexcept;

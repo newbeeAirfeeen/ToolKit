@@ -17,18 +17,21 @@ int main() {
 
     static int couple = 1;
     timer->set_on_expired([timer](const std::string& str) {
-        Info("tag {}:{}", couple++, str);
+        ///Info("tag {}:{}", couple++, str);
     });
 
     auto begin = std::chrono::steady_clock::now();
     std::thread t([&](){
         auto begin = std::chrono::steady_clock::now();
-        for(int i = 0 ;i < 1000 * 10000;i++){
-            timer->add_expired_from_now(120, std::to_string(120));
-            std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        for(int i = 0 ;i < 10;i++){
+            Info("insert");
+            timer->add_expired_from_now(1000, std::to_string(1000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
     });
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    context.post([](){
+
+    });
     context.run();
     t.join();
 

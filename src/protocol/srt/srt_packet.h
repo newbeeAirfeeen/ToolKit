@@ -191,6 +191,7 @@ namespace srt {
 
     std::shared_ptr<buffer> create_packet(const srt_packet &) noexcept;
     std::shared_ptr<srt_packet> from_buffer(const char *data, size_t length);
+    void set_packet_timestamp(const std::shared_ptr<buffer>& buff, uint32_t ts);
     void update_packet_data_flag(const srt_packet &pkt, const std::shared_ptr<buffer> &ptr) noexcept;
 };// namespace srt
 

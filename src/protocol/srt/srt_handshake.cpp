@@ -26,6 +26,7 @@
 #include "Util/endian.hpp"
 #include "srt_control_type.h"
 #include "srt_packet.h"
+#include "srt_error.hpp"
 namespace srt {
 
     bool is_handshake_packet_type(uint32_t p) {
@@ -39,6 +40,15 @@ namespace srt {
                 return false;
         }
     }
+
+    void handshake_context::update_extension_field(const handshake_context& ctx, const std::shared_ptr<buffer>& b){
+        if(b->size() < 28){
+            throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
+        }
+        char* p = (char*)b->data() + 22;
+        set_be16(p,ctx.extension_field);
+    }
+
 
     std::shared_ptr<handshake_context> handshake_context::from_buffer(const char *data, size_t length) noexcept {
         if (length < 48) {

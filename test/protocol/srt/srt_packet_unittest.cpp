@@ -93,7 +93,7 @@ TEST(indunction_1, srt) {
             0x01, 0x00, 0x00, 0x7f, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    auto buff = buffer::assign((const char*)binary_buf, 64);
+    auto buff = buffer::assign((const char *) binary_buf, 64);
     auto pkt = srt::from_buffer(buff->data(), 16);
     buff->remove(16);
     auto context = srt::handshake_context::from_buffer(buff->data(), buff->size());
@@ -116,5 +116,4 @@ TEST(indunction_1, srt) {
     EXPECT_EQ(context->_cookie, 0x749962c3);
     std::string address = context->address.to_string();
     EXPECT_EQ(address, "127.0.0.1");
-
 }

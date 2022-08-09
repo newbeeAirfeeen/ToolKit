@@ -24,6 +24,7 @@
 */
 #ifndef TOOLKIT_DEADLINE_TIMER_HPP
 #define TOOLKIT_DEADLINE_TIMER_HPP
+#include "spdlog/logger.hpp"
 #include <chrono>
 #include <functional>
 #include <map>
@@ -43,7 +44,7 @@ public:
     typedef const iterator const_iterator;
 
 public:
-    //// ms
+    //// ms,线程不安全
     void add_expired_from_now(uint64_t ms, tag_type tag) {
         std::weak_ptr<deadline_timer<tag_type>> self(base_type::shared_from_this());
         executor.post([self, ms, tag]() {
@@ -58,32 +59,37 @@ public:
     }
 
     void set_on_expired(const std::function<void(const tag_type &)> &f) {
-        std::weak_ptr<deadline_timer> self(base_type::shared_from_this());
-        executor.post([f, self]() {
-            auto stronger_self = self.lock();
-            if (!stronger_self) {
-                return;
-            }
-            stronger_self->expired_func = f;
-        });
+        this->expired_func = f;
     }
 
     void stop() {
         timer.cancel();
+        triggered_sets.clear();
     }
 
     void update_timer() {
         std::weak_ptr<deadline_timer> self(base_type::shared_from_this());
-        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now().time_since_epoch()).count();
-        auto iter = triggered_sets.begin();
-        for (; iter != triggered_sets.end(); iter = triggered_sets.begin()) {
+        /// 移动之
+        decltype(triggered_sets) _tmp_ = std::move(triggered_sets);
+        auto iter = _tmp_.begin();
+        for (; iter != _tmp_.end(); ++iter) {
+            auto now = std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now().time_since_epoch()).count();
             /// expired
             if (static_cast<uint64_t>(now) >= iter->first) {
+                /// 这里不能删除，如果回调函数中可能有继续增加任务的操作，迭代器可能会失效
+                Info("execute");
                 expired_func(std::cref(iter->second));
-                triggered_sets.erase(iter);
             } else {
-                std::chrono::milliseconds m(iter->first);
+                Info("no triggered");
+                /// 如果没有超时.重新恢复
+                triggered_sets.insert(iter, _tmp_.end());
+                /// 如果为空，直接返回
+                if (triggered_sets.empty()) {
+                    return;
+                }
+                std::chrono::milliseconds m(triggered_sets.begin()->first);
                 std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<long long, std::milli>> tp(m);
+                timer.cancel();
                 timer.expires_at(tp);
                 timer.async_wait([self](const std::error_code &e) {
                     if (e) {

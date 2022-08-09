@@ -31,18 +31,24 @@ namespace srt {
 
     std::string srt_category::message(int err) const {
         switch (err) {
-            case srt_error_code::status_error:
+            case status_error:
                 return "srt status error, the srt operation is not permitted in this status";
-            case srt_error_code::srt_packet_error:
+            case srt_packet_error:
                 return "srt packet error, current packet is not permitted with invalid arguments";
-            case srt_error_code::srt_control_type_error:
+            case srt_control_type_error:
                 return "srt control type error, current packet is not permitted with invalid arguments";
-            case srt_error_code::srt_stream_id_too_long:
+            case srt_stream_id_too_long:
                 return "stream_id length is too long to load it";
-            case srt_error_code::srt_KM_REQ_is_not_support:
+            case srt_KM_REQ_is_not_support:
                 return "at the this point, KE_REQ is not support";
-            case srt_error_code::srt_unknown_extension_field:
+            case srt_unknown_extension_field:
                 return "unknown srt extension field";
+            case too_large_payload:
+                return "too large payload size, which is exceed MTU";
+            case socket_write_error:
+                return "socket write error";
+            case socket_connect_time_out:
+                return "connect time out";
         }
         return "unknown";
     }

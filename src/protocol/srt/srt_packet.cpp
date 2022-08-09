@@ -180,6 +180,14 @@ namespace srt {
         return pkt;
     }
 
+    void set_packet_timestamp(const std::shared_ptr<buffer>& buff, uint32_t ts){
+        if( buff -> size() < 16){
+            throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
+        }
+        char* data = (char*)buff->data() + 8;
+        set_be32(data, ts);
+    }
+
     void update_packet_data_flag(const srt_packet &pkt, const std::shared_ptr<buffer> &ptr) noexcept {
         if (pkt.get_control()) {
             return;

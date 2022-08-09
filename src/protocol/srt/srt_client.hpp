@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: srt.hpp
-* @date: 2022/04/26
+* @file_name: srt_client.hpp
+* @date: 2022/08/09
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -22,14 +22,24 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_SRT_HPP
-#define TOOLKIT_SRT_HPP
-#include "deadline_timer_queue.hpp"
-#include "srt_control_type.h"
-#include "srt_core.hpp"
-#include "srt_error.hpp"
-#include "srt_packet.h"
-#include "srt_status.hpp"
+
+#ifndef TOOLKIT_SRT_CLIENT_HPP
+#define TOOLKIT_SRT_CLIENT_HPP
+
 #include "srt_socket_service.hpp"
-#include "srt_client.hpp"
-#endif//TOOLKIT_SRT_HPP
+
+namespace srt {
+
+    class srt_client {
+    public:
+        using endpoint_type = asio::ip::udp::endpoint;
+        struct impl;
+    public:
+        explicit srt_client(asio::io_context &poller, const endpoint_type &host = {asio::ip::udp::v4(), 12000});
+        void async_connect(const endpoint_type &remote, const std::function<void(const std::error_code &)> &f);
+    private:
+        std::shared_ptr<impl> _impl;
+    };
+};// namespace srt
+
+#endif//TOOLKIT_SRT_CLIENT_HPP

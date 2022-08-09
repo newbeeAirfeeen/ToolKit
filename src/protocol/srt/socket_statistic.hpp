@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: srt.hpp
-* @date: 2022/04/26
+* @file_name: socket_statistic.hpp
+* @date: 2022/08/08
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -22,14 +22,47 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_SRT_HPP
-#define TOOLKIT_SRT_HPP
-#include "deadline_timer_queue.hpp"
-#include "srt_control_type.h"
-#include "srt_core.hpp"
-#include "srt_error.hpp"
-#include "srt_packet.h"
-#include "srt_status.hpp"
-#include "srt_socket_service.hpp"
-#include "srt_client.hpp"
-#endif//TOOLKIT_SRT_HPP
+
+#ifndef TOOLKIT_SOCKET_STATISTIC_HPP
+#define TOOLKIT_SOCKET_STATISTIC_HPP
+#include "deadline_timer.hpp"
+#include "net/asio.hpp"
+#include <cstdint>
+#include <list>
+#include <mutex>
+class socket_statistic {
+public:
+    virtual ~socket_statistic() = default;
+
+public:
+    explicit socket_statistic(asio::io_context &poller);
+    /// bytes statistic
+    void delta_bytes(uint64_t);
+    double get_bytes_rate() const;
+    /// packet statistic
+    void report_packet(uint64_t count);
+    void report_packet_lost(uint64_t count);
+    uint64_t get_packet_count() const;
+
+public:
+    void start();
+    void reset();
+
+private:
+    void on_timer();
+
+private:
+    uint64_t last_bytes = 0;
+    uint64_t bytes = 0;
+
+    uint64_t lost_packet_count = 0;
+    uint64_t packet_count = 0;
+
+private:
+    std::shared_ptr<deadline_timer<int>> timer;
+    mutable std::mutex mtx;
+    std::shared_ptr<std::list<uint64_t>> samples;
+};
+
+
+#endif//TOOLKIT_SOCKET_STATISTIC_HPP
