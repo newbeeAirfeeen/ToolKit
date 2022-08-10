@@ -35,11 +35,13 @@ namespace srt {
         srt_stream_id_too_long,     /// stream_id 字段太长了
         srt_KM_REQ_is_not_support,  /// 握手阶段: 不支持的加密
         srt_unknown_extension_field,/// 未知的扩展字段
-        srt_peer_error,             /// srt握手失败
+        srt_peer_error,             /// 收到peer_error,
+        srt_handshake_error,        /// 握手失败
         too_large_payload,          /// MTU 太大
         socket_write_error,         /// 发送数据失败
         socket_connect_time_out,    /// 连接超时
-        lost_peer_connection,       /// 断开了连接
+        lost_peer_connection,       /// 主动断开连接
+        peer_has_terminated_connection,  /// 对端主动关闭了连接
     };
 
     class srt_category : public std::error_category {

@@ -95,13 +95,11 @@ namespace srt {
         void handle_peer_error(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_drop_request(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &);
-
     private:
         /// 定时器回调
         void on_common_timer_expired(const int &);
         /// 保活定时器
         void on_keep_alive_expired(const int &);
-
     private:
         asio::io_context &poller;
         /// 通常的定时器,处理ack,nak

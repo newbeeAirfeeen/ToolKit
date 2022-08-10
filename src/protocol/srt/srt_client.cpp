@@ -30,6 +30,7 @@ namespace srt {
     public:
         impl(asio::io_context &poller, const endpoint_type &host) : poller(poller), srt_socket_service(poller), _sock(poller) {
             _sock.open(host.protocol());
+            _sock.bind(host);
             this->host = host;
             receive_cache = std::make_shared<buffer>();
             receive_cache->resize(1500);

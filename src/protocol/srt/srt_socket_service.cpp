@@ -190,7 +190,7 @@ namespace srt {
         auto reject_buf = std::make_shared<buffer>(buff->data(), buff->size());
         send_in(reject_buf, get_remote_endpoint());
         /// 最后调用on_error
-        on_error_in(make_srt_error(srt_error_code::srt_peer_error));
+        on_error_in(make_srt_error(srt_error_code::srt_handshake_error));
     }
 
     void srt_socket_service::send_in(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) {
@@ -431,23 +431,30 @@ namespace srt {
     }
 
     void srt_socket_service::handle_keep_alive(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+        Info("handle keep alive..");
     }
 
     void srt_socket_service::handle_nak(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
     }
 
     void srt_socket_service::handle_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+
     }
 
     void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
     }
 
     void srt_socket_service::handle_peer_error(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+        auto e = make_srt_error(srt_error_code::srt_peer_error);
+        on_error_in(e);
     }
 
     void srt_socket_service::handle_drop_request(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+
     }
 
     void srt_socket_service::handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+        std::error_code e = make_srt_error(srt_error_code::peer_has_terminated_connection);
+        return on_error_in(e);
     }
 };// namespace srt

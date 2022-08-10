@@ -45,6 +45,8 @@ namespace srt {
             case srt_unknown_extension_field:
                 return "unknown srt extension field";
             case srt_peer_error:
+                return "peer has filesystem error";
+            case srt_handshake_error:
                 return "peer handshake parameters error";
             case too_large_payload:
                 return "too large payload size, which is exceed MTU";
@@ -54,6 +56,8 @@ namespace srt {
                 return "connect time out";
             case lost_peer_connection:
                 return "peer has lost connection";
+            case peer_has_terminated_connection:
+                return "peer active terminated connection";
         }
         return "unknown";
     }
