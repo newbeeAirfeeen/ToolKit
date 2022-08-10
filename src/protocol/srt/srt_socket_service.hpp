@@ -25,17 +25,20 @@
 
 #ifndef TOOLKIT_SRT_SOCKET_SERVICE_HPP
 #define TOOLKIT_SRT_SOCKET_SERVICE_HPP
+#include <chrono>
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <string>
+
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include "srt_socket_base.hpp"
-#include <chrono>
-#include <cstdint>
-#include <functional>
-#include <mutex>
-#include <string>
+#include "socket_statistic.hpp"
+
 namespace srt {
 
     class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service> {
@@ -66,7 +69,6 @@ namespace srt {
         virtual void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) = 0;
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
-
     private:
         void send_reject(int e, const std::shared_ptr<buffer> &buf);
         /// 数据统一出口
@@ -124,6 +126,10 @@ namespace srt {
         std::atomic<bool> _is_connected{false};
         /// 上一次发送包的序号
         uint32_t sequence_number = 0;
+        /// 用于统计包发送数据
+        std::shared_ptr<socket_statistic> _sock_send_statistic;
+        /// 用于统计接收的包
+        std::shared_ptr<socket_statistic> _sock_receive_statistic;
     };
 };// namespace srt
 

@@ -64,7 +64,6 @@ void socket_statistic::report_packet(uint64_t count) {
 
 void socket_statistic::report_packet_lost(uint64_t count) {
     lost_packet_count += count;
-    report_packet(count);
 }
 
 uint64_t socket_statistic::get_packet_count() const {

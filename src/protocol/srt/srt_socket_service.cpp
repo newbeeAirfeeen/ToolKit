@@ -42,6 +42,8 @@ namespace srt {
     };
 
     srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
+        _sock_send_statistic = std::make_shared<socket_statistic>(poller);
+        _sock_receive_statistic = std::make_shared<socket_statistic>(poller);
     }
 
     void srt_socket_service::begin() {
@@ -124,6 +126,8 @@ namespace srt {
                 /// 更新包的时间戳,当前时间减去第一次连接的时间
                 set_packet_timestamp(handshake_buffer, ts);
                 send(handshake_buffer, get_remote_endpoint());
+                /// 统计包丢失
+                /// _sock_send_statistic->report_packet_lost(1);
                 /// 260ms后尝试重新发送
                 this->common_timer->add_expired_from_now(250, val);
                 break;
@@ -428,6 +432,8 @@ namespace srt {
     }
 
     void srt_socket_service::handle_data(const srt_packet &pkt, const std::shared_ptr<buffer> &buff) {
+        /// 统计数据
+        _sock_receive_statistic->report_packet(1);
     }
 
     void srt_socket_service::handle_keep_alive(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
@@ -438,7 +444,6 @@ namespace srt {
     }
 
     void srt_socket_service::handle_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
-
     }
 
     void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
@@ -450,7 +455,6 @@ namespace srt {
     }
 
     void srt_socket_service::handle_drop_request(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
-
     }
 
     void srt_socket_service::handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
