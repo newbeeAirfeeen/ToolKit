@@ -24,12 +24,12 @@
 */
 #ifndef TOOLKIT_SRT_HPP
 #define TOOLKIT_SRT_HPP
+
 #include "deadline_timer_queue.hpp"
 #include "srt_control_type.h"
-#include "srt_core.hpp"
 #include "srt_error.hpp"
 #include "srt_packet.h"
-#include "srt_status.hpp"
 #include "srt_socket_service.hpp"
 #include "srt_client.hpp"
+
 #endif//TOOLKIT_SRT_HPP
