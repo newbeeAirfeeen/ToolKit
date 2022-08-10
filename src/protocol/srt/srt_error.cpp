@@ -23,6 +23,7 @@
 * SOFTWARE.
 */
 #include "srt_error.hpp"
+#include "srt_handshake.h"
 namespace srt {
 
     const char *srt_category::name() const noexcept {
@@ -51,19 +52,37 @@ namespace srt {
                 return "socket write error";
             case socket_connect_time_out:
                 return "connect time out";
+            case lost_peer_connection:
+                return "peer has lost connection";
         }
         return "unknown";
     }
 
-    srt_error::srt_error(std::error_code e) : std::system_error(e) {}
+    const char *srt_reject_category::name() const noexcept {
+        return "srt_reject_category";
+    }
+
+
+    std::string srt_reject_category::message(int err) const {
+        return get_reject_reason(err);
+    }
+
 
     std::error_category *generator_srt_category() {
         static srt_category c;
         return &c;
     }
 
+    std::error_category *generator_srt_reject_category() {
+        static srt_reject_category c;
+        return &c;
+    }
+
     std::error_code make_srt_error(int err) {
-        std::error_code code(err, *generator_srt_category());
-        return code;
+        return {err, *generator_srt_category()};
+    }
+
+    std::error_code make_srt_reject_error(int err) {
+        return {err, *generator_srt_reject_category()};
     }
 };// namespace srt

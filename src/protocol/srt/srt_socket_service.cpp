@@ -23,12 +23,12 @@
 * SOFTWARE.
 */
 #include "srt_socket_service.hpp"
+#include "Util/endian.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_error.hpp"
 #include "srt_extension.h"
 #include "srt_handshake.h"
 #include "srt_packet.h"
-#include "Util/endian.hpp"
 #include <chrono>
 #include <numeric>
 #include <random>
@@ -38,6 +38,7 @@ namespace srt {
         keep_alive_expired,
         induction_expired,
         conclusion_expired,
+        receive_timeout,
     };
 
     srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
@@ -116,16 +117,27 @@ namespace srt {
             case timer_expired_type::conclusion_expired: {
                 //Trace("connect package may be lost, try send again, package type={}", v);
                 //// 连接超时
-                if (std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now() - first_connect_point).count() > get_connect_timeout()) {
-                    return on_error(make_srt_error(srt_error_code::socket_connect_time_out));
+                auto ts = get_time_from_begin();
+                if (ts > get_connect_timeout()) {
+                    return on_error_in(make_srt_error(srt_error_code::socket_connect_time_out));
                 }
                 /// 更新包的时间戳,当前时间减去第一次连接的时间
-                auto now = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - first_connect_point).count());
-                set_packet_timestamp(handshake_buffer, now);
+                set_packet_timestamp(handshake_buffer, ts);
                 send(handshake_buffer, get_remote_endpoint());
                 /// 260ms后尝试重新发送
                 this->common_timer->add_expired_from_now(250, val);
                 break;
+            }
+            /// 接收超时 断开连接
+            case timer_expired_type::receive_timeout: {
+                /// 上一次接收到到时间点
+                uint32_t leave_last_receive_time_point = (uint32_t) std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now() - last_receive_point).count();
+                if (leave_last_receive_time_point > srt_socket_service::max_receive_time_out) {
+                    do_shutdown();
+                    return on_error_in(make_srt_error(srt_error_code::lost_peer_connection));
+                } else {
+                    common_timer->add_expired_from_now(srt_socket_service::max_receive_time_out - leave_last_receive_time_point, timer_expired_type::receive_timeout);
+                }
             }
         }
     }
@@ -156,7 +168,7 @@ namespace srt {
         _next_func(buff);
     }
 
-    bool srt_socket_service::is_open(){
+    bool srt_socket_service::is_open() {
         return _is_open.load(std::memory_order_relaxed);
     }
 
@@ -164,21 +176,21 @@ namespace srt {
         return _is_connected.load(std::memory_order_relaxed);
     }
 
-    void srt_socket_service::send_reject(int e, const std::shared_ptr<buffer>& buff) {
+    void srt_socket_service::send_reject(int e, const std::shared_ptr<buffer> &buff) {
         Trace("send_reject..");
-        if(buff->size() < 40){
+        if (buff->size() < 40) {
             throw std::invalid_argument("buff is MUST greater than 40");
         }
         /// 停止重新发送定时器
         common_timer->stop();
         ////
         buff->backward();
-        uint32_t* p = (uint32_t*)(buff->data() + 36);
+        uint32_t *p = (uint32_t *) (buff->data() + 36);
         set_be32(p, static_cast<uint32_t>(e));
         auto reject_buf = std::make_shared<buffer>(buff->data(), buff->size());
         send_in(reject_buf, get_remote_endpoint());
         /// 最后调用on_error
-        on_error(make_srt_error(srt_error_code::srt_peer_error));
+        on_error_in(make_srt_error(srt_error_code::srt_peer_error));
     }
 
     void srt_socket_service::send_in(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) {
@@ -188,13 +200,37 @@ namespace srt {
         /// 发送keepalive
         do_keepalive();
     }
+    /// 已经成功建立连接
+    void srt_socket_service::on_connect_in() {
+        /// 停止计时器
+        common_timer->stop();
+        _is_connected.store(true, std::memory_order_relaxed);
+        /// 清除缓存, 节省内存
+        handshake_buffer = nullptr;
+        _next_func = std::bind(&srt_socket_service::handle_receive, this, std::placeholders::_1);
+        /// 开启keepalive
+        do_keepalive();
+        /// 记录最后一个包接收的时间
+        last_receive_point = clock_type::now();
+        common_timer->add_expired_from_now(srt_socket_service::max_receive_time_out, receive_timeout);
+        /// 成功连接
+        on_connected();
+    }
+
+    void srt_socket_service::on_error_in(const std::error_code &e) {
+        /// 停止所有定时器
+        common_timer->stop();
+        keep_alive_timer->stop();
+        _is_connected.store(false);
+        on_error(e);
+    }
 
     void srt_socket_service::do_keepalive() {
         if (!_is_connected.load(std::memory_order_relaxed)) {
             return;
         }
-        keep_alive_timer->stop();
         /// 一秒一次
+        keep_alive_timer->stop();
         keep_alive_timer->add_expired_from_now(1000, keep_alive_expired);
     }
 
@@ -212,9 +248,24 @@ namespace srt {
 
 
     void srt_socket_service::do_shutdown() {
+        srt_packet pkt;
+        pkt.set_control(true);
+        pkt.set_control_type(control_type::shutdown);
+        pkt.set_timestamp(get_time_from_begin());
+        pkt.set_socket_id(srt_socket_service::get_sock_id());
+        auto pkt_buffer = create_packet(pkt);
+        /// shutdown 直接发送
+        send(pkt_buffer, get_remote_endpoint());
     }
 
-    void srt_socket_service::handle_reject() {
+
+    inline uint32_t srt_socket_service::get_time_from_begin() {
+        return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(clock_type::now() - first_connect_point).count());
+    }
+
+    void srt_socket_service::handle_reject(int e) {
+        auto err = make_srt_reject_error(e);
+        on_error_in(err);
     }
 
     void srt_socket_service::handle_server_induction(const std::shared_ptr<buffer> &buff) {
@@ -230,7 +281,7 @@ namespace srt {
             auto induction_context = srt::handshake_context::from_buffer(buff->data(), buff->size());
             /// 非法的握手包
             if (induction_context->_req_type != handshake_context::urq_induction) {
-                return send_reject(handshake_context::packet_type::rej_rogue, buff);
+                return handle_reject(induction_context->_req_type);
             }
             //// 更新参数
             if (induction_context->_version != 5) {
@@ -299,7 +350,6 @@ namespace srt {
             send_in(_pkt, get_remote_endpoint());
             common_timer->add_expired_from_now(250, conclusion_expired);
         } catch (const std::system_error &e) {
-            //return on_error(e.code());
         }
     }
 
@@ -313,6 +363,10 @@ namespace srt {
             auto context = srt::handshake_context::from_buffer(buff->data(), buff->size());
             buff->remove(48);
             auto extension = get_extension(*context, buff);
+
+            if (context->_req_type != handshake_context::packet_type::urq_conclusion) {
+                return handle_reject(context->_req_type);
+            }
 
             /// 最终更新包序号
             sequence_number = context->_sequence_number;
@@ -329,46 +383,71 @@ namespace srt {
             srt_socket_service::report_nak = extension->nak;
 
             Trace("srt handshake success, drop={}, report_nak={}, tsbpd={}, socket_id={}", extension->drop, extension->nak, extension->receiver_tlpktd_delay, get_sock_id());
-
-            /// 停止计时器
-            common_timer->stop();
-            _is_connected.store(true, std::memory_order_relaxed);
-            /// 清除缓存, 节省内存
-            handshake_buffer = nullptr;
-            /// 保存握手的上下文
-            _handshake_context = context;
-            _next_func = std::bind(&srt_socket_service::handle_receive, this, std::placeholders::_1);
-            /// 开启keepalive
-            do_keepalive();
-            /// 记录最后一个包接收的时间
-            last_receive_point = clock_type::now();
+            return on_connect_in();
         } catch (const std::system_error &e) {
-
         }
     }
 
 
     void srt_socket_service::handle_receive(const std::shared_ptr<buffer> &buff) {
-        try{
+        try {
             auto srt_pkt = from_buffer(buff->data(), buff->size());
             /// 更新上一次收到的时间
             last_receive_point = clock_type::now();
-            if(srt_pkt->get_control()){
-                //return handle_control()
+            if (srt_pkt->get_control()) {
+                return handle_control(*srt_pkt, buff);
             }
+            return handle_data(*srt_pkt, buff);
 
+        } catch (const std::system_error &e) {
         }
-        catch(const std::system_error& e){}
     }
 
-    void srt_socket_service::handle_control(){
-
+    void srt_socket_service::handle_control(const srt_packet &pkt, const std::shared_ptr<buffer> &buff) {
+        const auto &type = pkt.get_control_type();
+        switch (type) {
+            case control_type::handshake:
+            case control_type::congestion_warning:
+            case control_type::user_defined_type:
+                return;
+            case control_type::keepalive:
+                return handle_keep_alive(pkt, buff);
+            case control_type::nak:
+                return handle_nak(pkt, buff);
+            case control_type::ack:
+                return handle_ack(pkt, buff);
+            case control_type::ack_ack:
+                return handle_ack_ack(pkt, buff);
+            case control_type::peer_error:
+                return handle_peer_error(pkt, buff);
+            case control_type::drop_req:
+                return handle_drop_request(pkt, buff);
+            case control_type::shutdown:
+                return handle_shutdown(pkt, buff);
+        }
     }
 
-    void srt_socket_service::handle_data(){
-
+    void srt_socket_service::handle_data(const srt_packet &pkt, const std::shared_ptr<buffer> &buff) {
     }
 
-    void srt_socket_service::handle_shutdown() {
+    void srt_socket_service::handle_keep_alive(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+    }
+
+    void srt_socket_service::handle_nak(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+    }
+
+    void srt_socket_service::handle_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+    }
+
+    void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+    }
+
+    void srt_socket_service::handle_peer_error(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+    }
+
+    void srt_socket_service::handle_drop_request(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
+    }
+
+    void srt_socket_service::handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
     }
 };// namespace srt

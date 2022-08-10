@@ -59,7 +59,7 @@ namespace srt {
         congestion_warning = 0x0004,
         shutdown = 0x0005,
         ack_ack = 0x0006,
-        dro_preq = 0x0007,
+        drop_req = 0x0007,
         peer_error = 0x0008,
         user_defined_type = 0x7FFF,
     };

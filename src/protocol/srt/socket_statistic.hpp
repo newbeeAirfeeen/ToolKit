@@ -30,7 +30,8 @@
 #include <cstdint>
 #include <list>
 #include <mutex>
-class socket_statistic {
+
+class socket_statistic : public std::enable_shared_from_this<socket_statistic> {
 public:
     virtual ~socket_statistic() = default;
 
@@ -59,8 +60,8 @@ private:
     uint64_t packet_count = 0;
 
 private:
+    mutable std::recursive_mutex mtx;
     std::shared_ptr<deadline_timer<int>> timer;
-    mutable std::mutex mtx;
     std::shared_ptr<std::list<uint64_t>> samples;
 };
 

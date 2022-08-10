@@ -35,7 +35,7 @@ namespace srt {
             case control_type::congestion_warning:
             case control_type::shutdown:
             case control_type::ack_ack:
-            case control_type::dro_preq:
+            case control_type::drop_req:
             case control_type::peer_error:
             case control_type::user_defined_type:
                 return true;

@@ -29,6 +29,7 @@
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
 #include "srt_handshake.h"
+#include "srt_packet.h"
 #include "srt_socket_base.hpp"
 #include <chrono>
 #include <cstdint>
@@ -70,23 +71,33 @@ namespace srt {
         void send_reject(int e, const std::shared_ptr<buffer> &buf);
         /// 数据统一出口
         void send_in(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where);
+        void on_connect_in();
+        void on_error_in(const std::error_code &e);
         void do_keepalive();
         void do_nak();
         void do_ack();
         void do_ack_ack();
         void do_drop_request();
         void do_shutdown();
-
+        inline uint32_t get_time_from_begin();
     private:
         /// 用于客户端握手
-        void handle_reject();
+        void handle_reject(int e);
         void handle_server_induction(const std::shared_ptr<buffer> &buff);
         void handle_server_conclusion(const std::shared_ptr<buffer> &buff);
         void handle_receive(const std::shared_ptr<buffer> &buff);
-        void handle_control();
-        void handle_data();
-        void handle_shutdown();
+        void handle_control(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_data(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_keep_alive(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_nak(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_peer_error(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_drop_request(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+
     private:
+        /// 定时器回调
         void on_common_timer_expired(const int &);
         /// 保活定时器
         void on_keep_alive_expired(const int &);
@@ -102,9 +113,8 @@ namespace srt {
         /// keep alive 缓存
         std::shared_ptr<buffer> keep_alive_buffer;
         /// 握手上下文
-        std::shared_ptr<handshake_context> _handshake_context;
+        /// std::shared_ptr<handshake_context> _handshake_context;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
-
         /// 第一次尝试连接的时间
         time_point first_connect_point;
         /// 上一次发送数据的时间

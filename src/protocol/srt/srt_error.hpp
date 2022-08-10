@@ -30,15 +30,16 @@ namespace srt {
 
     enum srt_error_code {
         status_error,
-        srt_packet_error,               /// srt 包解析失败
+        srt_packet_error,/// srt 包解析失败
         srt_control_type_error,
-        srt_stream_id_too_long,         /// stream_id 字段太长了
-        srt_KM_REQ_is_not_support,      /// 握手阶段: 不支持的加密
-        srt_unknown_extension_field,    /// 未知的扩展字段
-        srt_peer_error,                 /// srt握手失败
-        too_large_payload,              /// MTU 太大
-        socket_write_error,             /// 发送数据失败
-        socket_connect_time_out,        /// 连接超时
+        srt_stream_id_too_long,     /// stream_id 字段太长了
+        srt_KM_REQ_is_not_support,  /// 握手阶段: 不支持的加密
+        srt_unknown_extension_field,/// 未知的扩展字段
+        srt_peer_error,             /// srt握手失败
+        too_large_payload,          /// MTU 太大
+        socket_write_error,         /// 发送数据失败
+        socket_connect_time_out,    /// 连接超时
+        lost_peer_connection,       /// 断开了连接
     };
 
     class srt_category : public std::error_category {
@@ -47,13 +48,16 @@ namespace srt {
         std::string message(int err) const override;
     };
 
-    class srt_error : public std::system_error {
+    class srt_reject_category : public std::error_category {
     public:
-        explicit srt_error(std::error_code);
+        const char *name() const noexcept override;
+        std::string message(int err) const override;
     };
 
     std::error_category *generator_srt_category();
+    std::error_category *generator_srt_reject_category();
     std::error_code make_srt_error(int err);
+    std::error_code make_srt_reject_error(int err);
 };// namespace srt
 
 #endif//TOOLKIT_SRT_ERROR_HPP

@@ -30,7 +30,7 @@ socket_statistic::socket_statistic(asio::io_context &poller) {
     samples = std::make_shared<std::list<uint64_t>>();
 }
 
-void socket_statistic::delta_bytes(uint64_t b){
+void socket_statistic::delta_bytes(uint64_t b) {
     bytes += b;
 }
 
@@ -38,7 +38,7 @@ double socket_statistic::get_bytes_rate() const {
 
     decltype(samples) _tmp_samples;
     {
-        std::lock_guard<std::mutex> lmtx(mtx);
+        std::lock_guard<std::recursive_mutex> lmtx(mtx);
         _tmp_samples = samples;
     }
 
@@ -58,40 +58,43 @@ double socket_statistic::get_bytes_rate() const {
     return (double) sum / (double) _tmp_samples->size();
 }
 
-void socket_statistic::report_packet(uint64_t count){
+void socket_statistic::report_packet(uint64_t count) {
     packet_count += count;
 }
 
-void socket_statistic::report_packet_lost(uint64_t count){
+void socket_statistic::report_packet_lost(uint64_t count) {
     lost_packet_count += count;
+    report_packet(count);
 }
 
-uint64_t socket_statistic::get_packet_count() const{
+uint64_t socket_statistic::get_packet_count() const {
     return this->packet_count;
 }
 
-void socket_statistic::start(){
-    std::weak_ptr<deadline_timer<int>> self(timer);
-    timer->set_on_expired([self, this](const int&){
+void socket_statistic::start() {
+    std::weak_ptr<socket_statistic> self(shared_from_this());
+    timer->set_on_expired([self](const int &) {
         auto stronger_self = self.lock();
-        if(!stronger_self){
+        if (!stronger_self) {
             return;
         }
-        this->on_timer();
-        this->timer->add_expired_from_now(1000, 1);
+        stronger_self->on_timer();
+        stronger_self->timer->add_expired_from_now(1000, 1);
     });
     timer->add_expired_from_now(1000, 1);
 }
 
-void socket_statistic::reset(){
+void socket_statistic::reset() {
     last_bytes = bytes = lost_packet_count = packet_count = 0;
-    samples->clear();
+    {
+        std::lock_guard<std::recursive_mutex> lmtx(mtx);
+        samples->clear();
+    }
     timer->stop();
     start();
 }
 
-void socket_statistic::on_timer(){
+void socket_statistic::on_timer() {
     /// 偏移的字节数
     auto delta_bytes = bytes - last_bytes;
-
 }
