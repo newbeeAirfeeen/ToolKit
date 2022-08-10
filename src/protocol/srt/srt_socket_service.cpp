@@ -29,8 +29,8 @@
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include <chrono>
-#include <random>
 #include <numeric>
+#include <random>
 namespace srt {
     /// 连接回调, 发生在握手
     enum timer_expired_type {
@@ -40,16 +40,15 @@ namespace srt {
     };
 
     srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
-
     }
 
-    void srt_socket_service::begin(){
+    void srt_socket_service::begin() {
         //// 创建common 定时器
         common_timer = create_deadline_timer<int>(poller);
         std::weak_ptr<srt_socket_service> self(shared_from_this());
         common_timer->set_on_expired([self](const int &v) {
             auto stronger_self = self.lock();
-            if (stronger_self){
+            if (stronger_self) {
                 stronger_self->on_common_timer_expired(v);
             }
         });
@@ -239,6 +238,7 @@ namespace srt {
             ctx._window_size = srt_socket_service::get_max_flow_window_size();
             ctx._req_type = srt::handshake_context::urq_conclusion;
             // random
+            //// 对应上一个induction的sock id
             ctx._socket_id = get_sock_id();
             ctx._cookie = induction_context->_cookie;
             ctx.address = get_local_endpoint().address();
@@ -272,24 +272,32 @@ namespace srt {
     /// conclusion receive
     void srt_socket_service::handle_server_conclusion(const std::shared_ptr<buffer> &buff) {
         Trace("receive server conclusion..");
-        try{
+        try {
             auto size = buff->size();
             auto pkt = srt::from_buffer(buff->data(), buff->size());
-            if(!pkt){
-
+            if (!pkt) {
             }
+            buff->remove(16);
             auto context = srt::handshake_context::from_buffer(buff->data(), buff->size());
-            if(!context){
+            if (!context) {
                 throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
             }
 
             buff->remove(48);
             auto extension = get_extension(*context, buff);
 
+            /// 最终更新包序号
+            sequence_number = context->_sequence_number;
+            /// 最终更新mtu
+            set_max_payload(context->_max_mss);
+            /// 最终更新滑动窗口大小
+            set_max_flow_window_size(context->_window_size);
+            /// 最终协商好的sock id
+            set_sock_id(context->_socket_id);
             set_time_based_deliver(extension->receiver_tlpktd_delay);
             set_drop_too_late_packet(extension->drop);
             set_report_nak(extension->nak);
-            Trace("srt handshake success, drop={}, report_nak={}, tsbpd={}", extension->drop, extension->nak, extension->receiver_tlpktd_delay);
+            Trace("srt handshake success, drop={}, report_nak={}, tsbpd={}, socket_id={}", extension->drop, extension->nak, extension->receiver_tlpktd_delay, get_sock_id());
             /// 停止计时器
             common_timer->stop();
             is_connected = true;
@@ -298,15 +306,13 @@ namespace srt {
             _next_func = std::bind(&srt_socket_service::handle_data_and_control, this, std::placeholders::_1);
             /// 开启keepalive
             do_keepalive();
-        }
-        catch(const std::system_error& e){
+        } catch (const std::system_error &e) {
             send_reject();
             return on_error(e.code());
         }
     }
 
 
-    void srt_socket_service::handle_data_and_control(const std::shared_ptr<buffer>& buff){
-
+    void srt_socket_service::handle_data_and_control(const std::shared_ptr<buffer> &buff) {
     }
 };// namespace srt

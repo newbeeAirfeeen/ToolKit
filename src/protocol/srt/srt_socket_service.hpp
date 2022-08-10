@@ -71,6 +71,7 @@ namespace srt {
         void do_keepalive();
 
     private:
+        /// 用于客户端握手
         void handle_server_induction(const std::shared_ptr<buffer> &buff);
         void handle_server_conclusion(const std::shared_ptr<buffer> &buff);
         void handle_data_and_control(const std::shared_ptr<buffer> &buff);

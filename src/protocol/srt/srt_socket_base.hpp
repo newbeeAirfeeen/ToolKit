@@ -39,7 +39,7 @@ namespace srt {
         void set_stream_id(const std::string &stream_id);
         void set_sock_id(uint32_t id);
         void set_connect_timeout(uint64_t ms);
-
+        void set_max_receive_time_out(uint32_t ms);
         uint32_t get_max_payload() const;
         uint32_t get_max_flow_window_size() const;
         bool get_drop_too_late_packet() const;
@@ -47,7 +47,8 @@ namespace srt {
         bool get_report_nak() const;
         const std::string &get_stream_id() const;
         uint32_t get_sock_id() const;
-        uint64_t get_connect_timeout() const;
+        uint32_t get_connect_timeout() const;
+        uint32_t get_max_receive_time_out() const;
 
     protected:
         bool drop_too_late_packet = true;
@@ -57,8 +58,8 @@ namespace srt {
         uint32_t max_payload = 1500;
         uint32_t max_flow_window_size = 8192;
         uint32_t sock_id = 0;
-        /////
-        uint64_t connect_time_out = 1000;
+        uint32_t connect_time_out = 1000;
+        uint32_t max_receive_time_out = 10000;
     };
 
 };// namespace srt

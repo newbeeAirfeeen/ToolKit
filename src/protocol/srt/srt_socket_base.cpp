@@ -62,6 +62,10 @@ namespace srt {
         this->connect_time_out = ms;
     }
 
+    void srt_socket_base::set_max_receive_time_out(uint32_t ms){
+        this->max_receive_time_out = ms;
+    }
+
     uint32_t srt_socket_base::get_max_payload() const {
         return this->max_payload;
     }
@@ -90,8 +94,11 @@ namespace srt {
         return this->stream_id;
     }
 
-    uint64_t srt_socket_base::get_connect_timeout() const {
+    uint32_t srt_socket_base::get_connect_timeout() const {
         return this->connect_time_out;
     }
 
+    uint32_t srt_socket_base::get_max_receive_time_out() const{
+        return this->max_receive_time_out;
+    }
 };// namespace srt

@@ -99,6 +99,9 @@ namespace srt {
                 stronger_self->receive_cache->resize(length);
                 stronger_self->receive_cache->backward();
                 stronger_self->input_packet(stronger_self->receive_cache);
+                /// 恢复之
+                stronger_self->receive_cache->backward();
+                stronger_self->receive_cache->resize(1500);
                 stronger_self->begin_in();
             });
         }
