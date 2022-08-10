@@ -31,6 +31,9 @@ namespace srt {
 
     class srt_socket_base {
     public:
+        /// 连接成功
+        virtual bool is_connected() = 0;
+    public:
         void set_max_payload(uint32_t length);
         void set_max_flow_window_size(uint32_t counts);
         void set_drop_too_late_packet(bool on);

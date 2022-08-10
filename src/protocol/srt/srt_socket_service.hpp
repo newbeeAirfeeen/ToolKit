@@ -53,6 +53,7 @@ namespace srt {
     protected:
         void connect();
         void input_packet(const std::shared_ptr<buffer> &buff);
+        bool is_connected() override final;
         //// 需要在连接的时候调用
         virtual const asio::ip::udp::endpoint &get_remote_endpoint() = 0;
         virtual const asio::ip::udp::endpoint &get_local_endpoint() = 0;
@@ -100,7 +101,7 @@ namespace srt {
         /// 上一次接收数据的时间
         time_point last_receive_point;
         /// 是否已经建立连接
-        bool is_connected = false;
+        std::atomic<bool> _is_connected{false};
         /// 上一次发送包的序号
         uint32_t sequence_number = 0;
     };

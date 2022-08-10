@@ -127,9 +127,10 @@ namespace srt {
 
     void srt_socket_service::on_keep_alive_expired(const int &v) {
         /// 如果没有连接 停止发送
-        if (!is_connected) {
+        if (!_is_connected.load(std::memory_order_relaxed)) {
             return;
         }
+
         auto ts = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(clock_type::now().time_since_epoch()).count());
         if (!keep_alive_buffer) {
             srt_packet pkt;
@@ -150,6 +151,10 @@ namespace srt {
         _next_func(buff);
     }
 
+    bool srt_socket_service::is_connected() {
+        return _is_connected.load(std::memory_order_relaxed);
+    }
+
     void srt_socket_service::send_reject() {
         Trace("send_reject..");
     }
@@ -163,7 +168,7 @@ namespace srt {
     }
 
     void srt_socket_service::do_keepalive() {
-        if (!is_connected) {
+        if (!_is_connected.load(std::memory_order_relaxed)) {
             return;
         }
         keep_alive_timer->stop();
@@ -300,7 +305,7 @@ namespace srt {
             Trace("srt handshake success, drop={}, report_nak={}, tsbpd={}, socket_id={}", extension->drop, extension->nak, extension->receiver_tlpktd_delay, get_sock_id());
             /// 停止计时器
             common_timer->stop();
-            is_connected = true;
+            _is_connected.store(std::memory_order_relaxed);
             /// 清除缓存, 节省内存
             handshake_buffer = nullptr;
             _next_func = std::bind(&srt_socket_service::handle_data_and_control, this, std::placeholders::_1);

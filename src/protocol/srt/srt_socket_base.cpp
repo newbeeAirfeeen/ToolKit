@@ -28,6 +28,9 @@
 namespace srt {
 
     void srt_socket_base::set_max_payload(uint32_t length) {
+        if (is_connected()) {
+            return;
+        }
         if (length > 1500) {
             throw std::system_error(make_srt_error(srt_error_code::too_large_payload));
         }
@@ -35,34 +38,58 @@ namespace srt {
     }
 
     void srt_socket_base::set_max_flow_window_size(uint32_t counts) {
+        if (is_connected()) {
+            return;
+        }
         this->max_flow_window_size = counts;
     }
 
     void srt_socket_base::set_drop_too_late_packet(bool on) {
+        if (is_connected()) {
+            return;
+        }
         this->drop_too_late_packet = on;
     }
 
     void srt_socket_base::set_time_based_deliver(uint64_t ms) {
+        if (is_connected()) {
+            return;
+        }
         this->time_deliver_ = ms;
     }
 
     void srt_socket_base::set_report_nak(bool on) {
+        if (is_connected()) {
+            return;
+        }
         this->report_nak = on;
     }
 
     void srt_socket_base::set_stream_id(const std::string &id) {
+        if (is_connected()) {
+            return;
+        }
         this->stream_id = id;
     }
 
     void srt_socket_base::set_sock_id(uint32_t id) {
+        if (is_connected()) {
+            return;
+        }
         this->sock_id = id;
     }
 
     void srt_socket_base::set_connect_timeout(uint64_t ms) {
+        if (is_connected()) {
+            return;
+        }
         this->connect_time_out = ms;
     }
 
-    void srt_socket_base::set_max_receive_time_out(uint32_t ms){
+    void srt_socket_base::set_max_receive_time_out(uint32_t ms) {
+        if (is_connected()) {
+            return;
+        }
         this->max_receive_time_out = ms;
     }
 
@@ -98,7 +125,7 @@ namespace srt {
         return this->connect_time_out;
     }
 
-    uint32_t srt_socket_base::get_max_receive_time_out() const{
+    uint32_t srt_socket_base::get_max_receive_time_out() const {
         return this->max_receive_time_out;
     }
 };// namespace srt
