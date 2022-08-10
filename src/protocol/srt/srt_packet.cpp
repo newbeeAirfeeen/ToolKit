@@ -149,7 +149,7 @@ namespace srt {
 
     std::shared_ptr<srt_packet> from_buffer(const char *data, size_t length) {
         if (length < 16) {
-            return nullptr;
+            throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
         }
         auto pkt = std::make_shared<srt_packet>();
         bool control = data[0] & 0x80;

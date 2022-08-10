@@ -28,13 +28,13 @@
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
+#include "srt_handshake.h"
 #include "srt_socket_base.hpp"
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <string>
-///#include "socket_statistic.hpp"
 namespace srt {
 
     class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service> {
@@ -44,16 +44,18 @@ namespace srt {
 
     public:
         explicit srt_socket_service(asio::io_context &executor);
-        virtual ~srt_socket_service() = default;
+        ~srt_socket_service() override = default;
 
     public:
         srt_socket_service(const srt_socket_service &) = delete;
         srt_socket_service &operator=(const srt_socket_service &) = delete;
         virtual void begin();
+
     protected:
         void connect();
         void input_packet(const std::shared_ptr<buffer> &buff);
-        bool is_connected() override final;
+        bool is_open() final;
+        bool is_connected() final;
         //// 需要在连接的时候调用
         virtual const asio::ip::udp::endpoint &get_remote_endpoint() = 0;
         virtual const asio::ip::udp::endpoint &get_local_endpoint() = 0;
@@ -65,18 +67,25 @@ namespace srt {
         virtual void on_error(const std::error_code &e) = 0;
 
     private:
-        void send_reject();
+        void send_reject(int e, const std::shared_ptr<buffer> &buf);
         /// 数据统一出口
         void send_in(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where);
-        /// 发送keepalive数据
         void do_keepalive();
+        void do_nak();
+        void do_ack();
+        void do_ack_ack();
+        void do_drop_request();
+        void do_shutdown();
 
     private:
         /// 用于客户端握手
+        void handle_reject();
         void handle_server_induction(const std::shared_ptr<buffer> &buff);
         void handle_server_conclusion(const std::shared_ptr<buffer> &buff);
-        void handle_data_and_control(const std::shared_ptr<buffer> &buff);
-
+        void handle_receive(const std::shared_ptr<buffer> &buff);
+        void handle_control();
+        void handle_data();
+        void handle_shutdown();
     private:
         void on_common_timer_expired(const int &);
         /// 保活定时器
@@ -93,7 +102,9 @@ namespace srt {
         /// keep alive 缓存
         std::shared_ptr<buffer> keep_alive_buffer;
         /// 握手上下文
+        std::shared_ptr<handshake_context> _handshake_context;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
+
         /// 第一次尝试连接的时间
         time_point first_connect_point;
         /// 上一次发送数据的时间
@@ -101,6 +112,7 @@ namespace srt {
         /// 上一次接收数据的时间
         time_point last_receive_point;
         /// 是否已经建立连接
+        std::atomic<bool> _is_open{false};
         std::atomic<bool> _is_connected{false};
         /// 上一次发送包的序号
         uint32_t sequence_number = 0;

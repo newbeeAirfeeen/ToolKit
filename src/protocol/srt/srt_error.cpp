@@ -43,6 +43,8 @@ namespace srt {
                 return "at the this point, KE_REQ is not support";
             case srt_unknown_extension_field:
                 return "unknown srt extension field";
+            case srt_peer_error:
+                return "peer handshake parameters error";
             case too_large_payload:
                 return "too large payload size, which is exceed MTU";
             case socket_write_error:

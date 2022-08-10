@@ -25,8 +25,8 @@
 #include "srt_handshake.h"
 #include "Util/endian.hpp"
 #include "srt_control_type.h"
-#include "srt_packet.h"
 #include "srt_error.hpp"
+#include "srt_packet.h"
 namespace srt {
 
     bool is_handshake_packet_type(uint32_t p) {
@@ -36,23 +36,26 @@ namespace srt {
             case handshake_context::urq_conclusion:
             case handshake_context::urq_agreement:
                 return true;
-            default:
+            default: {
+                if (p >= 1000 && p <= 1015)
+                    return true;
                 return false;
+            }
         }
     }
 
-    void handshake_context::update_extension_field(const handshake_context& ctx, const std::shared_ptr<buffer>& b){
-        if(b->size() < 28){
+    void handshake_context::update_extension_field(const handshake_context &ctx, const std::shared_ptr<buffer> &b) {
+        if (b->size() < 28) {
             throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
         }
-        char* p = (char*)b->data() + 22;
-        set_be16(p,ctx.extension_field);
+        char *p = (char *) b->data() + 22;
+        set_be16(p, ctx.extension_field);
     }
 
 
     std::shared_ptr<handshake_context> handshake_context::from_buffer(const char *data, size_t length) noexcept {
         if (length < 48) {
-            return nullptr;
+            throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
         }
         const auto *pointer = (const uint32_t *) data;
         auto handshake = std::make_shared<handshake_context>();
@@ -66,7 +69,7 @@ namespace srt {
         handshake->_window_size = load_be32(pointer++);
         handshake->_req_type = static_cast<handshake_context::packet_type>(load_be32(pointer++));
         if (!is_handshake_packet_type(handshake->_req_type)) {
-            return nullptr;
+            throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
         }
 
         handshake->_socket_id = load_be32(pointer++);
@@ -128,10 +131,49 @@ namespace srt {
         return 48;
     }
 
-    void handshake_context::to_buffer(const handshake_context& ctx, const std::shared_ptr<buffer>& buff) noexcept {
+    void handshake_context::to_buffer(const handshake_context &ctx, const std::shared_ptr<buffer> &buff) noexcept {
         std::string data;
         data.resize(48);
         to_buffer(ctx, (char *) data.data(), data.size());
         buff->append(data);
+    }
+
+    const char *get_reject_reason(int e) {
+        switch (e) {
+            case handshake_context::packet_type::rej_unknown:
+                return "Unknown reason";
+            case handshake_context::packet_type::rej_system:
+                return "System function error";
+            case handshake_context::packet_type::rej_peer:
+                return "Rejected by peer";
+            case handshake_context::packet_type::rej_resource:
+                return "Resource allocation problem";
+            case handshake_context::packet_type::rej_rogue:
+                return "incorrect data in handshake";
+            case handshake_context::packet_type::rej_backlog:
+                return "listener's backlog exceeded";
+            case handshake_context::packet_type::rej_rej_ipe:
+                return "internal program error";
+            case handshake_context::packet_type::rej_close:
+                return "socket is closing";
+            case handshake_context::packet_type::rej_version:
+                return "peer is older version than agent's min";
+            case handshake_context::packet_type::rej_rdv_cookie:
+                return "rendezvous cookie collision";
+            case handshake_context::packet_type::rej_bad_secret:
+                return " wrong password";
+            case handshake_context::packet_type::rej_unsecure:
+                return "password required or unexpected";
+            case handshake_context::packet_type::rej_message_api:
+                return "Stream flag collision";
+            case handshake_context::packet_type::rej_congestion:
+                return "incompatible congestion-controller type";
+            case handshake_context::packet_type::rej_filter:
+                return "incompatible packet filter";
+            case handshake_context::packet_type::rej_group:
+                return "incompatible group";
+            default:
+                return "unknown";
+        }
     }
 };// namespace srt

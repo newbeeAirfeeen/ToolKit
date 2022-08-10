@@ -30,14 +30,15 @@ namespace srt {
 
     enum srt_error_code {
         status_error,
-        srt_packet_error,
+        srt_packet_error,               /// srt 包解析失败
         srt_control_type_error,
-        srt_stream_id_too_long,
-        srt_KM_REQ_is_not_support,
-        srt_unknown_extension_field,
-        too_large_payload,
-        socket_write_error,
-        socket_connect_time_out,
+        srt_stream_id_too_long,         /// stream_id 字段太长了
+        srt_KM_REQ_is_not_support,      /// 握手阶段: 不支持的加密
+        srt_unknown_extension_field,    /// 未知的扩展字段
+        srt_peer_error,                 /// srt握手失败
+        too_large_payload,              /// MTU 太大
+        socket_write_error,             /// 发送数据失败
+        socket_connect_time_out,        /// 连接超时
     };
 
     class srt_category : public std::error_category {
