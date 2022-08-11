@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt_client.hpp
 * @date: 2022/08/09
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -34,9 +34,11 @@ namespace srt {
     public:
         using endpoint_type = asio::ip::udp::endpoint;
         struct impl;
+
     public:
         explicit srt_client(asio::io_context &poller, const endpoint_type &host = {asio::ip::udp::v4(), 12000});
         void async_connect(const endpoint_type &remote, const std::function<void(const std::error_code &)> &f);
+
     private:
         std::shared_ptr<impl> _impl;
     };

@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt_socket.hpp
 * @date: 2022/08/08
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +34,10 @@
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
+#include "socket_statistic.hpp"
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include "srt_socket_base.hpp"
-#include "socket_statistic.hpp"
 
 namespace srt {
 
@@ -69,6 +69,7 @@ namespace srt {
         virtual void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) = 0;
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
+
     private:
         void send_reject(int e, const std::shared_ptr<buffer> &buf);
         /// 数据统一出口
@@ -77,11 +78,16 @@ namespace srt {
         void on_error_in(const std::error_code &e);
         void do_keepalive();
         void do_nak();
+        /// Round-trip time (RTT) in SRT is estimated during the transmission of data packets based on
+        /// difference in time between an ACK packet is send out and a corresponding ACK_ACK is received
+        /// back by SRT receiver.
+        /// An ACK send by the receiver triggers an ACK_ACK from the sender with minimal processing delay.
         void do_ack();
         void do_ack_ack();
         void do_drop_request();
         void do_shutdown();
         inline uint32_t get_time_from_begin();
+
     private:
         /// 用于客户端握手
         void handle_reject(int e);
@@ -97,11 +103,13 @@ namespace srt {
         void handle_peer_error(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_drop_request(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+
     private:
         /// 定时器回调
         void on_common_timer_expired(const int &);
         /// 保活定时器
         void on_keep_alive_expired(const int &);
+
     private:
         asio::io_context &poller;
         /// 通常的定时器,处理ack,nak

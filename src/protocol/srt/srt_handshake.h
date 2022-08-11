@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt_handshake.h
 * @date: 2022/04/29
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -78,6 +78,6 @@ namespace srt {
     };
 
     bool is_handshake_packet_type(uint32_t);
-    const char* get_reject_reason(int e);
+    const char *get_reject_reason(int e);
 };    // namespace srt
 #endif//TOOLKIT_SRT_HANDSHAKE_H

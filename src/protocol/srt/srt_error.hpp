@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt_error.hpp
 * @date: 2022/04/26
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -32,16 +32,16 @@ namespace srt {
         status_error,
         srt_packet_error,/// srt 包解析失败
         srt_control_type_error,
-        srt_stream_id_too_long,     /// stream_id 字段太长了
-        srt_KM_REQ_is_not_support,  /// 握手阶段: 不支持的加密
-        srt_unknown_extension_field,/// 未知的扩展字段
-        srt_peer_error,             /// 收到peer_error,
-        srt_handshake_error,        /// 握手失败
-        too_large_payload,          /// MTU 太大
-        socket_write_error,         /// 发送数据失败
-        socket_connect_time_out,    /// 连接超时
-        lost_peer_connection,       /// 主动断开连接
-        peer_has_terminated_connection,  /// 对端主动关闭了连接
+        srt_stream_id_too_long,        /// stream_id 字段太长了
+        srt_KM_REQ_is_not_support,     /// 握手阶段: 不支持的加密
+        srt_unknown_extension_field,   /// 未知的扩展字段
+        srt_peer_error,                /// 收到peer_error,
+        srt_handshake_error,           /// 握手失败
+        too_large_payload,             /// MTU 太大
+        socket_write_error,            /// 发送数据失败
+        socket_connect_time_out,       /// 连接超时
+        lost_peer_connection,          /// 主动断开连接
+        peer_has_terminated_connection,/// 对端主动关闭了连接
     };
 
     class srt_category : public std::error_category {

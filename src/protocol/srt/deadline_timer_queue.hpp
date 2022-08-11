@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: dealine_timer_queue.hpp
 * @date: 2022/08/05
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal

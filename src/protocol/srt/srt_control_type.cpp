@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt_control_type.cpp
 * @date: 2022/04/27
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal

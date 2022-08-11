@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt_extension.h
 * @date: 2022/04/29
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -77,7 +77,7 @@ namespace srt {
         SRT_CMD_KM_REQ = 3,
         SRT_CMD_KM_RSP = 4,
         SRT_CMD_SID = 5,
-        SRT_CMD_CONGESTION = 6, /// The Congestion Warning control packet is reserved for future use.
+        SRT_CMD_CONGESTION = 6,/// The Congestion Warning control packet is reserved for future use.
         SRT_CMD_FILTER = 7,
         SRT_CMD_GROUP = 8,
     };

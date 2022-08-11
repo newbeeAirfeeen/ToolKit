@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt_packet.hpp
 * @date: 2022/04/21
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -191,7 +191,7 @@ namespace srt {
 
     std::shared_ptr<buffer> create_packet(const srt_packet &) noexcept;
     std::shared_ptr<srt_packet> from_buffer(const char *data, size_t length);
-    void set_packet_timestamp(const std::shared_ptr<buffer>& buff, uint32_t ts);
+    void set_packet_timestamp(const std::shared_ptr<buffer> &buff, uint32_t ts);
     void update_packet_data_flag(const srt_packet &pkt, const std::shared_ptr<buffer> &ptr) noexcept;
 };// namespace srt
 

@@ -1,8 +1,8 @@
 ﻿/*
 * @file_name: srt.hpp
 * @date: 2022/04/26
-* @author: oaho
-* Copyright @ hz oaho, All rights reserved.
+* @author: shen hao
+* Copyright @ hz shen hao, All rights reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,10 @@
 #define TOOLKIT_SRT_HPP
 
 #include "deadline_timer_queue.hpp"
+#include "srt_client.hpp"
 #include "srt_control_type.h"
 #include "srt_error.hpp"
 #include "srt_packet.h"
 #include "srt_socket_service.hpp"
-#include "srt_client.hpp"
 
 #endif//TOOLKIT_SRT_HPP
