@@ -13,13 +13,13 @@ int main() {
     asio::io_context context(1);
     asio::executor_work_guard<typename asio::io_context::executor_type> guard(context.get_executor());
 
-    auto timer = create_deadline_timer<std::string>(context);
+    auto timer = create_deadline_timer<std::string, std::chrono::microseconds>(context);
 
 
     static int couple = 0;
     timer->set_on_expired([timer](const std::string& str) {
         Info("tag {}:{}", couple++, str);
-        timer->add_expired_from_now(5, std::to_string(couple) + " 2000 end");
+        timer->add_expired_from_now(1000, std::to_string(couple) + " 2000 end");
     });
 
     auto begin = std::chrono::steady_clock::now();

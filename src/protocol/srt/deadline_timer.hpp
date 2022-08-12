@@ -31,29 +31,28 @@
 #include <memory>
 #include <net/asio.hpp>
 #include <ratio>
-template<typename TAG>
-class deadline_timer : public std::enable_shared_from_this<deadline_timer<TAG>> {
-    template<typename T>
-    friend std::shared_ptr<deadline_timer<T>> create_deadline_timer(asio::io_context &io);
-
+template<typename TAG, typename _duration_type = std::chrono::milliseconds>
+class deadline_timer : public std::enable_shared_from_this<deadline_timer<TAG, _duration_type>> {
+    template<typename R, typename RR>
+    friend std::shared_ptr<deadline_timer<R, RR>> create_deadline_timer(asio::io_context &io);
 public:
     typedef std::chrono::steady_clock clock_type;
-    typedef std::enable_shared_from_this<deadline_timer<TAG>> base_type;
+    typedef std::enable_shared_from_this<deadline_timer<TAG, _duration_type>> base_type;
     typedef TAG tag_type;
     typedef typename std::multimap<uint64_t, tag_type>::iterator iterator;
     typedef const iterator const_iterator;
+    typedef _duration_type duration_type;
 
 public:
-    //// ms,线程不安全
-    void add_expired_from_now(uint64_t ms, tag_type tag) {
-        std::weak_ptr<deadline_timer<tag_type>> self(base_type::shared_from_this());
-        executor.post([self, ms, tag]() {
+    void add_expired_from_now(uint64_t counts, tag_type tag) {
+        std::weak_ptr<deadline_timer<tag_type, duration_type>> self(base_type::shared_from_this());
+        executor.post([self, counts, tag]() {
             auto stronger_self = self.lock();
             if (!stronger_self) {
                 return;
             }
-            auto now = std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now().time_since_epoch()).count();
-            stronger_self->triggered_sets.insert(std::make_pair(now + ms, std::move(tag)));
+            auto now = std::chrono::duration_cast<duration_type>(clock_type::now().time_since_epoch()).count();
+            stronger_self->triggered_sets.insert(std::make_pair(now + counts, std::move(tag)));
             stronger_self->update_timer();
         });
     }
@@ -68,12 +67,12 @@ public:
     }
 
     void update_timer() {
-        std::weak_ptr<deadline_timer> self(base_type::shared_from_this());
+        std::weak_ptr<deadline_timer<tag_type, duration_type>> self(base_type::shared_from_this());
         /// 移动之
         decltype(triggered_sets) _tmp_ = std::move(triggered_sets);
         auto iter = _tmp_.begin();
         for (; iter != _tmp_.end(); ++iter) {
-            auto now = std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now().time_since_epoch()).count();
+            auto now = std::chrono::duration_cast<_duration_type>(clock_type::now().time_since_epoch()).count();
             /// expired
             if (static_cast<uint64_t>(now) >= iter->first) {
                 /// 这里不能删除，如果回调函数中可能有继续增加任务的操作，迭代器可能会失效
@@ -85,10 +84,8 @@ public:
                 if (triggered_sets.empty()) {
                     return;
                 }
-                std::chrono::milliseconds m(triggered_sets.begin()->first);
-                std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<long long, std::milli>> tp(m);
                 timer.cancel();
-                timer.expires_at(tp);
+                timer.expires_at(clock_type::time_point() + duration_type(triggered_sets.begin()->first));
                 timer.async_wait([self](const std::error_code &e) {
                     if (e) {
                         return;
@@ -130,9 +127,9 @@ private:
     std::multimap<uint64_t, tag_type> triggered_sets;
     asio::steady_timer timer;
 };
-template<typename T>
-std::shared_ptr<deadline_timer<T>> create_deadline_timer(asio::io_context &io) {
-    std::shared_ptr<deadline_timer<T>> timer(new deadline_timer<T>(std::ref(io)));
+template<typename T, typename _duration_type = std::chrono::milliseconds>
+std::shared_ptr<deadline_timer<T, _duration_type>> create_deadline_timer(asio::io_context &io) {
+    std::shared_ptr<deadline_timer<T, _duration_type>> timer(new deadline_timer<T, _duration_type>(std::ref(io)));
     return timer;
 }
 

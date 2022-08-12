@@ -1,0 +1,8 @@
+﻿//
+// Created by 沈昊 on 2022/8/12.
+//
+
+#ifndef TOOLKIT_SENDER_BUFFER_HPP
+#define TOOLKIT_SENDER_BUFFER_HPP
+
+#endif//TOOLKIT_SENDER_BUFFER_HPP
