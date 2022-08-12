@@ -25,11 +25,11 @@
 
 #ifndef TOOLKIT_DEADLINE_TIMER_QUEUE_HPP
 #define TOOLKIT_DEADLINE_TIMER_QUEUE_HPP
-#include "deadline_timer.hpp"
+#include "protocol/srt/deadline_timer.hpp"
 #include <functional>
 #include <map>
 #include <memory>
-#include <net/asio.hpp>
+#include "net/asio.hpp"
 #include <utility>
 template<typename Key, typename Value>
 class deadline_timer_queue : public std::enable_shared_from_this<deadline_timer_queue<Key, Value>> {

@@ -2,7 +2,7 @@
 // Created by 沈昊 on 2022/8/6.
 //
 #include <gtest/gtest.h>
-#include <protocol/srt/bits.hpp>
+#include "net/deprecated/bits.hpp"
 #include <iostream>
 using namespace std;
 

@@ -33,6 +33,8 @@
 #include <numeric>
 #include <random>
 namespace srt {
+    static constexpr uint32_t packet_max_seq = 0x7FFFFFFF;
+    static constexpr uint32_t message_max_seq = 0x3FFFFFF;
     /// 连接回调, 发生在握手
     enum timer_expired_type {
         keep_alive_expired,
@@ -41,7 +43,7 @@ namespace srt {
         receive_timeout,
     };
 
-    srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
+    srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor), sender_queue<buffer_pointer>(executor) {
         _sock_send_statistic = std::make_shared<socket_statistic>(poller);
         _sock_receive_statistic = std::make_shared<socket_statistic>(poller);
     }
@@ -77,8 +79,8 @@ namespace srt {
         /// DGRAM
         ctx.extension_field = 2;
         /// random seq
-        sequence_number = static_cast<uint32_t>(mt(random));
-        ctx._sequence_number = sequence_number;
+        packet_sequence_number = static_cast<uint32_t>(mt(random));
+        ctx._sequence_number = packet_sequence_number;
         ctx._max_mss = srt_socket_base::get_max_payload();
         ctx._window_size = srt_socket_service::get_max_flow_window_size();
         ctx._req_type = srt::handshake_context::urq_induction;
@@ -168,6 +170,18 @@ namespace srt {
         send_in(keep_alive_buffer, get_remote_endpoint());
     }
 
+    inline uint32_t srt_socket_service::get_next_packet_sequence_number() {
+        auto tmp = packet_sequence_number;
+        packet_sequence_number = (packet_sequence_number + 1) % packet_max_seq;
+        return tmp;
+    }
+
+    inline uint32_t srt_socket_service::get_next_packet_message_number() {
+        auto tmp = message_number;
+        message_number = (message_max_seq + 1) % message_max_seq;
+        return tmp;
+    }
+
     void srt_socket_service::input_packet(const std::shared_ptr<buffer> &buff) {
         _next_func(buff);
     }
@@ -180,6 +194,37 @@ namespace srt {
         return _is_connected.load(std::memory_order_relaxed);
     }
 
+    void srt_socket_service::async_send(const std::shared_ptr<buffer> &buffer) {
+        std::weak_ptr<srt_socket_service> self(shared_from_this());
+        poller.post([self, buffer]() {
+            auto stronger_self = self.lock();
+            if (!stronger_self) {
+                return;
+            }
+
+            if (!stronger_self->_is_connected.load(std::memory_order_relaxed)) {
+                auto e = make_srt_error(srt_error_code::not_connected_yet);
+                /// 在连接的时候 直接调用.不终止会话loop
+                return stronger_self->on_error(e);
+            }
+        });
+    }
+
+    using pointer = typename sender_queue<buffer_pointer>::pointer;
+    pointer srt_socket_service::get_shared_from_this() {
+        return shared_from_this();
+    }
+
+    void srt_socket_service::send(const sender_queue::block_type &type) {
+        /// real send
+        send_in(type->content, get_remote_endpoint());
+    }
+
+    void srt_socket_service::on_drop_packet(sender_queue::size_type type) {
+        Warn("drop packet,{}", type);
+    }
+
+
     void srt_socket_service::send_reject(int e, const std::shared_ptr<buffer> &buff) {
         Trace("send_reject..");
         if (buff->size() < 40) {
@@ -189,7 +234,7 @@ namespace srt {
         common_timer->stop();
         ////
         buff->backward();
-        uint32_t *p = (uint32_t *) (buff->data() + 36);
+        auto *p = (uint32_t *) (buff->data() + 36);
         set_be32(p, static_cast<uint32_t>(e));
         auto reject_buf = std::make_shared<buffer>(buff->data(), buff->size());
         send_in(reject_buf, get_remote_endpoint());
@@ -309,7 +354,7 @@ namespace srt {
             //// 停止定时器
             common_timer->stop();
             //// 更新包序号
-            sequence_number = induction_context->_sequence_number;
+            packet_sequence_number = induction_context->_sequence_number;
             /// 更新mtu
             set_max_payload(induction_context->_max_mss);
             /// 更新滑动窗口大小
@@ -322,7 +367,7 @@ namespace srt {
             ctx.encryption = 0;
             /// 先为空
             ctx.extension_field = 0;
-            ctx._sequence_number = sequence_number;
+            ctx._sequence_number = packet_sequence_number;
             ctx._max_mss = srt_socket_base::get_max_payload();
             ctx._window_size = srt_socket_service::get_max_flow_window_size();
             ctx._req_type = srt::handshake_context::urq_conclusion;
@@ -373,7 +418,7 @@ namespace srt {
             }
 
             /// 最终更新包序号
-            sequence_number = context->_sequence_number;
+            packet_sequence_number = context->_sequence_number;
             /// 最终更新mtu
             /// set_max_payload(context->_max_mss);
             /// 最终更新滑动窗口大小

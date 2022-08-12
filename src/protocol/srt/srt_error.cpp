@@ -50,6 +50,8 @@ namespace srt {
                 return "peer handshake parameters error";
             case too_large_payload:
                 return "too large payload size, which is exceed MTU";
+            case not_connected_yet:
+                return "which operation is forbidden which connection is not established";
             case socket_write_error:
                 return "socket write error";
             case socket_connect_time_out:

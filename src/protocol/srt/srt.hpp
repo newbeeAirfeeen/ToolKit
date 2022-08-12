@@ -25,7 +25,7 @@
 #ifndef TOOLKIT_SRT_HPP
 #define TOOLKIT_SRT_HPP
 
-#include "deadline_timer_queue.hpp"
+#include "net/deprecated/deadline_timer_queue.hpp"
 #include "srt_client.hpp"
 #include "srt_control_type.h"
 #include "srt_error.hpp"

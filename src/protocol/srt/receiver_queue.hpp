@@ -1,0 +1,8 @@
+﻿//
+// Created by 沈昊 on 2022/8/12.
+//
+
+#ifndef TOOLKIT_RECEIVE_QUEUE_HPP
+#define TOOLKIT_RECEIVE_QUEUE_HPP
+
+#endif//TOOLKIT_RECEIVE_QUEUE_HPP

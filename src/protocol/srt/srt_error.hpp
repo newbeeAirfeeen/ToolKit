@@ -38,6 +38,7 @@ namespace srt {
         srt_peer_error,                /// 收到peer_error,
         srt_handshake_error,           /// 握手失败
         too_large_payload,             /// MTU 太大
+        not_connected_yet,             /// 未完成连接,非法的操作。
         socket_write_error,            /// 发送数据失败
         socket_connect_time_out,       /// 连接超时
         lost_peer_connection,          /// 主动断开连接

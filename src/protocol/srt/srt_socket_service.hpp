@@ -34,14 +34,14 @@
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
+#include "sender_queue.hpp"
 #include "socket_statistic.hpp"
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include "srt_socket_base.hpp"
-
 namespace srt {
-
-    class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service> {
+    using buffer_pointer = std::shared_ptr<buffer>;
+    class srt_socket_service : public srt_socket_base, public sender_queue<buffer_pointer>, public std::enable_shared_from_this<srt_socket_service> {
     public:
         using clock_type = typename std::chrono::steady_clock;
         using time_point = typename std::chrono::steady_clock::time_point;
@@ -49,17 +49,15 @@ namespace srt {
     public:
         explicit srt_socket_service(asio::io_context &executor);
         ~srt_socket_service() override = default;
-
-    public:
         srt_socket_service(const srt_socket_service &) = delete;
         srt_socket_service &operator=(const srt_socket_service &) = delete;
-        virtual void begin();
 
     protected:
         void connect();
         void input_packet(const std::shared_ptr<buffer> &buff);
         bool is_open() final;
         bool is_connected() final;
+        virtual void begin();
         //// 需要在连接的时候调用
         virtual const asio::ip::udp::endpoint &get_remote_endpoint() = 0;
         virtual const asio::ip::udp::endpoint &get_local_endpoint() = 0;
@@ -69,7 +67,13 @@ namespace srt {
         virtual void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) = 0;
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
-
+    protected:
+        void async_send(const std::shared_ptr<buffer> &);
+    protected:
+        //// send_queue
+        typename sender_queue<buffer_pointer>::pointer get_shared_from_this() override;
+        void send(const block_type &type) override;
+        void on_drop_packet(size_type type) override;
     private:
         void send_reject(int e, const std::shared_ptr<buffer> &buf);
         /// 数据统一出口
@@ -110,6 +114,8 @@ namespace srt {
         /// 保活定时器
         void on_keep_alive_expired(const int &);
 
+        inline uint32_t get_next_packet_sequence_number();
+        inline uint32_t get_next_packet_message_number();
     private:
         asio::io_context &poller;
         /// 通常的定时器,处理ack,nak
@@ -133,7 +139,8 @@ namespace srt {
         std::atomic<bool> _is_open{false};
         std::atomic<bool> _is_connected{false};
         /// 上一次发送包的序号
-        uint32_t sequence_number = 0;
+        uint32_t packet_sequence_number = 0;
+        uint32_t message_number = 0;
         /// 用于统计包发送数据
         std::shared_ptr<socket_statistic> _sock_send_statistic;
         /// 用于统计接收的包
