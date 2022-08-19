@@ -33,7 +33,7 @@ namespace srt {
     }
 
     bool is_HS_REQ_set(uint32_t type_information) {
-        return (type_information & static_cast<uint32_t>(0xFFFF) & extension_flag::HS_REQ) == extension_flag::HS_REQ;
+        return (type_information & static_cast<uint32_t>(0xFFFF) & (extension_flag::HS_REQ)) == extension_flag::HS_REQ;
     }
 
     bool is_KM_REQ_set(uint32_t type_information) {

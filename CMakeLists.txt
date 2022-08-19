@@ -1,10 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
-project(ToolKit)
+project(ToolKit VERSION 1)
 
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
-add_definitions(-DASIO_STANDALONE -DASIO_HEADER_ONLY -DSRT_CORE_INTERNAL_DEBUG_LOG -DFMT_HEADER_ONLY -DOPENSSL_EXTRA)
+add_definitions(-DASIO_STANDALONE
+                -DASIO_HEADER_ONLY
+                -DSRT_CORE_INTERNAL_DEBUG_LOG
+                -DFMT_HEADER_ONLY
+                #-DASIO_ENABLE_HANDLER_TRACKING
+                -DOPENSSL_EXTRA)
 
 
 if(WIN32)
@@ -45,3 +50,4 @@ target_include_directories(${PROJECT_NAME}_static PUBLIC ${CMAKE_SOURCE_DIR}/src
 
 add_subdirectory(example)
 add_subdirectory(test)
+add_subdirectory(benchmark)

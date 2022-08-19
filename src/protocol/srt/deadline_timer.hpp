@@ -62,8 +62,8 @@ public:
     }
 
     void stop() {
-        timer.cancel();
         triggered_sets.clear();
+        timer.cancel();
     }
 
     void update_timer() {

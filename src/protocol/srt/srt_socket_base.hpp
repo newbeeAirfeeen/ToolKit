@@ -55,7 +55,6 @@ namespace srt {
         uint32_t get_sock_id() const;
         uint32_t get_connect_timeout() const;
         uint32_t get_max_receive_time_out() const;
-
     protected:
         bool drop_too_late_packet = true;
         bool report_nak = true;

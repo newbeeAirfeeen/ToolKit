@@ -48,7 +48,7 @@ namespace srt {
     }
 
     void srt_packet::set_in_order(bool on) {
-        this->in_order = static_cast<uint8_t>(on);
+        this->in_order = static_cast<bool>(on);
     }
 
     void srt_packet::set_key_encryption_flag(uint8_t encryption) {
@@ -89,6 +89,10 @@ namespace srt {
 
     bool srt_packet::is_retransmitted() const {
         return this->transmitted_packet_flag;
+    }
+
+    bool srt_packet::get_in_order() const{
+        return this->in_order;
     }
 
     uint32_t srt_packet::get_message_number() const {
@@ -133,8 +137,8 @@ namespace srt {
             /// sequence number
             buff->put_be<uint32_t>(pkt.get_packet_sequence_number() & 0x7FFFFFFF);
             /// flag + message_number
-            uint32_t flag = (pkt.get_packet_position_flag() << 6) | (pkt.get_key_based_encryption_flag() << 3) | (pkt.is_retransmitted() << 2);
-            uint32_t message_number = (flag << 26) | (pkt.get_message_number() | 0x3FFFFFFF);
+            uint8_t flag = (pkt.get_packet_position_flag() << 6) | (pkt.get_key_based_encryption_flag() << 3) | (pkt.is_retransmitted() << 2);
+            uint32_t message_number = (flag << 24) | pkt.get_message_number();
             buff->put_be<uint32_t>(message_number);
         }
         /// timestamp
@@ -171,12 +175,12 @@ namespace srt {
             pkt->set_in_order(static_cast<bool>(in_order));
             pkt->set_key_encryption_flag(key_entry);
             pkt->set_retransmitted(static_cast<bool>(retransmit));
-            pkt->set_message_number(load_be32(data + 5) & 0x3FFFFFFF);
+            pkt->set_message_number(load_be32(data + 4) & 0x3FFFFFFF);
         }
 
         pkt->set_timestamp(load_be32(data + 8));
         pkt->set_socket_id(load_be32(data + 12));
-        pkt->set_data(data + 16, length - 16);
+        /// pkt->set_data(data + 16, length - 16);
         return pkt;
     }
 
@@ -187,7 +191,7 @@ namespace srt {
         char *data = (char *) buff->data() + 8;
         set_be32(data, ts);
     }
-
+#if 0
     void update_packet_data_flag(const srt_packet &pkt, const std::shared_ptr<buffer> &ptr) noexcept {
         if (pkt.get_control()) {
             return;
@@ -206,5 +210,13 @@ namespace srt {
 
         char *pointer = (char *) ptr->data() + 4;
         set_be32(pointer, message_number);
+    }
+#endif
+    void set_retransmit(bool on, const std::shared_ptr<buffer> &buff) {
+        uint8_t *p = ((uint8_t *) buff->data()) + 4;
+        if (on)
+            *p = (*p) | 0x04;
+        else
+            *(p) = (*p) ^ 0x04;
     }
 };// namespace srt

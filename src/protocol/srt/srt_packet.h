@@ -109,6 +109,7 @@ namespace srt {
         uint8_t get_packet_position_flag() const;
         bool get_key_based_encryption_flag() const;
         bool is_retransmitted() const;
+        bool get_in_order() const;
         uint32_t get_message_number() const;
         void set_data(const char *data, size_t length);
         const std::string &get_data() const;
@@ -192,7 +193,10 @@ namespace srt {
     std::shared_ptr<buffer> create_packet(const srt_packet &) noexcept;
     std::shared_ptr<srt_packet> from_buffer(const char *data, size_t length);
     void set_packet_timestamp(const std::shared_ptr<buffer> &buff, uint32_t ts);
+#if 0
     void update_packet_data_flag(const srt_packet &pkt, const std::shared_ptr<buffer> &ptr) noexcept;
+#endif
+    void set_retransmit(bool , const std::shared_ptr<buffer>& buff);
 };// namespace srt
 
 #endif//TOOLKIT_SRT_PACKET_H

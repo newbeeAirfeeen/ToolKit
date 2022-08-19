@@ -1,12 +1,12 @@
 ﻿//
 // Created by 沈昊 on 2022/8/12.
 //
-#include <protocol/srt/sender_queue.hpp>
+#include <protocol/srt/sliding_window.hpp>
 #include <spdlog/logger.hpp>
 
-class basic_sender : public sender_queue<int>, public std::enable_shared_from_this<basic_sender> {
+class basic_sender : public sliding_window<int>, public std::enable_shared_from_this<basic_sender> {
 public:
-    explicit basic_sender(asio::io_context &context) : sender_queue<int>(context) {
+    explicit basic_sender(asio::io_context &context) : sliding_window<int>(context) {
     }
 
 protected:
@@ -14,16 +14,20 @@ protected:
         return shared_from_this();
     }
 
-    void send(const block_type &type) override {
-        Info("send packet {}", type->sequence_number);
+
+public:
+    void on_packet(const block_type &type) override {
+        Info("on packet : {}, value={}", type->sequence_number, type->content);
     }
-    void on_drop_packet(size_type type) override {
-        Warn("drop packets {} counts", type);
+
+    void on_drop_packet(size_type begin, size_type end) override {
+        Info("drop packet {}-{}", begin, end);
     }
 
 public:
     void send_to(int v) {
-        ///sender_queue<int>::send_in(std::move(v));
+        auto b = std::make_shared<block>();
+        b->content = v;
     }
 
 private:
@@ -35,9 +39,10 @@ int main() {
     asio::io_context io(1);
     asio::executor_work_guard<typename asio::io_context::executor_type> guard(io.get_executor());
     auto sender = std::make_shared<basic_sender>(io);
-    sender->set_max_delay(120);
-    sender->set_initial_sequence(0);
-    sender->set_max_sequence(100);
+    sender->set_max_delay(0);
+    sender->set_initial_sequence(2);
+    sender->set_max_sequence(10);
+    sender->set_window_size(8);
     sender->start();
     static int vv = 1;
     auto t = create_deadline_timer<int>(io);

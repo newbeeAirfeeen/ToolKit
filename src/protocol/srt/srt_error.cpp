@@ -32,6 +32,8 @@ namespace srt {
 
     std::string srt_category::message(int err) const {
         switch (err) {
+            case success:
+                return "success";
             case status_error:
                 return "srt status error, the srt operation is not permitted in this status";
             case srt_packet_error:
@@ -56,6 +58,8 @@ namespace srt {
                 return "socket write error";
             case socket_connect_time_out:
                 return "connect time out";
+            case socket_shutdown_op:
+                return "active shutdown";
             case lost_peer_connection:
                 return "peer has lost connection";
             case peer_has_terminated_connection:

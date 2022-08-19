@@ -117,3 +117,40 @@ TEST(indunction_1, srt) {
     std::string address = context->address.to_string();
     EXPECT_EQ(address, "127.0.0.1");
 }
+
+
+TEST(data_packet, srt){
+    uint8_t buf[] = {0x06, 0xb2, 0x15, 0x25, 0xc0, 0x00, 0x00, 0x01,
+                     0x00, 0x00, 0x1d, 0x38, 0x3b, 0x17, 0x93, 0x8f};
+
+    srt::srt_packet pkt;
+    pkt.set_control(false);
+    pkt.set_packet_sequence_number(112334117);
+    pkt.set_message_number(1);
+    pkt.set_timestamp(7480);
+    pkt.set_in_order(false);
+    pkt.set_key_encryption_flag(0);
+    pkt.set_retransmitted(0);
+    pkt.set_socket_id(0x3b17938f);
+
+    auto b = srt::create_packet(pkt);
+
+    EXPECT_EQ(16, b->size());
+    compare((const char*)buf, 16, b->data(), b->size());
+
+}
+
+TEST(data_packet_2, srt){
+    uint8_t buf[] = {0x06, 0xb2, 0x15, 0x25, 0xc0, 0x00, 0x00, 0x01,
+                     0x00, 0x00, 0x1d, 0x38, 0x3b, 0x17, 0x93, 0x8f};
+    auto packet = srt::from_buffer((const char*)buf, 16);
+    EXPECT_EQ(false, packet->get_control());
+    EXPECT_EQ(112334117, packet->get_packet_sequence_number());
+    EXPECT_EQ(1, packet->get_message_number());
+    EXPECT_EQ(7480, packet->get_time_stamp());
+    EXPECT_EQ(false, packet->get_in_order());
+    EXPECT_EQ(false, packet->get_key_based_encryption_flag());
+    EXPECT_EQ(false, packet->is_retransmitted());
+    EXPECT_EQ(0x3b17938f, packet->get_socket_id());
+
+}
