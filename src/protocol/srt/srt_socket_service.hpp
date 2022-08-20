@@ -94,9 +94,12 @@ namespace srt {
         void do_ack_ack(uint32_t ack_number);
         void do_drop_request(size_t begin, size_t end);
         void do_shutdown();
-        inline uint32_t get_time_from_begin();
-        inline uint32_t get_time_from_connect_established();
-        inline uint32_t get_last_sent_spend();
+
+        template<typename _duration>
+        inline uint32_t get_time_from(const clock_type::time_point& last_time_point){
+            return static_cast<uint32_t>(std::chrono::duration_cast<_duration>(clock_type::now() - last_time_point).count());
+        }
+
     private:
         /// 用于客户端握手
         void handle_reject(int e);
@@ -135,7 +138,7 @@ namespace srt {
         /// std::shared_ptr<handshake_context> _handshake_context;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
         /// 第一次尝试连接的时间
-        time_point first_connect_point;
+        time_point connect_point;
         /// 上一次发送数据的时间
         time_point last_send_point;
         /// 上一次接收数据的时间

@@ -120,7 +120,7 @@ namespace srt {
         uint32_t get_type_information() const;
 
     private:
-        bool is_control = false;
+        bool is_control = true;
         /// Timestamp: 32 bits. @See section 3
         uint32_t time_stamp = 0;
         /// Destination Socket ID: 32 bits. @See Section 3
@@ -143,7 +143,7 @@ namespace srt {
         /// delivered by the receiver in order (1) or not (0). Certain
         /// restrictions apply depending on the data transmission mode used
         /// (Section 4.2).
-        uint8_t in_order = 1;
+        uint8_t in_order = 0;
         ///  KK: 2 bits. Key-based Encryption Flag. The flag bits indicate
         /// whether or not data is encrypted. The value "00b" (binary) means
         /// data is not encrypted. "01b" indicates that data is encrypted with

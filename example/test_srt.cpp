@@ -7,6 +7,7 @@ char buff2[1024];
 #include <errno.h>
 #include <iostream>
 #include <spdlog/logger.hpp>
+#include <protocol/srt/srt_server.hpp>
 using namespace std;
 void receive(const std::shared_ptr<asio::ip::udp::socket> &sock, char *buf, size_t length) {
 

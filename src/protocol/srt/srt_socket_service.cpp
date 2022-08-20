@@ -94,7 +94,6 @@ namespace srt {
 
         handshake_context ctx;
         ctx._version = 4;
-        ctx.encryption = 0;
         /// DGRAM
         ctx.extension_field = 2;
         /// random seq
@@ -109,18 +108,13 @@ namespace srt {
 
 
         srt_packet pkt;
-        pkt.set_control(true);
         pkt.set_control_type(control_type::handshake);
-        pkt.set_timestamp(0);
-        pkt.set_socket_id(0);
-        pkt.set_type_information(0);
         /// srt_packet
-
         auto _pkt = create_packet(pkt);
         handshake_context::to_buffer(ctx, _pkt);
         /// save induction message
         handshake_buffer = _pkt;
-        first_connect_point = clock_type::now();
+        connect_point = clock_type::now();
         _next_func = bind(&srt_socket_service::handle_server_induction, this, std::placeholders::_1);
         /// 发送到对端
         send_in(handshake_buffer, get_remote_endpoint());
@@ -137,7 +131,7 @@ namespace srt {
             case timer_expired_type::conclusion_expired: {
                 //Trace("connect package may be lost, try send again, package type={}", v);
                 //// 连接超时
-                auto ts = get_time_from_begin();
+                auto ts = get_time_from<std::chrono::milliseconds>(connect_point);
                 if (ts > get_connect_timeout()) {
                     return on_error_in(make_srt_error(srt_error_code::socket_connect_time_out));
                 }
@@ -174,12 +168,10 @@ namespace srt {
             return keep_alive_timer->add_expired_from_now(1000 - now, keep_alive_expired);
         }
 
-        auto ts = get_time_from_connect_established();
+        auto ts = get_time_from<std::chrono::microseconds>(connect_point);
         if (!keep_alive_buffer) {
             srt_packet pkt;
-            pkt.set_control(true);
             pkt.set_control_type(control_type::keepalive);
-            pkt.set_type_information(0);
             pkt.set_socket_id(srt_socket_base::get_sock_id());
             pkt.set_timestamp(ts);
             keep_alive_buffer = create_packet(pkt);
@@ -238,10 +230,7 @@ namespace srt {
             pkt.set_control(false);
             pkt.set_packet_sequence_number(stronger_self->_sender_buffer->get_initial_sequence());
             pkt.set_message_number(stronger_self->get_next_packet_message_number());
-            pkt.set_timestamp(stronger_self->get_time_from_connect_established());
-            pkt.set_in_order(false);
-            pkt.set_key_encryption_flag(0);
-            pkt.set_retransmitted(0);
+            pkt.set_timestamp(stronger_self->get_time_from<std::chrono::microseconds>(stronger_self->connect_point));
             pkt.set_socket_id(stronger_self->srt_socket_service::get_sock_id());
             auto pkt_buf = create_packet(pkt);
             pkt_buf->append(buff->data(), buff->size());
@@ -258,7 +247,7 @@ namespace srt {
             return;
         }
 
-        auto content = type->content;
+        auto content = _type->content;
         if (!content) {
             return;
         }
@@ -281,8 +270,6 @@ namespace srt {
         if (buff->size() < 40) {
             throw std::invalid_argument("buff is MUST greater than 40");
         }
-        /// 停止重新发送定时器
-        common_timer->stop();
         ////
         buff->backward();
         auto *p = (uint32_t *) (buff->data() + 36);
@@ -345,10 +332,9 @@ namespace srt {
     void srt_socket_service::do_ack_ack(uint32_t ack_number) {
         Trace("send ack ack {}", ack_number);
         srt_packet pkt;
-        pkt.set_control(true);
         pkt.set_control_type(ack_ack);
         pkt.set_type_information(ack_number);
-        pkt.set_timestamp(get_time_from_connect_established());
+        pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
         pkt.set_socket_id(get_sock_id());
         auto ack_ack_buff = create_packet(pkt);
         send_in(ack_ack_buff, get_remote_endpoint());
@@ -360,10 +346,8 @@ namespace srt {
     void srt_socket_service::do_drop_request(size_t begin, size_t end) {
         Trace("send drop request {} to {}", begin, end);
         srt_packet pkt;
-        pkt.set_control(true);
         pkt.set_control_type(control_type::drop_req);
-        pkt.set_type_information(0);
-        pkt.set_timestamp(get_time_from_connect_established());
+        pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
         auto drop_buf = create_packet(pkt);
         if (begin != end) {
             begin = begin | 0x80000000;
@@ -379,27 +363,13 @@ namespace srt {
 
     void srt_socket_service::do_shutdown() {
         srt_packet pkt;
-        pkt.set_control(true);
         pkt.set_control_type(control_type::shutdown);
-        pkt.set_timestamp(get_time_from_connect_established());
+        pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
         pkt.set_socket_id(srt_socket_service::get_sock_id());
         auto pkt_buffer = create_packet(pkt);
         /// shutdown 直接发送
         send(pkt_buffer, get_remote_endpoint());
         on_error_in(make_srt_error(srt_error_code::socket_shutdown_op));
-    }
-
-
-    inline uint32_t srt_socket_service::get_time_from_begin() {
-        return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now() - first_connect_point).count());
-    }
-
-    inline uint32_t srt_socket_service::get_time_from_connect_established() {
-        return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(clock_type::now() - first_connect_point).count());
-    }
-
-    inline uint32_t srt_socket_service::get_last_sent_spend() {
-        return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(clock_type::now() - last_send_point).count());
     }
 
     void srt_socket_service::handle_reject(int e) {
@@ -452,9 +422,6 @@ namespace srt {
 
             handshake_context ctx;
             ctx._version = 5;
-            ctx.encryption = 0;
-            /// 先为空
-            ctx.extension_field = 0;
             ctx._sequence_number = induction_context->_sequence_number;
 
             ctx._max_mss = srt_socket_base::get_max_payload();
@@ -466,13 +433,10 @@ namespace srt {
             ctx._cookie = induction_context->_cookie;
             ctx.address = get_local_endpoint().address();
 
-            auto ts = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - first_connect_point).count();
+            auto ts = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - connect_point).count();
             srt_packet pkt;
-            pkt.set_control(true);
             pkt.set_control_type(control_type::handshake);
             pkt.set_timestamp(static_cast<uint32_t>(ts));
-            pkt.set_socket_id(0);
-            pkt.set_type_information(0);
             /// srt_packet
             auto _pkt = create_packet(pkt);
             /// 加入握手
