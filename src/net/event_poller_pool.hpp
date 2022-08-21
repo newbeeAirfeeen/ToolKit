@@ -59,7 +59,6 @@ public:
     void wait();
 private:
     explicit event_poller_pool(size_t num = std::thread::hardware_concurrency());
-    //explicit event_poller_pool(size_t num = 1);
 private:
     std::vector<event_poller::Ptr> poller_pool;
     size_t _num;

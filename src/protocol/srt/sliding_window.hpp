@@ -64,7 +64,7 @@ public:
             return true;
         }
 
-        if(_size != other._size){
+        if (_size != other._size) {
             return true;
         }
         return false;
@@ -223,8 +223,6 @@ public:
             return on_drop_packet(begin, end);
         }
 
-
-
         auto begin_it = find_block_by_sequence(begin);
         if (begin == end) {
             if (begin_it != this->end()) {
@@ -239,7 +237,7 @@ public:
         }
         Info("try send again {}-{}", begin_it->sequence_number, end_it->sequence_number);
         while (begin_it != end_it) {
-            if (*begin_it){
+            if (*begin_it) {
                 Warn("current: {}", begin_it->sequence_number);
                 on_packet((*begin_it));
             }

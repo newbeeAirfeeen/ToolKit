@@ -25,9 +25,32 @@
 
 #ifndef TOOLKIT_SRT_SERVER_HPP
 #define TOOLKIT_SRT_SERVER_HPP
-namespace srt{
-    class srt_server{
+#include "net/asio.hpp"
+#include "srt_session.hpp"
+#include <mutex>
+#include <unordered_map>
+#include <vector>
+namespace srt {
 
+    class srt_server : public std::enable_shared_from_this<srt_server> {
+    public:
+        ~srt_server() = default;
+
+    public:
+        void start(const asio::ip::udp::endpoint &endpoint);
+        void remove(const asio::ip::udp::endpoint& );
+    private:
+        std::shared_ptr<asio::ip::udp::socket> create(asio::io_context &poller, const asio::ip::udp::endpoint &);
+        void start(const std::shared_ptr<asio::ip::udp::socket> &, asio::io_context &context);
+        void read_l(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context);
+        std::shared_ptr<srt_session> get_or_create(const asio::ip::udp::endpoint &endpoint,
+                                                          const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context,bool &is_new);
+
+    private:
+        /// 会话管理map
+        std::recursive_mutex mtx;
+        std::vector<std::shared_ptr<asio::ip::udp::socket>> _socks;
+        std::unordered_map<asio::ip::udp::endpoint, std::shared_ptr<srt_session>> _session_map_;
     };
-}
+}// namespace srt
 #endif//TOOLKIT_SRT_SERVER_HPP

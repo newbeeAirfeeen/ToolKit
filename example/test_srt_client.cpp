@@ -3,7 +3,7 @@
 //
 #include <protocol/srt/srt_client.hpp>
 #include <spdlog/logger.hpp>
-
+#include "protocol/srt/srt_server.hpp"
 using namespace std;
 
 void send_data(const std::shared_ptr<srt::srt_client> &client) {
