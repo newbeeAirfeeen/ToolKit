@@ -38,19 +38,30 @@ namespace srt {
 
     public:
         void start(const asio::ip::udp::endpoint &endpoint);
-        void remove(const asio::ip::udp::endpoint& );
+        void remove_cookie_session(uint32_t);
+        void remove_session(uint32_t);
+        void add_connected_session(const std::shared_ptr<srt_session> &session);
+
+    private:
+        void on_receive(const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller);
+        void handle_handshake(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller);
+        void handle_data(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &);
+
     private:
         std::shared_ptr<asio::ip::udp::socket> create(asio::io_context &poller, const asio::ip::udp::endpoint &);
         void start(const std::shared_ptr<asio::ip::udp::socket> &, asio::io_context &context);
         void read_l(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context);
-        std::shared_ptr<srt_session> get_or_create(const asio::ip::udp::endpoint &endpoint,
-                                                          const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context,bool &is_new);
+        std::shared_ptr<srt_session> get_session(uint32_t);
+        std::shared_ptr<srt_session> get_session_or_create_with_cookie(uint32_t, bool &, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller);
 
     private:
-        /// 会话管理map
-        std::recursive_mutex mtx;
         std::vector<std::shared_ptr<asio::ip::udp::socket>> _socks;
-        std::unordered_map<asio::ip::udp::endpoint, std::shared_ptr<srt_session>> _session_map_;
+        std::recursive_mutex _cookie_mtx;
+        std::unordered_map<uint32_t, std::shared_ptr<srt_session>> _handshake_map;
+        /// 会话管理map
+        /// socket id
+        std::recursive_mutex mtx;
+        std::unordered_map<uint32_t, std::shared_ptr<srt_session>> _session_map_;
     };
 }// namespace srt
 #endif//TOOLKIT_SRT_SERVER_HPP

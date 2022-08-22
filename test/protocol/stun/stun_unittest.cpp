@@ -48,6 +48,7 @@ TEST(attribute, stun) {
         EXPECT_EQ(pkt_ptr->size() % 4, 0) << "the buffer is  not multiple of 4";
         EXPECT_EQ(pkt_ptr->size(), 88) << "the stun pkt length is not correct";
     };
+    func();
 }
 
 

@@ -25,36 +25,41 @@
 
 #ifndef TOOLKIT_SRT_SESSION_HPP
 #define TOOLKIT_SRT_SESSION_HPP
-#include "net/asio.hpp"
-#include "net/buffer.hpp"
-#include "spdlog/logger.hpp"
+#include "srt_socket_service.hpp"
 #include <memory>
 
 namespace srt {
     class srt_server;
-    class srt_session : public std::enable_shared_from_this<srt_session> {
+    class srt_session : public srt_socket_service {
     public:
         srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context);
         virtual ~srt_session();
+
     public:
         void set_parent(const std::shared_ptr<srt_server> &);
         void set_current_remote_endpoint(const asio::ip::udp::endpoint &);
-        asio::io_context &get_poller();
-        void set_max_receive_time_out(uint32_t ms);
+        void set_cookie(uint32_t);
     public:
         virtual void begin_session();
         virtual void receive(const std::shared_ptr<buffer> &buff);
+        void receive(const std::shared_ptr<srt_packet>&, const std::shared_ptr<buffer>& buff);
     private:
         void on_session_timeout();
+    protected:
+        ///// override from srt_socket_service
+        const asio::ip::udp::endpoint &get_remote_endpoint() final;
+        const asio::ip::udp::endpoint &get_local_endpoint() final;
+        void on_connected() final;
+        void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) final;
+        void on_error(const std::error_code &e) override;
+
     private:
-        asio::io_context &context;
-        /// 握手前的定时器。防止发一个包后不发数据，导致srt_server一直存有引用
-        asio::steady_timer timer;
-        std::chrono::steady_clock::time_point last_receive_time_point = std::chrono::steady_clock::now();
         std::weak_ptr<srt_server> _parent_server;
+        std::shared_ptr<deadline_timer<int>> _pre_handshake_timer;
         asio::ip::udp::socket &_sock;
-        uint32_t time_out = 10;
         asio::ip::udp::endpoint _remote;
+        asio::ip::udp::endpoint _local;
+        uint32_t cookie_ = 0;
     };
 };// namespace srt
 

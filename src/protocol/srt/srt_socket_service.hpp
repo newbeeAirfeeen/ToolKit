@@ -46,16 +46,22 @@ namespace srt {
     public:
         using clock_type = typename std::chrono::steady_clock;
         using time_point = typename std::chrono::steady_clock::time_point;
-        using sender_block_type = typename sender_queue::block_type ;
+        using sender_block_type = typename sender_queue::block_type;
+
     public:
         explicit srt_socket_service(asio::io_context &executor);
         ~srt_socket_service() override = default;
         srt_socket_service(const srt_socket_service &) = delete;
         srt_socket_service &operator=(const srt_socket_service &) = delete;
 
+    public:
+        asio::io_context &get_poller();
+
     protected:
         void connect();
+        void connect_as_server();
         void input_packet(const std::shared_ptr<buffer> &buff);
+        void input_packet(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
         bool is_open() final;
         bool is_connected() final;
         virtual void begin();
@@ -73,6 +79,7 @@ namespace srt {
         //// 发送数据
         int async_send(const std::shared_ptr<buffer> &);
         void on_error_in(const std::error_code &e);
+
     private:
         //// send_queue
         void on_sender_packet(const sender_block_type &type);
@@ -82,8 +89,7 @@ namespace srt {
         void send_reject(int e, const std::shared_ptr<buffer> &buf);
         /// 数据统一出口
         void send_in(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where);
-        ///void send_block(const std::shared_ptr<buffer> &buffer);
-        void on_connect_in();;
+        void on_connect_in();
         void do_keepalive();
         void do_nak();
         /// Round-trip time (RTT) in SRT is estimated during the transmission of data packets based on
@@ -96,17 +102,26 @@ namespace srt {
         void do_shutdown();
 
         template<typename _duration>
-        inline uint32_t get_time_from(const clock_type::time_point& last_time_point){
+        inline uint32_t get_time_from(const clock_type::time_point &last_time_point) {
             return static_cast<uint32_t>(std::chrono::duration_cast<_duration>(clock_type::now() - last_time_point).count());
         }
 
     private:
-        /// 用于客户端握手
         void handle_reject(int e);
+        /// 用于客户端握手
         void handle_server_induction(const std::shared_ptr<buffer> &buff);
-        /// 处理服务端的conclusion
+        void handle_server_induction_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff);
         void handle_server_conclusion(const std::shared_ptr<buffer> &buff);
+        void handle_server_conclusion_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff);
+        /// 用于服务端握手
+        void handle_client_induction(const std::shared_ptr<buffer> &buff);
+        void handle_client_induction_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff);
+        void handle_client_conclusion(const std::shared_ptr<buffer> &buff);
+        void handle_client_conclusion_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff);
+
         void handle_receive(const std::shared_ptr<buffer> &buff);
+        void handle_receive_1(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
+
         void handle_control(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_data(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_keep_alive(const srt_packet &pkt, const std::shared_ptr<buffer> &);
@@ -124,19 +139,19 @@ namespace srt {
         void on_keep_alive_expired(const int &);
 
         inline uint32_t get_next_packet_message_number();
+
     private:
         asio::io_context &poller;
         /// 通常的定时器,处理ack,nak
         std::shared_ptr<deadline_timer<int>> common_timer;
         std::shared_ptr<deadline_timer<int>> keep_alive_timer;
-        mutable_basic_buffer<char> receive_cache;
         /// 握手缓存
         std::shared_ptr<buffer> handshake_buffer;
         /// keep alive 缓存
         std::shared_ptr<buffer> keep_alive_buffer;
         /// 握手上下文
-        /// std::shared_ptr<handshake_context> _handshake_context;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
+        std::function<void(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &)> _next_func_with_pkt;
         /// 第一次尝试连接的时间
         time_point connect_point;
         /// 上一次发送数据的时间
