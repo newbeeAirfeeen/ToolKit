@@ -52,7 +52,7 @@ namespace srt {
         void start(const std::shared_ptr<asio::ip::udp::socket> &, asio::io_context &context);
         void read_l(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context);
         std::shared_ptr<srt_session> get_session(uint32_t);
-        std::shared_ptr<srt_session> get_session_or_create_with_cookie(uint32_t, bool &, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller);
+        std::shared_ptr<srt_session> get_session_with_cookie(uint32_t);
 
     private:
         std::vector<std::shared_ptr<asio::ip::udp::socket>> _socks;

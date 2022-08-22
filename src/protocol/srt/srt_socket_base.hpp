@@ -35,7 +35,6 @@ namespace srt {
         /// 连接成功
         virtual bool is_open() = 0;
         virtual bool is_connected() = 0;
-
     public:
         void set_max_payload(uint32_t length);
         void set_max_flow_window_size(uint32_t counts);

@@ -39,18 +39,23 @@ namespace srt {
         void set_parent(const std::shared_ptr<srt_server> &);
         void set_current_remote_endpoint(const asio::ip::udp::endpoint &);
         void set_cookie(uint32_t);
+        uint32_t get_cookie() final;
+
     public:
-        virtual void begin_session();
-        void receive(const std::shared_ptr<srt_packet>&, const std::shared_ptr<buffer>& buff);
+        void begin_session();
+        void receive(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
+
     private:
         void on_session_timeout();
+
     protected:
         ///// override from srt_socket_service
         const asio::ip::udp::endpoint &get_remote_endpoint() final;
         const asio::ip::udp::endpoint &get_local_endpoint() final;
         void on_connected() final;
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) final;
-        void on_error(const std::error_code &e) override;
+        void on_error(const std::error_code &e) final;
+
     private:
         std::weak_ptr<srt_server> _parent_server;
         asio::ip::udp::socket &_sock;

@@ -88,6 +88,10 @@ namespace srt {
         _sender_buffer->start();
     }
 
+    uint32_t srt_socket_service::get_cookie(){
+        return 0;
+    }
+
     asio::io_context &srt_socket_service::get_poller() {
         return this->poller;
     }
@@ -167,6 +171,7 @@ namespace srt {
                 } else {
                     common_timer->add_expired_from_now(srt_socket_service::max_receive_time_out - leave_last_receive_time_point, timer_expired_type::receive_timeout);
                 }
+                break;
             }
             /// 服务端握手超时
             case timer_expired_type::server_handshake: {
@@ -325,6 +330,7 @@ namespace srt {
         do_keepalive();
         /// 记录最后一个包接收的时间
         last_receive_point = clock_type::now();
+        connect_point = clock_type ::now();
         common_timer->add_expired_from_now(srt_socket_service::max_receive_time_out, receive_timeout);
         /// 成功连接
         on_connected();
@@ -342,9 +348,6 @@ namespace srt {
     }
 
     void srt_socket_service::do_keepalive() {
-        if (!_is_connected.load(std::memory_order_relaxed)) {
-            return;
-        }
         /// 一秒一次
         keep_alive_timer->add_expired_from_now(1000, keep_alive_expired);
     }
@@ -565,19 +568,17 @@ namespace srt {
                 return send_reject(1011, buff);
             }
 
-            if (_handshake_context->extension_field != 0x4A17) {
-                Error("not have extension field, send reject to peer");
-                return send_reject(1008, buff);
-            }
             std::default_random_engine random(std::random_device{}());
             std::uniform_int_distribution<int32_t> mt(0, (std::numeric_limits<int32_t>::max)());
+            _handshake_context->extension_field = 0x4A17;
             _handshake_context->_max_mss = _handshake_context->_max_mss > 1500 ? 1500 : _handshake_context->_max_mss;
             _handshake_context->_window_size = _handshake_context->_window_size < 8192 ? 8192 : _handshake_context->_window_size;
-            _handshake_context->_req_type = handshake_context::packet_type::urq_conclusion;
-            _handshake_context->_socket_id = mt(random);
+            _handshake_context->_req_type = handshake_context::packet_type::urq_induction;
             _handshake_context->address = get_local_endpoint().address();
+            _handshake_context->_cookie = get_cookie();
             handshake_conclusion = 1;
             srt_packet pkt;
+            pkt.set_socket_id(_handshake_context->_socket_id);
             pkt.set_control_type(handshake);
             pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
             auto pkt_buffer = create_packet(pkt);

@@ -74,12 +74,11 @@ namespace srt {
         virtual void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) = 0;
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
-
+        virtual uint32_t get_cookie();
     protected:
         //// 发送数据
         int async_send(const std::shared_ptr<buffer> &);
         void on_error_in(const std::error_code &e);
-
     private:
         //// send_queue
         void on_sender_packet(const sender_block_type &type);

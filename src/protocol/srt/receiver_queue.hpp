@@ -28,11 +28,12 @@
 #include "sliding_window.hpp"
 #include "srt_packet.h"
 
-class receiver_queue : public sliding_window<std::shared_ptr<srt::srt_packet>>, public std::enable_shared_from_this<receiver_queue>{
+class receiver_queue : public sliding_window<std::shared_ptr<srt::srt_packet>>, public std::enable_shared_from_this<receiver_queue> {
 public:
     using pointer = typename sliding_window<std::shared_ptr<srt::srt_packet>>::pointer;
+
 public:
-    explicit receiver_queue(asio::io_context& context);
+    explicit receiver_queue(asio::io_context &context);
     ~receiver_queue() override = default;
 
 private:

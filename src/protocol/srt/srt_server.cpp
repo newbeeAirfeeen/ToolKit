@@ -6,6 +6,7 @@
 #include <atomic>
 #include <list>
 #include <memory>
+#include <random>
 #include <spdlog/logger.hpp>
 struct thread_exit_exception : public std::exception {};
 class io_context {
@@ -87,7 +88,7 @@ private:
 namespace srt {
     static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session>> _thread_local_session_map_;
     /// handle handshake
-    static thread_local decltype(_thread_local_session_map_) _cookie_map;
+    static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session>> _cookie_map;
 
     void srt_server::start(const asio::ip::udp::endpoint &endpoint) {
         std::weak_ptr<srt_server> self(shared_from_this());
@@ -173,16 +174,11 @@ namespace srt {
         return it->second;
     }
 
-    std::shared_ptr<srt_session> srt_server::get_session_or_create_with_cookie(uint32_t sock_id, bool &ca, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller) {
-        ca = false;
+    std::shared_ptr<srt_session> srt_server::get_session_with_cookie(uint32_t sock_id) {
         std::lock_guard<std::recursive_mutex> lmtx(_cookie_mtx);
         auto it = _handshake_map.find(sock_id);
         if (it == _handshake_map.end()) {
-            /// 表示无此session
-            ca = true;
-            auto session = std::make_shared<srt_session>(sock, poller);
-            _handshake_map.insert(std::make_pair(sock_id, session));
-            return session;
+            return nullptr;
         }
         return it->second;
     }
@@ -218,8 +214,28 @@ namespace srt {
         if (buff->size() < 48) {
             return;
         }
-        auto p = ((const uint32_t *) buff->data()) + 6;
+        auto p = ((const uint32_t *) buff->data()) + 7;
         uint32_t _cookie_ = load_be32(p);
+        Debug("get cookie={}", _cookie_);
+        if (_cookie_ == 0 && pkt->get_socket_id() == 0) {
+            Debug("create new srt session...");
+            /// 同步到线程局部存储
+            auto session = std::make_shared<srt_session>(sock, poller);
+            /// 设置当前cookie
+            std::default_random_engine random(std::random_device{}());
+            std::uniform_int_distribution<int32_t> mt(0, (std::numeric_limits<int32_t>::max)());
+            session->set_cookie(mt(random));
+            _cookie_map.emplace(session->get_cookie(), session);
+            {
+                std::lock_guard<std::recursive_mutex> lmtx(_cookie_mtx);
+                _handshake_map.emplace(session->get_cookie(), session);
+            }
+            session->set_parent(shared_from_this());
+            session->set_current_remote_endpoint(endpoint);
+            session->begin_session();
+            /// 进行握手
+            return session->receive(pkt, buff);
+        }
         auto it = _cookie_map.find(_cookie_);
         //// 说明session在本线程进行握手
         if (it != _cookie_map.end()) {
@@ -230,33 +246,17 @@ namespace srt {
             ///进行握手
             return stronger_self->receive(pkt, buff);
         } else {
-            /// 数据漂移到其他线程 或者没有此会话
-            bool is_current_thread = false;
-            auto session = get_session_or_create_with_cookie(_cookie_, is_current_thread, sock, poller);
-            /// 表示是否是新会话
-            if (is_current_thread) {
-                Debug("create new srt session...");
-                /// 同步到线程局部存储
-                _cookie_map.insert(std::make_pair(_cookie_, session));
-                /// 设置当前cookie
-                session->set_cookie(_cookie_);
-                session->set_parent(shared_from_this());
-                session->set_current_remote_endpoint(endpoint);
-                session->begin_session();
-                /// 进行握手
-                session->receive(pkt, buff);
-            }/// 如果不是当前线程.切换到对应线程握手
-            else {
-                /// 线程局部存储需要拷贝数据
-                Warn("data received in other thread, switch to session thread...");
-                auto buf_tmp = buffer::assign(buff->data(), buff->size());
-                std::weak_ptr<srt_session> session_self(session);
-                session->get_poller().post([pkt, buf_tmp, endpoint, session_self]() {
-                    if (auto stronger_session_self = session_self.lock()) {
-                        stronger_session_self->receive(pkt, buf_tmp);
-                    }
-                });
-            }
+            /// 数据漂移到其他线程
+            auto session = get_session_with_cookie(_cookie_);
+            /// 线程局部存储需要拷贝数据
+            Warn("data received in other thread, switch to session thread...");
+            auto buf_tmp = buffer::assign(buff->data(), buff->size());
+            std::weak_ptr<srt_session> session_self(session);
+            session->get_poller().post([pkt, buf_tmp, endpoint, session_self]() {
+                if (auto stronger_session_self = session_self.lock()) {
+                    stronger_session_self->receive(pkt, buf_tmp);
+                }
+            });
         }
     }
 

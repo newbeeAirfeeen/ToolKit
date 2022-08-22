@@ -11,9 +11,6 @@ int main(){
 
     logger::initialize("logs/test_logger.log", spdlog::level::trace);
 
-    Trace("{}", __cplusplus);
-
-
     asio::io_context context;
     asio::executor_work_guard<typename asio::io_context::executor_type> guard(context.get_executor());
     auto server = std::make_shared<srt_server>();

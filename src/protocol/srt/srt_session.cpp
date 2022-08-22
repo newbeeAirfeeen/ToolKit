@@ -75,5 +75,15 @@ namespace srt {
         if (e.value() == srt_error_code::socket_connect_time_out) {
             return on_session_timeout();
         }
+        auto server = _parent_server.lock();
+        if (!server) {
+            return;
+        }
+        Error(e.message());
+        server->remove_session(get_sock_id());
+    }
+
+    uint32_t srt_session::get_cookie() {
+        return cookie_;
     }
 };// namespace srt
