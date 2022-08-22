@@ -41,7 +41,6 @@ namespace srt {
         void set_cookie(uint32_t);
     public:
         virtual void begin_session();
-        virtual void receive(const std::shared_ptr<buffer> &buff);
         void receive(const std::shared_ptr<srt_packet>&, const std::shared_ptr<buffer>& buff);
     private:
         void on_session_timeout();
@@ -52,10 +51,8 @@ namespace srt {
         void on_connected() final;
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) final;
         void on_error(const std::error_code &e) override;
-
     private:
         std::weak_ptr<srt_server> _parent_server;
-        std::shared_ptr<deadline_timer<int>> _pre_handshake_timer;
         asio::ip::udp::socket &_sock;
         asio::ip::udp::endpoint _remote;
         asio::ip::udp::endpoint _local;

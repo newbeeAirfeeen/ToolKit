@@ -63,7 +63,7 @@ namespace srt {
         uint32_t max_payload = 1500;
         uint32_t max_flow_window_size = 8192;
         uint32_t sock_id = 0;
-        uint32_t connect_time_out = 1000;
+        uint32_t connect_time_out = 3000;
         uint32_t max_receive_time_out = 10000;
     };
 

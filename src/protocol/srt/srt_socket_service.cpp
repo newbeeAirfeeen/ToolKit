@@ -42,6 +42,7 @@ namespace srt {
         conclusion_expired,
         receive_timeout,
         send_rate_limit,
+        server_handshake,
     };
 
     srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
@@ -52,7 +53,7 @@ namespace srt {
     }
 
     void srt_socket_service::begin() {
-        Trace("初始化公共定时器..");
+        Debug("init common timer..");
         common_timer = create_deadline_timer<int>(poller);
         std::weak_ptr<srt_socket_service> self(shared_from_this());
         common_timer->set_on_expired([self](const int &v) {
@@ -61,7 +62,7 @@ namespace srt {
                 stronger_self->on_common_timer_expired(v);
             }
         });
-        Trace("初始化keepalive定时器..");
+        Trace("init keep alive timer...");
         keep_alive_timer = create_deadline_timer<int>(poller);
         keep_alive_timer->set_on_expired([self](const int &v) {
             auto stronger_self = self.lock();
@@ -69,7 +70,7 @@ namespace srt {
                 return;
             stronger_self->on_keep_alive_expired(v);
         });
-        Trace("初始化发送队列");
+        Trace("init sender buffer queue...");
         _sender_buffer->set_sender_output_packet([self](const sender_block_type &b) {
             auto stronger_self = self.lock();
             if (!stronger_self)
@@ -83,7 +84,7 @@ namespace srt {
                 return;
             return stronger_self->on_sender_drop_packet(begin, end);
         });
-        ///
+        Trace("start sender buffer...");
         _sender_buffer->start();
     }
 
@@ -134,6 +135,7 @@ namespace srt {
     void srt_socket_service::connect_as_server() {
         _next_func = std::bind(&srt_socket_service::handle_client_induction, this, std::placeholders::_1);
         _next_func_with_pkt = std::bind(&srt_socket_service::handle_client_induction_1, this, std::placeholders::_1, std::placeholders::_2);
+        connect_point = clock_type::now();
     }
 
     void srt_socket_service::on_common_timer_expired(const int &val) {
@@ -159,12 +161,18 @@ namespace srt {
             /// 接收超时 断开连接
             case timer_expired_type::receive_timeout: {
                 /// 上一次接收到到时间点
-                uint32_t leave_last_receive_time_point = (uint32_t) std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now() - last_receive_point).count();
+                uint32_t leave_last_receive_time_point = get_time_from<std::chrono::milliseconds>(last_receive_point);
                 if (leave_last_receive_time_point > srt_socket_service::max_receive_time_out) {
                     do_shutdown();
                 } else {
                     common_timer->add_expired_from_now(srt_socket_service::max_receive_time_out - leave_last_receive_time_point, timer_expired_type::receive_timeout);
                 }
+            }
+            /// 服务端握手超时
+            case timer_expired_type::server_handshake: {
+                Error("client handshake time out...");
+                srt_packet pkt;
+                return send_reject(1007, handshake_buffer);
             }
         }
     }
@@ -307,9 +315,8 @@ namespace srt {
     void srt_socket_service::on_connect_in() {
         /// 停止计时器
         common_timer->stop();
+        _is_open.store(true, std::memory_order_relaxed);
         _is_connected.store(true, std::memory_order_relaxed);
-        /// 清除缓存, 节省内存
-        handshake_buffer = nullptr;
         {
             _next_func = std::bind(&srt_socket_service::handle_receive, this, std::placeholders::_1);
             _next_func_with_pkt = std::bind(&srt_socket_service::handle_receive_1, this, std::placeholders::_1, std::placeholders::_2);
@@ -321,7 +328,7 @@ namespace srt {
         common_timer->add_expired_from_now(srt_socket_service::max_receive_time_out, receive_timeout);
         /// 成功连接
         on_connected();
-        Warn("invoke connected callback end");
+        Trace("invoke connected callback end");
     }
 
     void srt_socket_service::on_error_in(const std::error_code &e) {
@@ -447,7 +454,10 @@ namespace srt {
 
         handshake_context ctx;
         ctx._version = 5;
+        ////
+        ctx.extension_field = 1;
         ctx._sequence_number = induction_context->_sequence_number;
+
 
         ctx._max_mss = srt_socket_base::get_max_payload();
         ctx._window_size = srt_socket_service::get_max_flow_window_size();
@@ -467,7 +477,7 @@ namespace srt {
         /// 加入握手
         handshake_context::to_buffer(ctx, _pkt);
         /// 加入扩展字段
-        set_extension(ctx, _pkt, get_time_based_deliver(), get_drop_too_late_packet(), get_report_nak(), get_stream_id());
+        set_extension(ctx, _pkt, get_time_based_deliver(), get_drop_too_late_packet(), get_report_nak(), 0, get_stream_id());
         /// 最后更新extension_field
         handshake_context::update_extension_field(ctx, _pkt);
         /// 更新握手上下文
@@ -527,15 +537,133 @@ namespace srt {
     }
 
     void srt_socket_service::handle_client_induction(const std::shared_ptr<buffer> &buff) {
+        try {
+            auto pkt = from_buffer(buff->data(), buff->size());
+            buff->remove(16);
+            return handle_client_induction_1(pkt, buff);
+        } catch (...) {}
     }
 
     void srt_socket_service::handle_client_induction_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff) {
+        try {
+            /// 首先解析握手上下文
+            auto _tmp_context = handshake_context::from_buffer(buff->data(), buff->size());
+            buff->remove(48);
+            if (_tmp_context->_req_type == handshake_context::packet_type::urq_conclusion) {
+                if (handshake_conclusion) {
+                    return handle_client_conclusion(pkt, _tmp_context, buff);
+                }
+                Warn("invalid conclusion before induction, ignore it");
+                return;
+            }
+            /// 保存上下文
+            _handshake_context = _tmp_context;
+            /// 保存上下文
+            _handshake_context->_version = 5;
+            if (_handshake_context->encryption) {
+                Error("not support secret, send reject to peer");
+                return send_reject(1011, buff);
+            }
+
+            if (_handshake_context->extension_field != 0x4A17) {
+                Error("not have extension field, send reject to peer");
+                return send_reject(1008, buff);
+            }
+            std::default_random_engine random(std::random_device{}());
+            std::uniform_int_distribution<int32_t> mt(0, (std::numeric_limits<int32_t>::max)());
+            _handshake_context->_max_mss = _handshake_context->_max_mss > 1500 ? 1500 : _handshake_context->_max_mss;
+            _handshake_context->_window_size = _handshake_context->_window_size < 8192 ? 8192 : _handshake_context->_window_size;
+            _handshake_context->_req_type = handshake_context::packet_type::urq_conclusion;
+            _handshake_context->_socket_id = mt(random);
+            _handshake_context->address = get_local_endpoint().address();
+            handshake_conclusion = 1;
+            srt_packet pkt;
+            pkt.set_control_type(handshake);
+            pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
+            auto pkt_buffer = create_packet(pkt);
+            handshake_context::to_buffer(*_handshake_context, pkt_buffer);
+            /// 保存握手缓存
+            handshake_buffer = pkt_buffer;
+            /// 发送induction
+            send_in(pkt_buffer, get_remote_endpoint());
+            /// 设置服务端握手超时
+            common_timer->add_expired_from_now(srt_socket_base::get_connect_timeout(), server_handshake);
+        } catch (const std::system_error &e) {
+            Error(e.code().message());
+        }
     }
 
-    void srt_socket_service::handle_client_conclusion(const std::shared_ptr<buffer> &buff) {
-    }
+    void srt_socket_service::handle_client_conclusion(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<handshake_context> &context, const std::shared_ptr<buffer> &buff) {
+        if (handshake_conclusion == 2) {
+            /// 表示已经握手成功
+            /// 直接发送缓存
+            return send_in(handshake_buffer, get_remote_endpoint());
+        }
 
-    void srt_socket_service::handle_client_conclusion_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff) {
+        std::shared_ptr<extension_field> extension;
+        try {
+            if (buff->size() <= 0) {
+                Error("no extension field in version 5");
+                throw std::runtime_error("");
+            }
+            extension = get_extension(*context, buff);
+        } catch (...) {
+            return send_reject(1003, buff);
+        }
+
+
+        if (context->_version != 5) {
+            Error("client version at least 5, send reject to peer");
+            return send_reject(1008, buff);
+        }
+        if (context->encryption != 0) {
+            Error("not support encryption");
+            return send_reject(1011, buff);
+        }
+        if (context->extension_field != 1) {
+            Error("stream type is not equal to 1");
+            return send_reject(1003, buff);
+        }
+        if (context->_max_mss > 1500 || context->_max_mss < 728) {
+            Error("invalid mss size={}", context->_max_mss);
+            return send_reject(1003, buff);
+        }
+        if (context->_window_size < 8192) {
+            Error("invalid window size ={}", context->_window_size);
+            return send_reject(1003, buff);
+        }
+
+        std::default_random_engine random(std::random_device{}());
+        std::uniform_int_distribution<int32_t> mt(0, (std::numeric_limits<int32_t>::max)());
+        _handshake_context = context;
+        _handshake_context->_socket_id = mt(random);
+        _handshake_context->address = get_local_endpoint().address();
+        srt_socket_base::set_max_payload(_handshake_context->_max_mss);
+        srt_socket_base::set_max_flow_window_size(_handshake_context->_window_size);
+        srt_socket_base::set_sock_id(_handshake_context->_socket_id);
+
+        srt_socket_base::set_report_nak(extension->nak);
+        srt_socket_base::set_drop_too_late_packet(extension->drop);
+        srt_socket_base::set_time_based_deliver(extension->receiver_tlpktd_delay);
+        srt_socket_base::set_stream_id(extension->stream_id);
+        Trace("client handshake success, max_mss={}, window size={}, sock_id={}, report_nak={}, enable_drop={}, time based={} ms, stream_id={}",
+              _handshake_context->_max_mss, _handshake_context->_window_size, _handshake_context->_socket_id,
+              extension->nak, extension->drop, extension->receiver_tlpktd_delay, extension->stream_id);
+        handshake_conclusion = 2;
+        srt_packet _pkt;
+        _pkt.set_control_type(handshake);
+        _pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
+        handshake_buffer = create_packet(_pkt);
+        handshake_context::to_buffer(*_handshake_context, handshake_buffer);
+        set_extension(*_handshake_context, handshake_buffer, extension->receiver_tlpktd_delay, extension->drop, extension->nak, extension->receiver_tlpktd_delay);
+        send_in(handshake_buffer, get_remote_endpoint());
+        Trace("init sender buffer");
+        _sender_buffer->set_initial_sequence(_handshake_context->_sequence_number);
+        _sender_buffer->set_max_sequence(packet_max_seq);
+        _sender_buffer->set_window_size(_handshake_context->_window_size);
+        if (extension->drop)
+            _sender_buffer->set_max_delay(extension->receiver_tlpktd_delay < 120 ? 120 : extension->receiver_tlpktd_delay);
+        on_connect_in();
     }
 
     void srt_socket_service::handle_receive(const std::shared_ptr<buffer> &buff) {
@@ -552,36 +680,37 @@ namespace srt {
         /// 更新上一次收到的时间
         last_receive_point = clock_type::now();
         if (srt_pkt->get_control()) {
-            return handle_control(*srt_pkt, buff);
+            return handle_control(srt_pkt, buff);
         }
-        return handle_data(*srt_pkt, buff);
+        return handle_data(srt_pkt, buff);
     }
 
-    void srt_socket_service::handle_control(const srt_packet &pkt, const std::shared_ptr<buffer> &buff) {
-        const auto &type = pkt.get_control_type();
+    void srt_socket_service::handle_control(const std::shared_ptr<srt_packet>&pkt, const std::shared_ptr<buffer> &buff) {
+        const auto &type = pkt->get_control_type();
         switch (type) {
             case control_type::handshake:
+                return handle_client_induction_1(pkt, buff);
             case control_type::congestion_warning:
             case control_type::user_defined_type:
                 return;
             case control_type::keepalive:
-                return handle_keep_alive(pkt, buff);
+                return handle_keep_alive(*pkt, buff);
             case control_type::nak:
-                return handle_nak(pkt, buff);
+                return handle_nak(*pkt, buff);
             case control_type::ack:
-                return handle_ack(pkt, buff);
+                return handle_ack(*pkt, buff);
             case control_type::ack_ack:
-                return handle_ack_ack(pkt, buff);
+                return handle_ack_ack(*pkt, buff);
             case control_type::peer_error:
-                return handle_peer_error(pkt, buff);
+                return handle_peer_error(*pkt, buff);
             case control_type::drop_req:
-                return handle_drop_request(pkt, buff);
+                return handle_drop_request(*pkt, buff);
             case control_type::shutdown:
-                return handle_shutdown(pkt, buff);
+                return handle_shutdown(*pkt, buff);
         }
     }
 
-    void srt_socket_service::handle_data(const srt_packet &pkt, const std::shared_ptr<buffer> &buff) {
+    void srt_socket_service::handle_data(const std::shared_ptr<srt_packet>&pkt, const std::shared_ptr<buffer> &buff) {
         /// 统计数据
         _sock_receive_statistic->report_packet(1);
     }

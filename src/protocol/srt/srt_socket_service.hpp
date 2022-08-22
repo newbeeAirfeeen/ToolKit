@@ -116,14 +116,13 @@ namespace srt {
         /// 用于服务端握手
         void handle_client_induction(const std::shared_ptr<buffer> &buff);
         void handle_client_induction_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff);
-        void handle_client_conclusion(const std::shared_ptr<buffer> &buff);
-        void handle_client_conclusion_1(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff);
+        void handle_client_conclusion(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<handshake_context> &context, const std::shared_ptr<buffer> &buff);
 
         void handle_receive(const std::shared_ptr<buffer> &buff);
         void handle_receive_1(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
 
-        void handle_control(const srt_packet &pkt, const std::shared_ptr<buffer> &);
-        void handle_data(const srt_packet &pkt, const std::shared_ptr<buffer> &);
+        void handle_control(const std::shared_ptr<srt_packet>&pkt, const std::shared_ptr<buffer> &);
+        void handle_data(const std::shared_ptr<srt_packet>&pkt, const std::shared_ptr<buffer> &);
         void handle_keep_alive(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_nak(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &);
@@ -150,6 +149,8 @@ namespace srt {
         /// keep alive 缓存
         std::shared_ptr<buffer> keep_alive_buffer;
         /// 握手上下文
+        std::shared_ptr<handshake_context> _handshake_context;
+        int handshake_conclusion = 0;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
         std::function<void(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &)> _next_func_with_pkt;
         /// 第一次尝试连接的时间

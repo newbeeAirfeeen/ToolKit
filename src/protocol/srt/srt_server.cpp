@@ -235,6 +235,7 @@ namespace srt {
             auto session = get_session_or_create_with_cookie(_cookie_, is_current_thread, sock, poller);
             /// 表示是否是新会话
             if (is_current_thread) {
+                Debug("create new srt session...");
                 /// 同步到线程局部存储
                 _cookie_map.insert(std::make_pair(_cookie_, session));
                 /// 设置当前cookie
@@ -244,9 +245,10 @@ namespace srt {
                 session->begin_session();
                 /// 进行握手
                 session->receive(pkt, buff);
-            }/// 如果不是当前线程.切换线程到对应线程握手
+            }/// 如果不是当前线程.切换到对应线程握手
             else {
                 /// 线程局部存储需要拷贝数据
+                Warn("data received in other thread, switch to session thread...");
                 auto buf_tmp = buffer::assign(buff->data(), buff->size());
                 std::weak_ptr<srt_session> session_self(session);
                 session->get_poller().post([pkt, buf_tmp, endpoint, session_self]() {
@@ -265,7 +267,7 @@ namespace srt {
         if (it != _thread_local_session_map_.end()) {
             auto stronger = it->second.lock();
             if (stronger) {
-                stronger->receive(buff);
+                stronger->receive(pkt, buff);
             } else {
                 /// 会话被删除,删除弱引用
                 _thread_local_session_map_.erase(it);
@@ -284,7 +286,7 @@ namespace srt {
             std::weak_ptr<srt_session> session_self(session);
             session->get_poller().post([buff_tmp, session_self, pkt]() {
                 if (auto session_stronger = session_self.lock()) {
-                    session_stronger->receive(buff_tmp);
+                    session_stronger->receive(pkt, buff_tmp);
                 }
             });
         }

@@ -45,7 +45,7 @@ TEST(extension_serialize, srt) {
                        0x6e,0x65,0x68,0x73,0x00,0x6f,0x61,0x68};
     auto buff = std::make_shared<buffer>();
     handshake_context ctx;
-    auto size = set_extension(ctx, buff, 120, true, true, "shenhao");
+    auto size = set_extension(ctx, buff, 120, true, true, 0, "shenhao");
     EXPECT_EQ(size, 28);
     const char* pointer = buff->data();
     for(int i = 0;i < 28;i++){

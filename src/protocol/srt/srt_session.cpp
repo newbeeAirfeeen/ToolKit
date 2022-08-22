@@ -5,7 +5,6 @@
 namespace srt {
     srt_session::srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context) : _sock(*_sock), srt_socket_service(context) {
         _local = _sock->local_endpoint();
-        _pre_handshake_timer = create_deadline_timer<int>(context);
     }
 
     srt_session::~srt_session() {
@@ -29,17 +28,6 @@ namespace srt {
         /// 设置服务端握手
         srt_socket_service::connect_as_server();
         srt_socket_service::begin();
-        _pre_handshake_timer->set_on_expired([self](const int &v) {
-            if (auto stronger_self = self.lock()) {
-                stronger_self->on_error_in(make_srt_error(srt_error_code::socket_connect_time_out));
-                return stronger_self->on_session_timeout();
-            }
-        });
-        _pre_handshake_timer->add_expired_from_now(10 * 1000, 1);
-    }
-
-    void srt_session::receive(const std::shared_ptr<buffer> &buff) {
-        return srt_socket_service::input_packet(buff);
     }
 
     void srt_session::receive(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff) {
@@ -62,8 +50,6 @@ namespace srt {
     }
 
     void srt_session::on_connected() {
-        /// 连接后释放无用的定时器
-        _pre_handshake_timer = nullptr;
         auto server = _parent_server.lock();
         if (!server) {
             return;
@@ -86,5 +72,8 @@ namespace srt {
     }
 
     void srt_session::on_error(const std::error_code &e) {
+        if (e.value() == srt_error_code::socket_connect_time_out) {
+            return on_session_timeout();
+        }
     }
 };// namespace srt

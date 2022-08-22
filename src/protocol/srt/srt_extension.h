@@ -138,7 +138,7 @@ namespace srt {
 
 
     /// HSREQ + STREAM_ID
-    size_t set_extension(handshake_context &ctx, const std::shared_ptr<buffer> &buff, uint16_t ts, bool drop = true, bool nak = true, const std::string &stream_id = "");
+    size_t set_extension(handshake_context &ctx, const std::shared_ptr<buffer> &buff, uint16_t ts, bool drop = true, bool nak = true, uint16_t sender_ts = 0, const std::string &stream_id = "");
     std::shared_ptr<extension_field> get_extension(const handshake_context &ctx, const std::shared_ptr<buffer> &buff);
 
 };// namespace srt
