@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: receiver_queue.hpp
-* @date: 2022/08/15
+* @file_name: srt_ack.hpp
+* @date: 2022/08/23
 * @author: shen hao
 * Copyright @ hz shen hao, All rights reserved.
 *
@@ -23,17 +23,25 @@
 * SOFTWARE.
 */
 
-#include "receiver_queue.hpp"
+#ifndef TOOLKIT_SRT_ACK_HPP
+#define TOOLKIT_SRT_ACK_HPP
+#include <chrono>
+#include <unordered_map>
+namespace srt {
+    class srt_ack_queue {
+    public:
+        void set_rtt(double _rtt, double _rtt_var);
+        void add_ack(uint32_t);
+        void calculate(uint32_t);
+        uint32_t get_rto() const;
+        uint32_t get_rtt_var() const;
 
-receiver_queue::receiver_queue(asio::io_context &context) : sliding_window<std::shared_ptr<srt::srt_packet>>(context) {
-}
+    private:
+        double _rtt = 100;
+        double _rtt_var = 50;
+        std::unordered_map<uint32_t, std::chrono::steady_clock::time_point> ack_queue;
+    };
+}// namespace srt
 
 
-typename receiver_queue::pointer receiver_queue::get_shared_from_this() {
-    return nullptr;
-}
-
-void receiver_queue::on_packet(const std::shared_ptr<sliding_window::block> &type) {
-}
-void receiver_queue::on_drop_packet(size_t begin, size_t end) {
-}
+#endif//TOOLKIT_SRT_ACK_HPP
