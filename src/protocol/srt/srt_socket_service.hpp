@@ -96,12 +96,13 @@ namespace srt {
         void on_connect_in();
         void do_keepalive();
         void do_nak();
-        void do_nak_l();
+        void do_nak_in();
         /// Round-trip time (RTT) in SRT is estimated during the transmission of data packets based on
         /// difference in time between an ACK packet is send out and a corresponding ACK_ACK is received
         /// back by SRT receiver.
         /// An ACK send by the receiver triggers an ACK_ACK from the sender with minimal processing delay.
         void do_ack();
+        void do_ack_in();
         void do_ack_ack(uint32_t ack_number);
         void do_drop_request(size_t begin, size_t end);
         void do_shutdown();
@@ -156,6 +157,9 @@ namespace srt {
         std::shared_ptr<handshake_context> _handshake_context;
         int handshake_conclusion = 0;
         bool report_nak_begin = false;
+        bool ack_begin = false;
+        bool occur_error = false;
+        uint32_t ack_number = 1;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
         std::function<void(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &)> _next_func_with_pkt;
         /// 第一次尝试连接的时间
@@ -174,6 +178,9 @@ namespace srt {
         /// 发送队列
         packet_queue<std::shared_ptr<buffer>> _sender_queue;
         packet_queue<std::shared_ptr<buffer>> _receive_queue;
+        std::shared_ptr<packet_receive_rate> _packet_receive_rate_;
+        std::shared_ptr<estimated_link_capacity> _estimated_link_capacity_;
+        std::shared_ptr<receive_rate> _receive_rate_;
         srt_ack_queue _ack_queue_;
     };
 };// namespace srt

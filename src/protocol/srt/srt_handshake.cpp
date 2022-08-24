@@ -53,7 +53,7 @@ namespace srt {
     }
 
 
-    std::shared_ptr<handshake_context> handshake_context::from_buffer(const char *data, size_t length){
+    std::shared_ptr<handshake_context> handshake_context::from_buffer(const char *data, size_t length) {
         if (length < 48) {
             throw std::system_error(make_srt_error(srt_error_code::srt_packet_error));
         }

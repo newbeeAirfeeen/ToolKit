@@ -128,7 +128,7 @@ public:
         on_packet(b);
         /// 主动drop
         if (_max_delay)
-            drop_packet_with_submit_time(b->submit_time_point - _max_delay);
+            drop(b->submit_time_point - _max_delay);
     }
 
     /// 以接收窗口使用
@@ -157,7 +157,7 @@ public:
         auto index = (_start + diff) % _window_size;
         if (cache.size() <= index) {
             cache.resize(index + 1);
-            if(index + 1 > _window_size){
+            if (index + 1 > _window_size) {
                 throw std::invalid_argument("bad index which is greater than window size");
             }
         }
@@ -170,17 +170,10 @@ public:
 
         if (_start <= _end && index >= _end) {
             _end = index;
-            return;
-        }
-
-        if (_start <= _end && index < _start) {
+        } else if (_start <= _end && index < _start) {
             _end = index;
-            return;
-        }
-
-        if (_start > _end && _end <= index && _start > index) {
+        } else if (_start > _end && _end <= index && _start > index) {
             _end = index;
-            return;
         }
 
         /// 输出包
@@ -191,7 +184,10 @@ public:
             _initial_sequence = (_initial_sequence + 1) % _max_sequence;
             _start = (_start + 1) % cache.size();
         }
-        return drop_packet_with_latency();
+        if (_size.load(std::memory_order_relaxed) == 0 && _start > _end) {
+            _start = _end = 0;
+        }
+        return drop_packet();
     }
 
 
@@ -208,6 +204,43 @@ public:
         }
     }
 
+    /// 丢弃范围内的包
+    void drop(uint32_t begin, uint32_t end) {
+
+        if (get_buffer_size() == 0) {
+            return;
+        }
+
+        auto first_seq = get_first_block()->sequence_number;
+        auto last_seq = get_last_block()->sequence_number;
+
+        /// 回环 且序号落在窗口之外
+        if (is_cycle() && end > last_seq) {
+            return;
+        }
+
+        /// 没有回环 且序号落在窗口之外
+        if (!is_cycle() && (end < first_seq || end > last_seq)) {
+            return;
+        }
+
+        uint32_t diff = 0;
+        if (!is_cycle()) {
+            diff = end - first_seq + 1;
+        } else {
+            diff = _max_sequence - first_seq + end + 1;
+        }
+
+        while (diff && _size.load(std::memory_order_relaxed) > 0) {
+            if (cache[_start]) {
+                on_packet(cache[_start]);
+                _size.fetch_sub(1);
+                cache[_start] = nullptr;
+            }
+            --diff;
+            _start = (_start + 1) % cache.size();
+        }
+    }
 
     void try_send_again(size_type begin, size_type end) {
         if (!get_buffer_size()) {
@@ -304,8 +337,7 @@ public:
 
         int64_t begin_seq = -1, end_seq = -1;
         auto begin = _start;
-        auto end = _end;
-        auto size = _size.load(std::memory_order_relaxed);
+        auto end = (_end + 1) % cache.size();
         while (begin != end) {
             if (cache[begin]) {
                 if (begin_seq >= 0 && end_seq >= 0) {
@@ -317,11 +349,10 @@ public:
             }
 
             /// 求出当前的序号
-            uint32_t  diff = 0;
-            if(begin >= _start){
+            uint32_t diff = 0;
+            if (begin >= _start) {
                 diff = begin - _start;
-            }
-            else{
+            } else {
                 diff = cache.size() - _start + begin;
             }
             uint32_t sequence = (_initial_sequence + diff) % _max_sequence;
@@ -332,28 +363,29 @@ public:
             }
             begin = (begin + 1) % cache.size();
         }
-        if(begin_seq >= 0 && end_seq >= 0){
+        if (begin_seq >= 0 && end_seq >= 0) {
             vec.emplace_back(begin_seq, end_seq);
         }
         return vec;
     }
 
 private:
-    void drop_packet_with_submit_time(uint64_t before_drop_time) {
+    void drop(uint64_t before_drop_time) {
         if (!_size.load(std::memory_order_relaxed)) {
             return;
         }
         iterator iter = this->get_flow_part_begin();
         iterator end = this->get_flow_part_end();
+
+        if (iter->submit_time_point < before_drop_time) {
+            return;
+        }
+
         while (iter != end) {
             if (iter->submit_time_point <= before_drop_time) {
                 break;
             }
             ++iter;
-        }
-
-        if (iter == this->get_flow_part_begin() && iter->submit_time_point < before_drop_time) {
-            return;
         }
 
         sequence_to((iter->sequence_number + 1) % _max_sequence);
@@ -365,7 +397,7 @@ private:
         return now.count();
     }
 
-    void drop_packet_with_latency() {
+    void drop_packet() {
         /// 主动丢包
         while (time_latency() > _max_delay && _max_delay && _size.load(std::memory_order_relaxed) > 0) {
             auto it = cache[_start];

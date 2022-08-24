@@ -35,6 +35,7 @@ namespace srt {
         /// 连接成功
         virtual bool is_open() = 0;
         virtual bool is_connected() = 0;
+
     public:
         void set_max_payload(uint32_t length);
         void set_max_flow_window_size(uint32_t counts);
@@ -54,6 +55,7 @@ namespace srt {
         uint32_t get_sock_id() const;
         uint32_t get_connect_timeout() const;
         uint32_t get_max_receive_time_out() const;
+
     protected:
         bool drop_too_late_packet = true;
         bool report_nak = true;

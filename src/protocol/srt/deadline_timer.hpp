@@ -35,6 +35,7 @@ template<typename TAG, typename _duration_type = std::chrono::milliseconds>
 class deadline_timer : public std::enable_shared_from_this<deadline_timer<TAG, _duration_type>> {
     template<typename R, typename RR>
     friend std::shared_ptr<deadline_timer<R, RR>> create_deadline_timer(asio::io_context &io);
+
 public:
     typedef std::chrono::steady_clock clock_type;
     typedef std::enable_shared_from_this<deadline_timer<TAG, _duration_type>> base_type;

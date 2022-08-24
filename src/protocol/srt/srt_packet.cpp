@@ -91,7 +91,7 @@ namespace srt {
         return this->transmitted_packet_flag;
     }
 
-    bool srt_packet::get_in_order() const{
+    bool srt_packet::get_in_order() const {
         return this->in_order;
     }
 
@@ -213,6 +213,9 @@ namespace srt {
     }
 #endif
     void set_retransmit(bool on, const std::shared_ptr<buffer> &buff) {
+        if (!buff) {
+            return;
+        }
         uint8_t *p = ((uint8_t *) buff->data()) + 4;
         if (on)
             *p = (*p) | 0x04;

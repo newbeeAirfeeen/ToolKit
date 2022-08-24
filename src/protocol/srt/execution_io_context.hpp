@@ -39,7 +39,7 @@ private:
     io_pool();
 
 private:
-    std::unique_ptr<std::list<io_context *>> _pool_;
+    std::unique_ptr<std::list<std::shared_ptr<io_context>>> _pool_;
 };
 
 #endif//TOOLKIT_IO_CONTEXT_HPP

@@ -26,8 +26,46 @@
 #ifndef TOOLKIT_SRT_ACK_HPP
 #define TOOLKIT_SRT_ACK_HPP
 #include <chrono>
+#include <map>
 #include <unordered_map>
 namespace srt {
+
+
+    class packet_receive_rate {
+    public:
+        explicit packet_receive_rate(const std::chrono::steady_clock::time_point &);
+        void input_packet(const std::chrono::steady_clock::time_point &);
+        uint32_t get_packet_receive_rate();
+
+    private:
+        std::chrono::steady_clock::time_point _start;
+        std::map<int64_t, int64_t> _pkt_map;
+    };
+
+
+    class estimated_link_capacity {
+    public:
+        explicit estimated_link_capacity(const std::chrono::steady_clock::time_point &);
+        void input_packet(const std::chrono::steady_clock::time_point &);
+        uint32_t get_estimated_link_capacity();
+
+    private:
+        std::chrono::steady_clock::time_point _start;
+        std::map<int64_t, int64_t> _pkt_map;
+    };
+
+    class receive_rate {
+    public:
+        explicit receive_rate(const std::chrono::steady_clock::time_point &);
+        void input_packet(const std::chrono::steady_clock::time_point &, size_t size);
+        uint32_t get_receive_rate();
+
+    private:
+        std::chrono::steady_clock::time_point _start;
+        std::map<int64_t, int64_t> _pkt_map;
+    };
+
+
     class srt_ack_queue {
     public:
         void set_rtt(double _rtt, double _rtt_var);

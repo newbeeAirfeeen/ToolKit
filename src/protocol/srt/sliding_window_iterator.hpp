@@ -34,7 +34,8 @@ public:
     sliding_iterator(std::vector<type> &target, size_type index, const size_type &_size) : _target(&target), _index(index), _size(_size) {}
     sliding_iterator &operator++() {
         _index = (_index + 1) % (*_target).size();
-        --_size;
+        if (_target->operator[](_index))
+            --_size;
         return *this;
     }
 
@@ -42,7 +43,8 @@ public:
         auto tmp = _index;
         auto size = _size;
         _index = (_index + 1) % (*_target).size();
-        --_size;
+        if (_target->operator[](_index))
+            --_size;
         return sliding_iterator<type>(*_target, tmp, size);
     }
 

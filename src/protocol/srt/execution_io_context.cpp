@@ -33,21 +33,15 @@ void io_context::run() {
 }
 
 io_pool::io_pool() {
-    _pool_.reset(new std::list<io_context *>());
+    _pool_.reset(new std::list<std::shared_ptr<io_context>>());
     auto size = std::thread::hardware_concurrency();
     size = 4;
     for (decltype(size) i = 0; i < size; i++) {
-        _pool_->emplace_back(new io_context);
+        _pool_->emplace_back(std::make_shared<io_context>());
     }
 }
 
-io_pool::~io_pool() {
-    while (!_pool_->empty()) {
-        auto *p = _pool_->front();
-        if (p) delete p;
-        _pool_->pop_front();
-    }
-}
+io_pool::~io_pool() {}
 
 io_pool &io_pool::instance() {
     static io_pool pool;
@@ -55,7 +49,7 @@ io_pool &io_pool::instance() {
 }
 
 void io_pool::for_each(const std::function<void(io_context &)> &f) {
-    std::for_each(_pool_->begin(), _pool_->end(), [f](io_context *io) {
-        f(*io);
+    std::for_each(_pool_->begin(), _pool_->end(), [f](const std::shared_ptr<io_context>& io) {
+        if(io)f(*io);
     });
 }
