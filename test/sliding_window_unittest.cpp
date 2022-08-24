@@ -3,19 +3,7 @@
 //
 #include <gtest/gtest.h>
 #include <protocol/srt/sliding_window.hpp>
-
-#include <protocol/srt/sender_queue.hpp>
 class basic_window : public sliding_window<int>, public std::enable_shared_from_this<basic_window> {
-public:
-    explicit basic_window(asio::io_context &context) : sliding_window<int>(context) {
-    }
-
-protected:
-    pointer get_shared_from_this() override {
-        return shared_from_this();
-    }
-
-
 public:
     void on_packet(const block_type &type) override {
     }
@@ -27,7 +15,7 @@ public:
     void send_to(int v) {
         auto b = std::make_shared<block>();
         b->content = v;
-        sliding_window<int>::insert(b);
+        sliding_window<int>::send_in(b);
     }
 
 private:
@@ -37,11 +25,12 @@ private:
 void push_operation(const std::shared_ptr<basic_window> &window) {
     auto fun = [&](size_t val, int *arr) {
         window->send_to(val);
-        auto begin = window->begin();
-        auto end = window->end();
+        auto begin = window->get_flow_part_begin();
+        auto end = window->get_flow_part_end();
         size_t pos = 0;
         while (begin != end) {
-            EXPECT_EQ(arr[pos++], (*begin)->content);
+            if ((*begin))
+                EXPECT_EQ(arr[pos++], (*begin)->content);
             ++begin;
         }
         EXPECT_EQ(window->get_buffer_size(), 6);
@@ -57,8 +46,8 @@ void push_operation(const std::shared_ptr<basic_window> &window) {
 
     int s = 0;
     int ss[] = {11, 22, 33, 44, 55};
-    auto b = window->begin();
-    auto e = window->end();
+    auto b = window->get_flow_part_begin();
+    auto e = window->get_flow_part_end();
     EXPECT_EQ(1, window->capacity());
     while (b != e) {
         EXPECT_EQ(ss[s++], (*b)->content);
@@ -67,8 +56,8 @@ void push_operation(const std::shared_ptr<basic_window> &window) {
 
     window->send_to(66);
     EXPECT_EQ(window->capacity(), 0);
-    auto begin = window->begin();
-    auto end = window->end();
+    auto begin = window->get_flow_part_begin();
+    auto end = window->get_flow_part_end();
 
     int buf[] = {22, 33, 44, 55, 66, 77};
     fun(77, buf);
@@ -156,19 +145,19 @@ void find_operation(const std::shared_ptr<basic_window> &window) {
     auto it_3 = window->find_block_by_sequence(8);
     EXPECT_EQ(it_3->content, 5);
     auto it_4 = window->find_block_by_sequence(9);
-    EXPECT_EQ(it_4, window->end());
+    EXPECT_EQ(it_4, window->get_flow_part_end());
 
 
     int arr[] = {1, 2, 3, 4, 5};
     int i = 0;
-    while (it != window->end()) {
+    while (it != window->get_flow_part_end()) {
         EXPECT_EQ((*it)->content, arr[i++]);
         ++it;
     }
     EXPECT_EQ(5, i);
     int arr2[] = {0, 1, 2, 3, 4, 5};
     i = 0;
-    while (it_2 != window->end()) {
+    while (it_2 != window->get_flow_part_end()) {
         EXPECT_EQ((*it_2)->content, arr2[i++]);
         it_2++;
     }
@@ -206,7 +195,7 @@ void find_operation(const std::shared_ptr<basic_window> &window) {
 
     ///EXPECT_EQ(1,0);
     ++_t;
-    EXPECT_EQ(_t, window->end());
+    EXPECT_EQ(_t, window->get_flow_part_end());
 }
 
 
@@ -291,36 +280,89 @@ void sequence_to(const std::shared_ptr<basic_window> &window) {
 }
 
 
+void receiver_queue(const std::shared_ptr<basic_window> &window) {
+
+    window->clear();
+    window->set_window_size(1000);
+    window->set_max_sequence(100);
+    window->set_initial_sequence(30);
+    window->set_max_delay(0);
+
+
+    window->arrived_packet(32, 0, -1);
+    window->arrived_packet(35, 0, -1);
+    window->arrived_packet(36, 0, -1);
+    window->arrived_packet(37, 0, -1);
+    window->arrived_packet(38, 0, -1);
+    window->arrived_packet(40, 0, -1);
+    window->arrived_packet(50, 0, -1);
+    window->arrived_packet(52, 0, -1);
+    window->arrived_packet(54, 0, -1);
+    window->arrived_packet(56, 0, -1);
+    std::vector<std::pair<uint32_t, uint32_t>> v{
+            {30, 31},
+            {33, 34},
+            {39, 39},
+            {41, 49},
+            {51, 51},
+            {53, 53},
+            {55, 55},
+    };
+    auto vec = window->get_pending_seq();
+    EXPECT_EQ(window->get_expected_size(), 27);
+    EXPECT_EQ(vec.size(), 7);
+    int i = 0;
+    for (const auto &item: vec) {
+        EXPECT_EQ(v[i].first, item.first);
+        EXPECT_EQ(v[i].second, item.second);
+        ++i;
+    }
+
+
+    window->clear();
+    window->set_window_size(20);
+    window->set_max_sequence(50);
+    window->set_initial_sequence(45);
+    window->set_max_delay(0);
+
+    window->arrived_packet(46, 0, -1);
+    window->arrived_packet(48, 0, -1);
+    window->arrived_packet(2, 0, -1);
+    window->arrived_packet(4, 0, -1);
+    window->arrived_packet(5, 0, -1);
+    window->arrived_packet(6, 0, -1);
+    window->arrived_packet(10, 0, -1);
+    std::vector<std::pair<uint32_t, uint32_t>> vv{
+            {45, 45},
+            {47, 47},
+            {49, 1},
+            {3, 3},
+            {7, 9},
+    };
+    auto vecc = window->get_pending_seq();
+    EXPECT_EQ(16, window->get_expected_size());
+    EXPECT_EQ(5, vecc.size());
+    i = 0;
+    for (const auto &item: vecc) {
+        EXPECT_EQ(vv[i].first, item.first);
+        EXPECT_EQ(vv[i].second, item.second);
+        ++i;
+    }
+}
+
 TEST(sliding_window, sliding_window) {
-    asio::io_context context(1);
-    auto window = std::make_shared<basic_window>(context);
+    auto window = std::make_shared<basic_window>();
 
     window->set_window_size(6);
     window->set_max_sequence(13);
     window->set_max_delay(0);
     window->set_initial_sequence(2);
-    window->start();
 
     bool is_running = true;
     static std::atomic<bool> _is_run{false};
 
-    std::thread t([&]() {
-        _is_run.store(true);
-        context.run();
-    });
-    _is_run.compare_exchange_strong(is_running, true);
-
-
-    context.post([&]() {
-        push_operation(window);
-        find_operation(window);
-        sequence_to(window);
-    });
-
-
-
-
-
-    if (t.joinable())
-        t.join();
+    push_operation(window);
+    find_operation(window);
+    sequence_to(window);
+    receiver_queue(window);
 }

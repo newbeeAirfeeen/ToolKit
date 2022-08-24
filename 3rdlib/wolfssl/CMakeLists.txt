@@ -1829,7 +1829,7 @@ target_include_directories(wolfssl
 target_link_libraries(wolfssl PUBLIC ${WOLFSSL_LINK_LIBS})
 
 if(CMAKE_SYSTEM_NAME MATCHES "Android")
-    add_custom_command(TARGET wolfssl COMMAND ${ANDROID_STRIP} --strip-unneeded libwolfssl.a)
+    add_custom_command(TARGET wolfssl COMMAND ${ANDROID_STRIP} --strip-unneeded libwolfssl_origin.a)
 endif()
 
 

@@ -6,9 +6,10 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 add_definitions(-DASIO_STANDALONE
                 -DASIO_HEADER_ONLY
-                -DSRT_CORE_INTERNAL_DEBUG_LOG
+ #               -DSRT_CORE_INTERNAL_DEBUG_LOG
                 -DFMT_HEADER_ONLY
                 #-DASIO_ENABLE_HANDLER_TRACKING
+                -DENABLE_LOG
                 -DOPENSSL_EXTRA)
 
 
@@ -38,7 +39,7 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src/net/ssl SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/stun SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/srt SRC_LIST)
 
-add_library(${PROJECT_NAME}_static STATIC ${SRC_LIST})
+add_library(${PROJECT_NAME}_static STATIC ${SRC_LIST} src/Util/endian.cpp)
 
 
 set(LINK_LIB_LIST ${PROJECT_NAME}_static wolfssl CACHE INTERNAL "link library list")
@@ -47,7 +48,8 @@ set(LINK_LIB_LIST ${PROJECT_NAME}_static wolfssl CACHE INTERNAL "link library li
 target_link_libraries(${PROJECT_NAME}_static INTERFACE ${LINK_LIB_LIST})
 target_include_directories(${PROJECT_NAME}_static PUBLIC ${CMAKE_SOURCE_DIR}/src
                                                   PUBLIC ${CMAKE_SOURCE_DIR}/src/net)
-
+if(NOT ANDROID)
 add_subdirectory(example)
 add_subdirectory(test)
 add_subdirectory(benchmark)
+endif()

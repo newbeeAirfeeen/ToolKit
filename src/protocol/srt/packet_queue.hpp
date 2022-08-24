@@ -23,33 +23,46 @@
 * SOFTWARE.
 */
 
-#ifndef TOOLKIT_SENDER_QUEUE_HPP
-#define TOOLKIT_SENDER_QUEUE_HPP
+#ifndef TOOLKIT_PACKET_QUEUE_HPP
+#define TOOLKIT_PACKET_QUEUE_HPP
 #include "net/buffer.hpp"
 #include "sliding_window.hpp"
 
-class sender_queue : public sliding_window<std::shared_ptr<buffer>>, public std::enable_shared_from_this<sender_queue> {
+template<typename T>
+class packet_queue : public sliding_window<T> {
 public:
     using pointer = typename sliding_window<std::shared_ptr<buffer>>::pointer;
+    using block_type = typename sliding_window<T>::block_type;
+    using size_type = typename sliding_window<T>::size_type;
+public:
+    packet_queue() {
+        _output_packet_func = [](const block_type &) {};
+        _on_drop_packet_func = [](size_type, size_type) {};
+    }
+    ~packet_queue() override = default;
 
 public:
-    explicit sender_queue(asio::io_context &context);
-    ~sender_queue() override = default;
+    void set_output_packet(const std::function<void(const block_type &)> &f) {
+        if (f) _output_packet_func = f;
+    }
 
-public:
-    void set_sender_output_packet(const std::function<void(const block_type &)> &f);
-    void set_sender_on_drop_packet(const std::function<void(size_type, size_type)> &f);
+    void set_drop_packet(const std::function<void(size_type, size_type)> &f) {
+        if (f) _on_drop_packet_func = f;
+    }
 
 private:
-    pointer get_shared_from_this() final;
     ///
-    void on_packet(const block_type &) final;
+    void on_packet(const block_type &b) final {
+        return _output_packet_func(b);
+    }
     /// 主动丢包的范围
-    void on_drop_packet(size_type begin, size_type end) final;
+    void on_drop_packet(size_type begin, size_type end) final {
+        return _on_drop_packet_func(begin, end);
+    }
 
 private:
     std::function<void(const block_type &)> _output_packet_func;
     std::function<void(size_type, size_type)> _on_drop_packet_func;
 };
 
-#endif//TOOLKIT_SENDER_QUEUE_HPP
+#endif//TOOLKIT_PACKET_QUEUE_HPP

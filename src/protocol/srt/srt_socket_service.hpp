@@ -34,9 +34,8 @@
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
-#include "receiver_queue.hpp"
-#include "sender_queue.hpp"
-#include "socket_statistic.hpp"
+#include "packet_queue.hpp"
+#include "srt_ack.hpp"
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include "srt_socket_base.hpp"
@@ -46,7 +45,8 @@ namespace srt {
     public:
         using clock_type = typename std::chrono::steady_clock;
         using time_point = typename std::chrono::steady_clock::time_point;
-        using sender_block_type = typename sender_queue::block_type;
+        using block_type = typename packet_queue<std::shared_ptr<buffer>>::block_type;
+        using block = typename packet_queue<std::shared_ptr<buffer>>::block;
 
     public:
         explicit srt_socket_service(asio::io_context &executor);
@@ -75,14 +75,19 @@ namespace srt {
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
         virtual uint32_t get_cookie();
+
     protected:
         //// 发送数据
         int async_send(const std::shared_ptr<buffer> &);
         void on_error_in(const std::error_code &e);
+
     private:
         //// send_queue
-        void on_sender_packet(const sender_block_type &type);
+        void on_sender_packet(const block_type &type);
         void on_sender_drop_packet(size_t begin, size_t end);
+        /// receive queue
+        void on_receive_packet(const block_type &type);
+        void on_receive_drop_packet(size_t begin, size_t end);
 
     private:
         void send_reject(int e, const std::shared_ptr<buffer> &buf);
@@ -91,6 +96,7 @@ namespace srt {
         void on_connect_in();
         void do_keepalive();
         void do_nak();
+        void do_nak_l();
         /// Round-trip time (RTT) in SRT is estimated during the transmission of data packets based on
         /// difference in time between an ACK packet is send out and a corresponding ACK_ACK is received
         /// back by SRT receiver.
@@ -120,8 +126,8 @@ namespace srt {
         void handle_receive(const std::shared_ptr<buffer> &buff);
         void handle_receive_1(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
 
-        void handle_control(const std::shared_ptr<srt_packet>&pkt, const std::shared_ptr<buffer> &);
-        void handle_data(const std::shared_ptr<srt_packet>&pkt, const std::shared_ptr<buffer> &);
+        void handle_control(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &);
+        void handle_data(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &);
         void handle_keep_alive(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_nak(const srt_packet &pkt, const std::shared_ptr<buffer> &);
         void handle_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &);
@@ -135,7 +141,6 @@ namespace srt {
         void on_common_timer_expired(const int &);
         /// 保活定时器
         void on_keep_alive_expired(const int &);
-
         inline uint32_t get_next_packet_message_number();
 
     private:
@@ -150,6 +155,7 @@ namespace srt {
         /// 握手上下文
         std::shared_ptr<handshake_context> _handshake_context;
         int handshake_conclusion = 0;
+        bool report_nak_begin = false;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
         std::function<void(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &)> _next_func_with_pkt;
         /// 第一次尝试连接的时间
@@ -165,12 +171,10 @@ namespace srt {
         std::atomic<bool> _is_connected{false};
         /// 上一次发送包的序号
         uint32_t message_number = 1;
-        /// 用于统计包发送数据
-        std::shared_ptr<socket_statistic> _sock_send_statistic;
-        /// 用于统计接收的包
-        std::shared_ptr<socket_statistic> _sock_receive_statistic;
-        std::shared_ptr<sender_queue> _sender_buffer;
-        std::shared_ptr<receiver_queue> _receiver_buffer;
+        /// 发送队列
+        packet_queue<std::shared_ptr<buffer>> _sender_queue;
+        packet_queue<std::shared_ptr<buffer>> _receive_queue;
+        srt_ack_queue _ack_queue_;
     };
 };// namespace srt
 
