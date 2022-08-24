@@ -230,7 +230,7 @@ namespace srt {
             throw std::system_error(make_srt_error(srt_error_code::too_large_payload));
         }
 
-        if (!_sender_queue.capacity() || occur_error) {
+        if (!_sender_queue.capacity()) {
             return -1;
         }
 

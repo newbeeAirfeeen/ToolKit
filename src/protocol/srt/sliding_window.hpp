@@ -202,6 +202,10 @@ public:
             _start = (_start + 1) % _window_size;
             _size.fetch_sub(1, std::memory_order_relaxed);
         }
+        if(_size.load(std::memory_order_relaxed) == 0){
+            _start = _end = 0;
+            cache.clear();
+        }
     }
 
     /// 丢弃范围内的包
@@ -338,13 +342,15 @@ public:
         int64_t begin_seq = -1, end_seq = -1;
         auto begin = _start;
         auto end = (_end + 1) % cache.size();
-        while (begin != end) {
+        auto size = _size.load(std::memory_order_relaxed);
+        while (begin != end || size > 0) {
             if (cache[begin]) {
                 if (begin_seq >= 0 && end_seq >= 0) {
                     vec.emplace_back(begin_seq, end_seq);
                     begin_seq = end_seq = -1;
                 }
                 begin = (begin + 1) % cache.size();
+                --size;
                 continue;
             }
 
@@ -371,25 +377,28 @@ public:
 
 private:
     void drop(uint64_t before_drop_time) {
-        if (!_size.load(std::memory_order_relaxed)) {
+        if (_size.load(std::memory_order_relaxed) == 0) {
             return;
         }
         iterator iter = this->get_flow_part_begin();
         iterator end = this->get_flow_part_end();
 
-        if (iter->submit_time_point < before_drop_time) {
+        //// 如果提交的时间点大于丢弃时间，忽略
+
+        if (iter->submit_time_point > before_drop_time) {
             return;
         }
 
         while (iter != end) {
-            if (iter->submit_time_point <= before_drop_time) {
+            /// 如果提交的时间点要大于丢弃的时间点
+            if (iter->submit_time_point > before_drop_time) {
                 break;
             }
             ++iter;
         }
 
+        on_drop_packet(this->get_flow_part_begin()->sequence_number, iter->sequence_number);
         sequence_to((iter->sequence_number + 1) % _max_sequence);
-        return on_drop_packet(this->get_flow_part_begin()->sequence_number, iter->sequence_number);
     }
 
     inline uint64_t get_submit_time() const {

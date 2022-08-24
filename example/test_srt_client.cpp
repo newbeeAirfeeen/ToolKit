@@ -21,9 +21,9 @@ int main() {
     Info("{}", sizeof(srt::srt_socket_service));
 
     asio::io_context context(1);
-
+    asio::executor_work_guard<typename asio::io_context::executor_type> guard(context.get_executor());
     asio::ip::udp::endpoint p(asio::ip::make_address("127.0.0.1"), 9000);
-    asio::ip::udp::endpoint p2(asio::ip::make_address("127.0.0.1"), 10000);
+    asio::ip::udp::endpoint p2(asio::ip::make_address("127.0.0.1"), 21000);
     auto client = std::make_shared<srt::srt_client>(context, p2);
 
     std::thread t([&]() { context.run(); });
@@ -35,11 +35,15 @@ int main() {
             t2.reset(new std::thread(send_data, client));
         }
     });
-    client->async_connect(p);
+    client->async_connect(p, [&, client](const std::error_code& e){
+        if(e){
+            return;
+        }
+        Warn("connect success");
+        t2.reset(new std::thread(send_data, client));
+    });
 
-    if (t.joinable()) {
-        t.join();
-    }
+    t.join();
     if (t2 && t2->joinable()) {
         t2->join();
     }

@@ -31,12 +31,16 @@ namespace srt {
         impl(asio::io_context &poller, const endpoint_type &host) : poller(poller), srt_socket_service(poller), _sock(poller) {
             _sock.open(host.protocol());
             _sock.bind(host);
-            asio::socket_base::receive_low_watermark option(1);
-            _sock.set_option(option);
+            //_sock.native_non_blocking(true);
+            asio::socket_base::receive_buffer_size rbs(256 * 1024);
+            asio::socket_base::send_buffer_size sbs(256 * 1024);
+            _sock.set_option(rbs);
+            _sock.set_option(sbs);
             this->host = host;
             receive_cache = std::make_shared<buffer>();
             receive_cache->resize(1500);
-            err_func = [](const std::error_code &e) {};
+            conn_func = [](const std::error_code &e) {};
+            err_func = conn_func;
         }
 
         const asio::ip::udp::endpoint &get_remote_endpoint() override {
@@ -51,13 +55,14 @@ namespace srt {
             this->err_func = f;
         }
 
-        void async_connect(const endpoint_type &_remote) {
+        void async_connect(const endpoint_type &_remote, const std::function<void(const std::error_code &e)> &f) {
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
-            poller.post([self, _remote]() {
+            poller.post([self, _remote, f]() {
                 auto stronger_self = self.lock();
                 if (!stronger_self) {
                     return;
                 }
+                stronger_self->conn_func = f;
                 stronger_self->remote = _remote;
                 return stronger_self->connect_self();
             });
@@ -72,6 +77,14 @@ namespace srt {
 
     protected:
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) override {
+            //            if (_sock.native_non_blocking()) {
+            //                try {
+            //                    auto ret = _sock.send(asio::buffer(buff->data(), buff->size()));
+            //                } catch (const std::system_error &e) {
+            //                    return on_error_in(e.code());
+            //                }
+            //
+            //            } else {
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             _sock.async_send(asio::buffer(buff->data(), buff->size()), [self, buff](const std::error_code &e, size_t length) {
                 auto stronger_self = self.lock();
@@ -87,26 +100,27 @@ namespace srt {
                     return stronger_self->on_error_in(e);
                 }
             });
+            //}
         }
 
         void on_connected() override {
+            is_connect_func = true;
             auto c = srt::make_srt_error(success);
-            return err_func(c);
+            return conn_func(c);
         }
 
         void on_error(const std::error_code &e) override {
             Error(e.message());
+            if (!is_connect_func) {
+                is_connect_func = true;
+                return conn_func(e);
+            }
             return err_func(e);
         }
 
     public:
         void begin() override {
-            begin_in();
             srt_socket_service::begin();
-        }
-
-        void begin_in() {
-            return connect_self();
         }
 
     private:
@@ -116,11 +130,12 @@ namespace srt {
             _sock.async_connect(_tmp_endpoint, [self, _tmp_endpoint](const std::error_code &e) {
                 if (auto stronger_self = self.lock()) {
                     if (e) {
-                        return stronger_self->on_error(e);
+                        return stronger_self->on_error_in(e);
+                    } else {
+                        /// begin to read
+                        stronger_self->reading();
+                        return stronger_self->connect();
                     }
-                    /// begin to read
-                    stronger_self->reading();
-                    return stronger_self->connect();
                 }
             });
         }
@@ -158,8 +173,10 @@ namespace srt {
         asio::ip::udp::socket _sock;
         asio::io_context &poller;
         std::atomic<bool> flag{false};
+        bool is_connect_func = false;
         endpoint_type host;
         endpoint_type remote;
+        std::function<void(const std::error_code &)> conn_func;
         std::function<void(const std::error_code &)> err_func;
     };
 };// namespace srt
@@ -172,8 +189,8 @@ namespace srt {
         _impl->begin();
     }
 
-    void srt_client::async_connect(const endpoint_type &remote) {
-        _impl->async_connect(remote);
+    void srt_client::async_connect(const endpoint_type &remote, const std::function<void(const std::error_code &e)> &f) {
+        _impl->async_connect(remote, f);
     }
     void srt_client::set_on_error(const std::function<void(const std::error_code &)> &f) {
         return _impl->set_on_error(f);
