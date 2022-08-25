@@ -172,6 +172,10 @@ namespace srt {
         } else {
             /// 数据漂移到其他线程
             auto session = get_session_with_cookie(_cookie_);
+            if(!session){
+                Warn("no current session with cookie={}", _cookie_);
+                return;
+            }
             /// 线程局部存储需要拷贝数据
             Warn("data received in other thread, switch to session thread...");
             auto buf_tmp = buffer::assign(buff->data(), buff->size());
