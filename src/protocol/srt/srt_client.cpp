@@ -23,8 +23,10 @@
 * SOFTWARE.
 */
 #include "srt_client.hpp"
+#include "execution_io_context.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_error.hpp"
+#include <mutex>
 namespace srt {
     class srt_client::impl : public srt_socket_service {
     public:
@@ -52,6 +54,7 @@ namespace srt {
         }
 
         void set_on_error(const std::function<void(const std::error_code &)> &f) {
+            std::lock_guard<std::recursive_mutex> lmtx(mtx);
             this->err_func = f;
         }
 
@@ -62,7 +65,10 @@ namespace srt {
                 if (!stronger_self) {
                     return;
                 }
-                stronger_self->conn_func = f;
+                {
+                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
+                    stronger_self->conn_func = f;
+                }
                 stronger_self->remote = _remote;
                 return stronger_self->connect_self();
             });
@@ -105,16 +111,30 @@ namespace srt {
         void on_connected() override {
             is_connect_func = true;
             auto c = srt::make_srt_error(success);
-            return conn_func(c);
+            std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
+            /// 切换到其他线程调用回调
+            asio::post(get_thread_pool(), [c, self]() {
+                if (auto stronger_self = self.lock()) {
+                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
+                    stronger_self->conn_func(c);
+                }
+            });
         }
 
         void on_error(const std::error_code &e) override {
-            Error(e.message());
-            if (!is_connect_func) {
-                is_connect_func = true;
-                return conn_func(e);
-            }
-            return err_func(e);
+            std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
+            /// 切换到其他线程调用回调
+            asio::post(get_thread_pool(), [e, self]() {
+                Error(e.message());
+                if (auto stronger_self = self.lock()) {
+                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
+                    if (!stronger_self->is_connect_func) {
+                        stronger_self->is_connect_func = true;
+                        return stronger_self->conn_func(e);
+                    }
+                    stronger_self->err_func(e);
+                }
+            });
         }
 
     public:
@@ -175,6 +195,7 @@ namespace srt {
         bool is_connect_func = false;
         endpoint_type host;
         endpoint_type remote;
+        std::recursive_mutex mtx;
         std::function<void(const std::error_code &)> conn_func;
         std::function<void(const std::error_code &)> err_func;
     };

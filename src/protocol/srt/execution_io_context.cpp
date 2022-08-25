@@ -34,8 +34,8 @@ void io_context::run() {
 
 io_pool::io_pool() {
     _pool_.reset(new std::list<std::shared_ptr<io_context>>());
-    auto size = std::thread::hardware_concurrency();
-    size = 4;
+    auto size = std::thread::hardware_concurrency() / 4;
+    if(size <= 0) size = 1;
     for (decltype(size) i = 0; i < size; i++) {
         _pool_->emplace_back(std::make_shared<io_context>());
     }
@@ -49,7 +49,14 @@ io_pool &io_pool::instance() {
 }
 
 void io_pool::for_each(const std::function<void(io_context &)> &f) {
-    std::for_each(_pool_->begin(), _pool_->end(), [f](const std::shared_ptr<io_context>& io) {
-        if(io)f(*io);
+    std::for_each(_pool_->begin(), _pool_->end(), [f](const std::shared_ptr<io_context> &io) {
+        if (io) f(*io);
     });
+}
+
+asio::thread_pool &get_thread_pool() {
+    static uint32_t size = std::thread::hardware_concurrency() / 4;
+    if (size <= 0) size = 1;
+    static asio::thread_pool pool(size);
+    return pool;
 }

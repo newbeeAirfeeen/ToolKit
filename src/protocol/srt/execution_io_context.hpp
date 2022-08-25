@@ -42,4 +42,6 @@ private:
     std::unique_ptr<std::list<std::shared_ptr<io_context>>> _pool_;
 };
 
+asio::thread_pool& get_thread_pool();
+
 #endif//TOOLKIT_IO_CONTEXT_HPP
