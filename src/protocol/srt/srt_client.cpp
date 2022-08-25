@@ -31,7 +31,7 @@ namespace srt {
         impl(asio::io_context &poller, const endpoint_type &host) : poller(poller), srt_socket_service(poller), _sock(poller) {
             _sock.open(host.protocol());
             _sock.bind(host);
-            //_sock.native_non_blocking(true);
+            _sock.native_non_blocking(true);
             asio::socket_base::receive_buffer_size rbs(256 * 1024);
             asio::socket_base::send_buffer_size sbs(256 * 1024);
             _sock.set_option(rbs);
@@ -77,14 +77,12 @@ namespace srt {
 
     protected:
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) override {
-            //            if (_sock.native_non_blocking()) {
-            //                try {
-            //                    auto ret = _sock.send(asio::buffer(buff->data(), buff->size()));
-            //                } catch (const std::system_error &e) {
-            //                    return on_error_in(e.code());
-            //                }
-            //
-            //            } else {
+            try {
+                auto ret = _sock.send(asio::buffer(buff->data(), buff->size()));
+            } catch (const std::system_error &e) {
+                return on_error_in(e.code());
+            }
+#if 0
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             _sock.async_send(asio::buffer(buff->data(), buff->size()), [self, buff](const std::error_code &e, size_t length) {
                 auto stronger_self = self.lock();
@@ -100,6 +98,7 @@ namespace srt {
                     return stronger_self->on_error_in(e);
                 }
             });
+#endif
             //}
         }
 
