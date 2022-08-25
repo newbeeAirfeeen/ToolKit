@@ -72,7 +72,7 @@ namespace srt {
         virtual void on_connected() = 0;
         /// 发送行为
         virtual void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) = 0;
-        virtual void receive_data(const std::shared_ptr<buffer>&) = 0;
+        virtual void onRecv(const std::shared_ptr<buffer>&) = 0;
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
         virtual uint32_t get_cookie();

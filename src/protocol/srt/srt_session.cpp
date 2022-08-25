@@ -49,8 +49,12 @@ namespace srt {
         return _local;
     }
 
-    void srt_session::receive_data(const std::shared_ptr<buffer> &buff) {
+    void srt_session::onRecv(const std::shared_ptr<buffer> &buff) {
         Info("receive: {}", buff->data());
+    }
+
+    void srt_session::onError(const std::error_code &e) {
+        Error(e.message());
     }
 
     void srt_session::on_connected() {
@@ -94,8 +98,8 @@ namespace srt {
         if (!server) {
             return;
         }
-        Error(e.message());
         server->remove_session(get_sock_id());
+        return onError(e);
     }
 
     uint32_t srt_session::get_cookie() {

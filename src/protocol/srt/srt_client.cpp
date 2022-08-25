@@ -83,7 +83,7 @@ namespace srt {
         }
 
     protected:
-        void receive_data(const std::shared_ptr<buffer> &buff) override {
+        void onRecv(const std::shared_ptr<buffer> &buff) override {
             Info("receive: {}", buff->data());
         }
 

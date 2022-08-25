@@ -288,7 +288,7 @@ namespace srt {
         if (occur_error) {
             return;
         }
-        return receive_data(type->content);
+        return onRecv(type->content);
     }
 
     void srt_socket_service::on_receive_drop_packet(size_t begin, size_t end) {
