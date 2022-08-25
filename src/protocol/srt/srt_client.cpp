@@ -77,12 +77,13 @@ namespace srt {
 
     protected:
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) override {
+#if 1
             try {
                 auto ret = _sock.send(asio::buffer(buff->data(), buff->size()));
             } catch (const std::system_error &e) {
                 return on_error_in(e.code());
             }
-#if 0
+#else
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             _sock.async_send(asio::buffer(buff->data(), buff->size()), [self, buff](const std::error_code &e, size_t length) {
                 auto stronger_self = self.lock();
@@ -99,7 +100,6 @@ namespace srt {
                 }
             });
 #endif
-            //}
         }
 
         void on_connected() override {
