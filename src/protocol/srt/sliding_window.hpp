@@ -252,17 +252,12 @@ public:
         }
 
         auto begin_it = find_block_by_sequence(begin);
-        if (begin == end) {
-            if (begin_it != this->get_flow_part_end()) {
-                return on_packet(*begin_it);
-            }
+        auto end_it = find_block_by_sequence(end);
+        auto end_iter = get_flow_part_end();
+        if (begin == end || begin_it == end_iter || end_it == end_iter) {
             return on_drop_packet(begin, end);
         }
 
-        auto end_it = find_block_by_sequence(end);
-        if (end_it == this->get_flow_part_end()) {
-            return on_drop_packet(begin, end);
-        }
         Info("try send again {}-{}", begin_it->sequence_number, end_it->sequence_number);
         while (begin_it != end_it) {
             if (*begin_it) {
@@ -292,7 +287,7 @@ public:
 
     iterator find_block_by_sequence(size_type seq) {
         if (!_size.load(std::memory_order_relaxed)) {
-            return iterator(cache, (_end + 1) % _window_size, 0);
+            return iterator(cache, (_end + 1) % cache.size(), 0);
         }
         size_type start = _start;
         size_type tmp_size = _size.load(std::memory_order_relaxed);
@@ -300,11 +295,11 @@ public:
             if (cache[start]->sequence_number == seq) {
                 break;
             }
-            start = (start + 1) % _window_size;
+            start = (start + 1) % cache.size();
             --tmp_size;
         }
         if (tmp_size == 0) {
-            return iterator(cache, (_end + 1) % _window_size, 0);
+            return iterator(cache, (_end + 1) % cache.size(), 0);
         }
 
         return iterator(cache, start, tmp_size);
