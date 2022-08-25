@@ -113,6 +113,7 @@ namespace srt {
         asio::ip::udp::socket::reuse_address option(true);
         asio::ip::udp::socket::receive_buffer_size rbs(256 * 1024);
         asio::ip::udp::socket::send_buffer_size sbs(256 * 1024);
+        _sock->native_non_blocking(true);
         _sock->set_option(option);
         _sock->set_option(rbs);
         _sock->set_option(sbs);

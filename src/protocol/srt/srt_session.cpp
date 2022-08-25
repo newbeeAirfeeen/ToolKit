@@ -59,16 +59,27 @@ namespace srt {
     }
 
     void srt_session::send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) {
-        std::weak_ptr<srt_session> self(std::static_pointer_cast<srt_session>(srt_socket_service::shared_from_this()));
-        _sock.async_send_to(asio::buffer(buff->data(), buff->size()), _remote, [self](const std::error_code &e, size_t length) {
-            auto stronger_self = self.lock();
-            if (!stronger_self) {
-                return;
+#if 0
+//        std::weak_ptr<srt_session> self(std::static_pointer_cast<srt_session>(srt_socket_service::shared_from_this()));
+//        _sock.async_send_to(asio::buffer(buff->data(), buff->size()), _remote, [self](const std::error_code &e, size_t length) {
+//            auto stronger_self = self.lock();
+//            if (!stronger_self) {
+//                return;
+//            }
+//            if (e) {
+//                return stronger_self->on_error_in(e);
+//            }
+//        });
+#else
+        try {
+            if (!_sock.native_non_blocking()) {
+                _sock.native_non_blocking(true);
             }
-            if (e) {
-                return stronger_self->on_error_in(e);
-            }
-        });
+            auto ret = _sock.send_to(asio::buffer(buff->data(), buff->size()), where);
+        } catch (const std::system_error &e) {
+            return on_error_in(e.code());
+        }
+#endif
     }
 
     void srt_session::on_error(const std::error_code &e) {
