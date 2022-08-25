@@ -35,14 +35,14 @@ namespace srt {
 
     public:
         srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context);
-        virtual ~srt_session();
+        ~srt_session() override;
 
     protected:
         ///// override from srt_socket_service
         const asio::ip::udp::endpoint &get_remote_endpoint() final;
         const asio::ip::udp::endpoint &get_local_endpoint() final;
+        /// 统一数据接收接口
         void receive_data(const std::shared_ptr<buffer> &) override;
-
     private:
         void on_session_timeout();
         void set_parent(const std::shared_ptr<srt_server> &);

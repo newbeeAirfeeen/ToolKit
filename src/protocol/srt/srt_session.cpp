@@ -49,7 +49,7 @@ namespace srt {
         return _local;
     }
 
-    void srt_session::receive_data(const std::shared_ptr<buffer>& buff){
+    void srt_session::receive_data(const std::shared_ptr<buffer> &buff) {
         Info("receive: {}", buff->data());
     }
 
