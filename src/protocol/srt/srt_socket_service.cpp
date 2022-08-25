@@ -350,7 +350,7 @@ namespace srt {
         keep_alive_timer->stop();
         _is_connected.store(false);
         occur_error = true;
-        Error("there is something error, occur_error={}", occur_error);
+        Trace("there is something error, occur_error={}", occur_error);
         on_error(e);
     }
 
