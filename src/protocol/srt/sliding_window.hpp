@@ -190,7 +190,7 @@ public:
         return drop_packet();
     }
 
-
+    /// 用于发送端
     void sequence_to(size_type seq) {
         if (!get_buffer_size()) {
             return;
@@ -202,7 +202,7 @@ public:
             _start = (_start + 1) % _window_size;
             _size.fetch_sub(1, std::memory_order_relaxed);
         }
-        if(_size.load(std::memory_order_relaxed) == 0){
+        if (_size.load(std::memory_order_relaxed) == 0) {
             _start = _end = 0;
             cache.clear();
         }
