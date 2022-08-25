@@ -1,5 +1,6 @@
 ﻿#include "srt_server.hpp"
 #include "Util/endian.hpp"
+#include "execution_io_context.hpp"
 #include "net/buffer.hpp"
 #include "srt_packet.h"
 #include <algorithm>
@@ -8,11 +9,15 @@
 #include <memory>
 #include <random>
 #include <spdlog/logger.hpp>
-#include "execution_io_context.hpp"
 namespace srt {
     static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session>> _thread_local_session_map_;
     /// handle handshake
     static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session>> _cookie_map;
+    srt_server::srt_server() {
+        _on_create_session_func_ = [](const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context) -> std::shared_ptr<srt_session> {
+            return std::make_shared<srt_session>(sock, context);
+        };
+    }
 
     void srt_server::start(const asio::ip::udp::endpoint &endpoint) {
         std::weak_ptr<srt_server> self(shared_from_this());
@@ -53,6 +58,11 @@ namespace srt {
         std::lock_guard<std::recursive_mutex> lmtx(mtx);
         _session_map_.emplace(session->get_sock_id(), session);
     }
+
+    void srt_server::on_create_session(const on_create_session_func &f) {
+        this->_on_create_session_func_ = f;
+    }
+
 
     /// 由各自线程的io_context 调用
     void srt_server::start(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context) {
@@ -145,7 +155,7 @@ namespace srt {
         if (_cookie_ == 0 && pkt->get_socket_id() == 0) {
             Debug("create new srt session...");
             /// 同步到线程局部存储
-            auto session = std::make_shared<srt_session>(sock, poller);
+            auto session = _on_create_session_func_(sock, poller);
             /// 设置当前cookie
             std::default_random_engine random(std::random_device{}());
             std::uniform_int_distribution<int32_t> mt(0, (std::numeric_limits<int32_t>::max)());
@@ -173,7 +183,7 @@ namespace srt {
         } else {
             /// 数据漂移到其他线程
             auto session = get_session_with_cookie(_cookie_);
-            if(!session){
+            if (!session) {
                 Warn("no current session with cookie={}", _cookie_);
                 return;
             }

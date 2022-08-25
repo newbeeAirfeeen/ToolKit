@@ -31,27 +31,26 @@
 namespace srt {
     class srt_server;
     class srt_session : public srt_socket_service {
+        friend class srt_server;
+
     public:
         srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context);
         virtual ~srt_session();
-
-    public:
-        void set_parent(const std::shared_ptr<srt_server> &);
-        void set_current_remote_endpoint(const asio::ip::udp::endpoint &);
-        void set_cookie(uint32_t);
-        uint32_t get_cookie() final;
-
-    public:
-        void begin_session();
-        void receive(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
-
-    private:
-        void on_session_timeout();
 
     protected:
         ///// override from srt_socket_service
         const asio::ip::udp::endpoint &get_remote_endpoint() final;
         const asio::ip::udp::endpoint &get_local_endpoint() final;
+        void receive_data(const std::shared_ptr<buffer> &) override;
+
+    private:
+        void on_session_timeout();
+        void set_parent(const std::shared_ptr<srt_server> &);
+        void set_current_remote_endpoint(const asio::ip::udp::endpoint &);
+        void set_cookie(uint32_t);
+        uint32_t get_cookie() final;
+        void begin_session();
+        void receive(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
         void on_connected() final;
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) final;
         void on_error(const std::error_code &e) final;

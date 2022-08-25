@@ -49,6 +49,10 @@ namespace srt {
         return _local;
     }
 
+    void srt_session::receive_data(const std::shared_ptr<buffer>& buff){
+        Info("receive: {}", buff->data());
+    }
+
     void srt_session::on_connected() {
         auto server = _parent_server.lock();
         if (!server) {

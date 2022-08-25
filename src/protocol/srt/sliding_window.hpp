@@ -29,6 +29,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "spdlog/logger.hpp"
 template<typename _packet_type, typename _duration_type = std::chrono::milliseconds>
 class sliding_window {
 
@@ -193,9 +194,11 @@ public:
     /// 用于发送端
     void sequence_to(size_type seq) {
         if (!get_buffer_size()) {
+            Trace("there is no buff in cache, no sequence operation");
             return;
         }
 
+        Trace("begin sequence to {}, current buffer size={}, is_cycle={}", seq, _size.load(std::memory_order_relaxed), is_cycle());
         auto begin = get_first_block()->sequence_number;
         while (_size.load(std::memory_order_relaxed) && ((is_cycle() && seq < begin) || (cache[_start]->sequence_number < seq))) {
             cache[_start] = nullptr;
@@ -206,6 +209,7 @@ public:
             _start = _end = 0;
             cache.clear();
         }
+        Trace("end sequence, current buffer size={}", _size.load(std::memory_order_relaxed));
     }
 
     /// 丢弃范围内的包

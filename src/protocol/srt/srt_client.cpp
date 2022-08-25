@@ -59,6 +59,7 @@ namespace srt {
         }
 
         void async_connect(const endpoint_type &_remote, const std::function<void(const std::error_code &e)> &f) {
+            Trace("connect to {}:{}", _remote.address().to_string(), _remote.port());
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             poller.post([self, _remote, f]() {
                 auto stronger_self = self.lock();
@@ -82,6 +83,10 @@ namespace srt {
         }
 
     protected:
+        void receive_data(const std::shared_ptr<buffer> &buff) override {
+            Info("receive: {}", buff->data());
+        }
+
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) override {
 #if 1
             try {
@@ -144,6 +149,7 @@ namespace srt {
 
     private:
         void connect_self() {
+            Trace("connect udp address to {}:{}", remote.address().to_string(), remote.port());
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             endpoint_type _tmp_endpoint = remote;
             _sock.async_connect(_tmp_endpoint, [self, _tmp_endpoint](const std::error_code &e) {
@@ -159,6 +165,7 @@ namespace srt {
             });
         }
         void reading() {
+            Trace("begin async reading..");
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             _sock.async_receive(asio::buffer((char *) receive_cache->data(), receive_cache->size()), [self](const std::error_code &e, size_t length) {
                 auto stronger_self = self.lock();

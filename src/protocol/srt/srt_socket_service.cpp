@@ -104,6 +104,7 @@ namespace srt {
         srt_packet pkt;
         pkt.set_control_type(control_type::handshake);
         /// srt_packet
+        Trace("srt induction handshake version={}, seq={}, mss={}, window_size={}", ctx._version, ctx._sequence_number, ctx._max_mss, ctx._window_size);
         auto _pkt = create_packet(pkt);
         handshake_context::to_buffer(ctx, _pkt);
         /// save induction message
@@ -116,6 +117,7 @@ namespace srt {
         /// 发送到对端
         send_in(handshake_buffer, get_remote_endpoint());
         /// 开始定时器, 每隔一段时间发送induction包
+        Trace("update timer after 250ms to send induction again");
         this->common_timer->add_expired_from_now(250, timer_expired_type::induction_expired);
         /// 套接字已经打开
         _is_open.store(true, std::memory_order_relaxed);
@@ -133,7 +135,7 @@ namespace srt {
             /// 用于客户端握手
             case timer_expired_type::induction_expired:
             case timer_expired_type::conclusion_expired: {
-                //Trace("connect package may be lost, try send again, package type={}", v);
+                Trace("connect package may be lost, try send again, package type={}", v);
                 //// 连接超时
                 auto ts = get_time_from<std::chrono::milliseconds>(connect_point);
                 if (ts > get_connect_timeout()) {
@@ -145,6 +147,7 @@ namespace srt {
                 /// 统计包丢失
                 /// _sock_send_statistic->report_packet_lost(1);
                 /// 250ms后尝试重新发送
+                Trace("update timer after 250ms to send induction again");
                 this->common_timer->add_expired_from_now(250, val);
                 break;
             }
@@ -285,7 +288,7 @@ namespace srt {
         if (occur_error) {
             return;
         }
-        Info("recv: sequence={}", type->sequence_number);
+        return receive_data(type->content);
     }
 
     void srt_socket_service::on_receive_drop_packet(size_t begin, size_t end) {
@@ -508,25 +511,30 @@ namespace srt {
         auto induction_context = srt::handshake_context::from_buffer(buff->data(), buff->size());
         /// 非法的握手包
         if (induction_context->_req_type != handshake_context::urq_induction) {
+            Debug("invalid handshake packet, not a induction packet");
             return handle_reject(induction_context->_req_type);
         }
         //// 更新参数
         if (induction_context->_version != 5) {
             /// 握手版本不正确
+            Debug("srt version is not equal to 5, which is forbidden");
             return send_reject(handshake_context::packet_type::rej_version, buff);
         }
         /// 版本5的扩展字段检查
         if (induction_context->extension_field != 0x4A17) {
+            Debug("srt extension field is not 0x4A17");
             return send_reject(handshake_context::packet_type::rej_rogue, buff);
         }
 
         /// 暂不支持加密
         if (induction_context->encryption != 0) {
+            Debug("current is not support encryption");
             return send_reject(handshake_context::packet_type::rej_unsecure, buff);
         }
 
         /// mtu 检查
         if (induction_context->_max_mss > 1500) {
+            Debug("max payload is not exceed 1500");
             return send_reject(handshake_context::packet_type::rej_rogue, buff);
         }
         //// 停止定时器
@@ -566,6 +574,8 @@ namespace srt {
         set_extension(ctx, _pkt, get_time_based_deliver(), get_drop_too_late_packet(), get_report_nak(), 0, get_stream_id());
         /// 最后更新extension_field
         handshake_context::update_extension_field(ctx, _pkt);
+        Trace("send conclusion handshake, version={}, seq={}, mtu={}, window_size={}, sock_id={}, cookie={}", ctx._version, ctx._sequence_number,
+              ctx._max_mss, ctx._window_size, ctx._socket_id, ctx._cookie);
         /// 更新握手上下文
         {
             _next_func = std::bind(&srt_socket_service::handle_server_conclusion, this, std::placeholders::_1);
@@ -595,6 +605,7 @@ namespace srt {
         auto extension = get_extension(*context, buff);
 
         if (context->_req_type != handshake_context::packet_type::urq_conclusion) {
+            Debug("server response is not urq conclusion");
             return handle_reject(context->_req_type);
         }
 
@@ -868,6 +879,7 @@ namespace srt {
 
     /// ack control packet are used to provide the delivery
     void srt_socket_service::handle_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &buff) {
+        Trace("handle ack...");
         auto an = pkt.get_type_information();
         /// a light ack control packet includes only the last Acknowledged Packets sequence number field
         /// the type-specific information field should be set to 0.
@@ -891,10 +903,10 @@ namespace srt {
                 do_ack_ack(an);
             }
             /// 更新rtt rtt_variance.
+            Trace("update rtt={}, rtt_variance={}, peer available buffer size={}", _rtt, _rtt_variance, _available_buffer_size);
             _ack_queue_.set_rtt(_rtt, _rtt_variance);
         }
         /// 滑动序号
-        ///Info("before sequence, {}-{}", _sender_queue->get_first_block()->sequence_number, _sender_queue->get_last_block()->sequence_number);
         _sender_queue.sequence_to(_last_ack_packet_seq);
     }
 

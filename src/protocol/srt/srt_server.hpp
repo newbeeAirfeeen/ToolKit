@@ -34,6 +34,10 @@ namespace srt {
 
     class srt_server : public std::enable_shared_from_this<srt_server> {
     public:
+        using on_create_session_func = std::function<std::shared_ptr<srt_session>(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context)>;
+
+    public:
+        srt_server();
         ~srt_server() = default;
 
     public:
@@ -41,6 +45,8 @@ namespace srt {
         void remove_cookie_session(uint32_t);
         void remove_session(uint32_t);
         void add_connected_session(const std::shared_ptr<srt_session> &session);
+        /// 创建会话的回调
+        void on_create_session(const on_create_session_func &f);
 
     private:
         void on_receive(const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller);
@@ -62,6 +68,7 @@ namespace srt {
         /// socket id
         std::recursive_mutex mtx;
         std::unordered_map<uint32_t, std::shared_ptr<srt_session>> _session_map_;
+        on_create_session_func _on_create_session_func_;
     };
 }// namespace srt
 #endif//TOOLKIT_SRT_SERVER_HPP
