@@ -463,6 +463,7 @@ namespace srt {
         Trace("send drop request {} to {}", begin, end);
         srt_packet pkt;
         pkt.set_control_type(control_type::drop_req);
+        pkt.set_socket_id(get_sock_id());
         pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
         auto drop_buf = create_packet(pkt);
         drop_buf->put_be<uint32_t>(static_cast<uint32_t>(begin));
