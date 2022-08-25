@@ -98,9 +98,6 @@ namespace srt {
         ctx._max_mss = srt_socket_base::get_max_payload();
         ctx._window_size = srt_socket_service::get_max_flow_window_size();
         ctx._req_type = srt::handshake_context::urq_induction;
-        // random
-        ctx._socket_id = static_cast<uint32_t>(mt(random));
-        ctx._cookie = static_cast<uint32_t>(mt(random));
         ctx.address = get_local_endpoint().address();
 
 
