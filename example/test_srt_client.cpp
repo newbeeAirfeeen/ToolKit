@@ -11,7 +11,7 @@ void send_data(const std::shared_ptr<srt::srt_client> &client) {
     Info("begin send data..");
     for (int i = 0; i < 10000; i++) {
         client->async_send(std::to_string(i + 1).data(), 1);
-        std::this_thread::sleep_for(std::chrono::milliseconds (1));
+        std::this_thread::sleep_for(std::chrono::microseconds (80));
     }
 }
 #include "protocol/srt/srt_error.hpp"

@@ -114,10 +114,12 @@ namespace srt {
             return;
         }
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - it->second).count();
+        ///Debug("")
         /// rtt = 7/8 * RTT + 1/8 * rtt
-        _rtt = 7 / 8 * ms + 1 / 8 * _rtt;
+        _rtt = 7.0 / 8 * _rtt + 1.0 / 8 * ms;
         /// rtt_var = 3/4 * rtt_var + 1/4 * abs(RTT - rtt)
-        _rtt_var = 3 / 4 * _rtt_var + 1 / 4 * std::abs(ms - _rtt);
+        _rtt_var = 3.0 / 4 * _rtt_var + 1.0 / 4 * std::abs(_rtt - ms);
+        Debug("rtt={}, rtt_variance={}, ms={}", _rtt, _rtt_var, ms);
         ack_queue.erase(it);
     }
 
