@@ -43,7 +43,8 @@ namespace srt {
         const asio::ip::udp::endpoint &get_local_endpoint() final;
         /// 统一数据接收接口
         void onRecv(const std::shared_ptr<buffer> &) override;
-        virtual void onError(const std::error_code& e);
+        virtual void onError(const std::error_code &e);
+
     private:
         void on_session_timeout();
         void set_parent(const std::shared_ptr<srt_server> &);
