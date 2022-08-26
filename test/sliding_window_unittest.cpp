@@ -351,6 +351,7 @@ void receiver_queue(const std::shared_ptr<basic_window> &window) {
 }
 
 TEST(sliding_window, sliding_window) {
+    logger::initialize("logs/test_sliding_window.log", spdlog::level::trace);
     auto window = std::make_shared<basic_window>();
 
     window->set_window_size(6);
