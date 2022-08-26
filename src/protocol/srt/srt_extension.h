@@ -106,7 +106,7 @@ namespace srt {
     /// | 0x00000080 | PACKET_FILTER |
     /// +------------+---------------+
 
-    enum extension_message_flag{
+    enum extension_message_flag {
         TSBPDSND = 0x00000001,     /// for sending,
         TSBPDRCV = 0x00000002,     /// for receiving,
         CRYPT = 0x00000004,        /// for crypt.

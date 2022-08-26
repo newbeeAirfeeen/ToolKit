@@ -47,14 +47,14 @@ namespace srt {
 
     bool is_extension_type(uint32_t type) {
         switch (type) {
-            case extension_type::SRT_CMD_HS_REQ:
-            case extension_type::SRT_CMD_HS_RSP:
-            case extension_type::SRT_CMD_KM_REQ:
-            case extension_type::SRT_CMD_KM_RSP:
-            case extension_type::SRT_CMD_SID:
-            case extension_type::SRT_CMD_CONGESTION:
-            case extension_type::SRT_CMD_FILTER:
-            case extension_type::SRT_CMD_GROUP:
+            case SRT_CMD_HS_REQ:
+            case SRT_CMD_HS_RSP:
+            case SRT_CMD_KM_REQ:
+            case SRT_CMD_KM_RSP:
+            case SRT_CMD_SID:
+            case SRT_CMD_CONGESTION:
+            case SRT_CMD_FILTER:
+            case SRT_CMD_GROUP:
                 return true;
             default:
                 return false;
