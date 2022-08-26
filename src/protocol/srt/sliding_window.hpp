@@ -442,8 +442,16 @@ private:
         if (get_buffer_size() == 0 || _max_delay == 0) {
             return 0;
         }
-        auto first = get_first_block()->sequence_number;
-        auto last = get_last_block()->sequence_number;
+        auto first = get_first_block();
+        auto last = get_last_block();
+
+        if(!first || !last ){
+            return 0;
+        }
+
+        auto first_seq = first->sequence_number;
+        auto last_seq = last->sequence_number;
+
 
         uint32_t latency = 0;
         if (last > first) {
