@@ -348,12 +348,11 @@ namespace srt {
         common_timer->stop();
         keep_alive_timer->stop();
         _is_connected.store(false);
-        if(!occur_error){
+        if (!occur_error) {
             occur_error = true;
             Trace("there is something error, occur_error={}", occur_error);
             on_error(e);
         }
-
     }
 
     void srt_socket_service::do_keepalive() {

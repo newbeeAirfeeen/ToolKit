@@ -181,14 +181,13 @@ public:
 
         _size.fetch_add(1);
 
+        Error("start and end, start={}, end={}, index={}, size={}",_start, _end, index, _size.load(std::memory_order_relaxed));
         if (_start <= _end && index >= _end) {
             _end = index;
         } else if (_start <= _end && index < _start) {
             _end = index;
         } else if (_start > _end && _end <= index && _start > index) {
             _end = index;
-        }else{
-            Error("there is some error in start and end, start={}, end={}, index={}",_start, _end, index);
         }
 
         /// 输出包

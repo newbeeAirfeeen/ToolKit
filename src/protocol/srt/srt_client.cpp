@@ -187,6 +187,7 @@ namespace srt {
                 if (length <= 0) {
                     return;
                 }
+
                 stronger_self->receive_cache->resize(length);
                 stronger_self->receive_cache->backward();
                 stronger_self->input_packet(stronger_self->receive_cache);
