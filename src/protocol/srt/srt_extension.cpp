@@ -28,21 +28,21 @@
 #include <algorithm>
 
 namespace srt {
-
-    bool extension_flag(uint32_t type_information) {
-        return type_information & static_cast<uint32_t>(0xFFFF);
+    constexpr const uint32_t mask = 0xFFFF;
+    bool extension_flag(uint32_t flag) {
+        return flag & mask;
     }
 
-    bool is_HS_REQ_set(uint32_t type_information) {
-        return (type_information & static_cast<uint32_t>(0xFFFF) & (extension_flag::HS_REQ)) == extension_flag::HS_REQ;
+    bool is_HS_REQ_set(uint32_t flag) {
+        return (flag & mask & HS_REQ) == HS_REQ;
     }
 
-    bool is_KM_REQ_set(uint32_t type_information) {
-        return (type_information & static_cast<uint32_t>(0xFFFF) & extension_flag::KM_REQ) == extension_flag::KM_REQ;
+    bool is_KM_REQ_set(uint32_t flag) {
+        return (flag & mask & KM_REQ) == KM_REQ;
     }
 
-    bool is_CONFIG_set(uint32_t type_information) {
-        return (type_information & static_cast<uint32_t>(0xFFFF) & extension_flag::CONFIG) == extension_flag::CONFIG;
+    bool is_CONFIG_set(uint32_t flag) {
+        return (flag & mask & CONFIG) == CONFIG;
     }
 
     bool is_extension_type(uint32_t type) {
