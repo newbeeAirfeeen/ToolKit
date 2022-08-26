@@ -868,13 +868,13 @@ namespace srt {
         while (buff->size() >= 4) {
             uint32_t seq_begin = buff->get_be<uint32_t>();
             /// 说明是范围包
-            if (seq_begin & 0x80000000 && buff->size() >= 4) {
+            if ((seq_begin & 0x80000000) && buff->size() >= 4) {
                 uint32_t seq_end = buff->get_be<uint32_t>();
                 seq_begin = seq_begin & 0x7FFFFFFF;
                 ///seq_end 之前的全部重新发送一遍
                 Trace("handle nak {}-{}", seq_begin, seq_end);
                 _sender_queue.try_send_again(seq_begin, seq_end);
-                return;
+                continue;
             }
             //// 说明是单个包
             _sender_queue.try_send_again(seq_begin, seq_begin);
