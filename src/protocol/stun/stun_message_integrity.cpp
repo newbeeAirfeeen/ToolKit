@@ -30,13 +30,15 @@
 #include "stun_packet.h"
 #include <functional>
 static size_t HMAC_SHA1(const char *key, size_t length, const char *data, size_t data_length, void *out, size_t out_length) {
-    HMAC_CTX *ctx = new HMAC_CTX;
+    HMAC_CTX *ctx = (HMAC_CTX *) malloc(sizeof(HMAC_CTX));
     HMAC_CTX_init(ctx);
     HMAC_Init_ex(ctx, (const void *) key, length, EVP_sha1(), nullptr);
     HMAC_Update(ctx, (const unsigned char *) data, strlen(data));
     auto ret = HMAC_Final(ctx, (unsigned char *) out, (unsigned int *) &out_length);
     HMAC_CTX_cleanup(ctx);
-    if (ctx) delete ctx;
+    if (ctx) {
+        free(ctx);
+    }
     return ret;
 }
 
