@@ -206,7 +206,7 @@ namespace srt {
                 throw std::system_error(make_srt_error(srt_stream_id_too_long));
             }
             /// 设置config 为 config
-            ctx.extension_field |= extension_flag::CONFIG;
+            ctx.extension_field |= CONFIG;
             /// 单位为4的字节块
             size_t word_size = (stream_id.size() + 3) / 4;
             /// 填充的字节数

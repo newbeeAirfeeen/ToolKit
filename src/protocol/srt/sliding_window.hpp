@@ -48,6 +48,7 @@ public:
     using iterator = sliding_iterator<block_type>;
 
 public:
+    sliding_window():_size(0){}
     virtual ~sliding_window() = default;
     ///
     virtual void on_packet(const block_type &) = 0;
@@ -444,7 +445,7 @@ private:
     uint32_t _max_delay = 0;
     uint32_t _start = 0;
     uint32_t _end = 0;
-    std::atomic<uint32_t> _size{0};
+    std::atomic<uint32_t> _size;
     uint32_t _max_sequence = (std::numeric_limits<uint32_t>::max)();
     std::vector<block_type> cache;
 };

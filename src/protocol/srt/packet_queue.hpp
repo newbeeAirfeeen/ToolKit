@@ -35,7 +35,7 @@ public:
     using block_type = typename sliding_window<T>::block_type;
     using size_type = typename sliding_window<T>::size_type;
 public:
-    packet_queue() {
+    packet_queue(){
         _output_packet_func = [](const block_type &) {};
         _on_drop_packet_func = [](size_type, size_type) {};
     }
