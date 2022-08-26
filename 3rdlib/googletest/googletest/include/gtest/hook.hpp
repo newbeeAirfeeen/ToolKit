@@ -5,7 +5,7 @@
 #ifndef TOOLKIT_HOOK_HPP
 #define TOOLKIT_HOOK_HPP
 #include <type_traits>
-
+/// 添加对应实现，gcc 4.8.5 中没有is_trivially_copy_constructable 的问题，导致编译通不过
 // template<class T>
 // struct is_trivially_copy_constructible :
 //     std::is_trivially_constructible<T, typename std::add_lvalue_reference<
