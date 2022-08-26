@@ -16,6 +16,8 @@ if(WIN32)
     set(CMAKE_C_FLAGS_RELEASE /O2)
     set(CMAKE_CXX_FLAGS_DEBUG /MTd)
     set(CMAKE_CXX_FLAGS_RELEASE /O2)
+elseif(LINUX)
+    add_compile_options(-Wreturn-local-addr)
 endif()
 
 

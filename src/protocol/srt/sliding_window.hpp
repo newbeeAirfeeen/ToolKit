@@ -187,6 +187,8 @@ public:
             _end = index;
         } else if (_start > _end && _end <= index && _start > index) {
             _end = index;
+        }else{
+            Error("there is some error in start and end, start={}, end={}, index={}",_start, _end, index);
         }
 
         /// 输出包
@@ -197,7 +199,7 @@ public:
             _initial_sequence = (_initial_sequence + 1) % _max_sequence;
             _start = (_start + 1) % cache.size();
         }
-        if (_size.load(std::memory_order_relaxed) == 0 && _start > _end) {
+        if (_size.load(std::memory_order_relaxed) == 0 && _start >= _end) {
             _start = _end = 0;
         }
         return drop_packet();
@@ -435,8 +437,9 @@ private:
         if (get_buffer_size() == 0 || _max_delay == 0) {
             return 0;
         }
-        auto first = get_first_block()->submit_time_point;
-        auto last = get_last_block()->submit_time_point;
+        auto first = get_first_block()->sequence_number;
+        auto last = get_last_block()->sequence_number;
+
         uint32_t latency = 0;
         if (last > first) {
             latency = last - first;
