@@ -62,7 +62,7 @@ int create_fd() {
 #endif
 
 #if defined(_WIN32)
-    unsigned long ul = noblock;
+    unsigned long ul = 1;
 #else
     int ul = 1;
 #endif//defined(_WIN32)
@@ -74,6 +74,7 @@ int create_fd() {
 }
 
 void asio_() {
+#ifndef _WIN32
     asio::io_context context(1);
     asio::io_context context2(1);
     asio::executor_work_guard<typename asio::io_context::executor_type> guard(context.get_executor());
@@ -109,6 +110,7 @@ void asio_() {
     receive(sock_2, buff2, sizeof buff2);
     context2.run();
     if (t.joinable()) t.join();
+#endif
 }
 
 void listen_(int fd, const sockaddr *addr) {

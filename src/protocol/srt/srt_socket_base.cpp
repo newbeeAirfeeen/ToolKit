@@ -51,7 +51,7 @@ namespace srt {
         this->drop_too_late_packet = on;
     }
 
-    void srt_socket_base::set_time_based_deliver(uint64_t ms) {
+    void srt_socket_base::set_time_based_deliver(uint32_t ms) {
         if (is_open()) {
             return;
         }
@@ -79,7 +79,7 @@ namespace srt {
         this->sock_id = id;
     }
 
-    void srt_socket_base::set_connect_timeout(uint64_t ms) {
+    void srt_socket_base::set_connect_timeout(uint32_t ms) {
         if (is_open()) {
             return;
         }

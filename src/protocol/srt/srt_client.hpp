@@ -33,7 +33,7 @@ namespace srt {
     class srt_client {
     public:
         using endpoint_type = asio::ip::udp::endpoint;
-        struct impl;
+        class impl;
 
     public:
         explicit srt_client(asio::io_context &poller, const endpoint_type &host = {asio::ip::udp::v4(), 12000});

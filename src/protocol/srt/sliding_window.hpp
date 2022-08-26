@@ -55,11 +55,11 @@ public:
     /// 主动丢包的范围
     virtual void on_drop_packet(size_type begin, size_type end) = 0;
 
-    void set_max_delay(size_type d) {
+    void set_max_delay(uint32_t d) {
         this->_max_delay = d;
     }
 
-    void set_window_size(size_type s) {
+    void set_window_size(uint32_t s) {
         this->_window_size = s;
     }
 
@@ -67,7 +67,7 @@ public:
         this->_initial_sequence = s;
     }
 
-    void set_max_sequence(size_type seq) {
+    void set_max_sequence(uint32_t seq) {
         this->_max_sequence = seq;
     }
 
@@ -83,9 +83,9 @@ public:
         return _size.load(std::memory_order_relaxed) == 0 ? 0 : cache[_start]->sequence_number;
     }
 
-    const block_type &get_first_block() const {
+    block_type get_first_block() const {
         if (cache[_start]) {
-            return std::cref(cache[_start]);
+            return cache[_start];
         }
         auto start = _start;
         auto size = _size.load(std::memory_order_relaxed);
@@ -98,8 +98,8 @@ public:
         return nullptr;
     }
 
-    const block_type &get_last_block() const {
-        return std::cref(cache[_end]);
+    block_type get_last_block() const {
+        return cache[_end];
     }
 
     size_type capacity() const {
@@ -124,7 +124,7 @@ public:
         /// 如果小于窗口容量.直接添加尾部
         if (cache.size() < _window_size) {
             cache.push_back(b);
-            _end = cache.size() - 1;
+            _end = (uint32_t)cache.size() - 1;
             _size.fetch_add(1, std::memory_order_relaxed);
         } else {
             /// 如果碰撞并且容量满
@@ -361,7 +361,7 @@ public:
         while (begin != end || size > 0) {
             if (cache[begin]) {
                 if (begin_seq >= 0 && end_seq >= 0) {
-                    vec.emplace_back(begin_seq, end_seq);
+                    vec.emplace_back((uint32_t)begin_seq, (uint32_t)end_seq);
                     begin_seq = end_seq = -1;
                 }
                 begin = (begin + 1) % cache.size();
@@ -374,7 +374,7 @@ public:
             if (begin >= _start) {
                 diff = begin - _start;
             } else {
-                diff = cache.size() - _start + begin;
+                diff = (uint32_t)cache.size() - _start + begin;
             }
             uint32_t sequence = (_initial_sequence + diff) % _max_sequence;
             if (begin_seq == -1) {
@@ -385,7 +385,7 @@ public:
             begin = (begin + 1) % cache.size();
         }
         if (begin_seq >= 0 && end_seq >= 0) {
-            vec.emplace_back(begin_seq, end_seq);
+            vec.emplace_back((uint32_t)begin_seq, (uint32_t)end_seq);
         }
         return vec;
     }

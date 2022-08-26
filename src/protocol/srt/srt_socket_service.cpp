@@ -29,6 +29,8 @@
 #include "srt_extension.h"
 #include "srt_handshake.h"
 #include "srt_packet.h"
+#include "packet_send_queue.hpp"
+#include "packet_receive_queue.hpp"
 #include <chrono>
 #include <numeric>
 #include <random>
@@ -49,10 +51,12 @@ namespace srt {
 
     srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
         Trace("init sender/receiver buffer queue...");
-        _sender_queue.set_output_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));
-        _sender_queue.set_drop_packet(std::bind(&srt_socket_service::on_sender_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
-        _receive_queue.set_output_packet(std::bind(&srt_socket_service::on_receive_packet, this, std::placeholders::_1));
-        _receive_queue.set_drop_packet(std::bind(&srt_socket_service::on_receive_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
+        _sender_queue = std::make_shared<packet_send_queue<std::shared_ptr<buffer>>>();
+        _receive_queue = std::make_shared<packet_receive_queue<std::shared_ptr<buffer>>>();
+        _sender_queue->set_on_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));
+        _sender_queue->set_on_drop_packet(std::bind(&srt_socket_service::on_sender_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
+        _receive_queue->set_on_packet(std::bind(&srt_socket_service::on_receive_packet, this, std::placeholders::_1));
+        _receive_queue->set_on_drop_packet(std::bind(&srt_socket_service::on_receive_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
         Trace("start sender/receiver buffer...");
     }
 
@@ -230,13 +234,12 @@ namespace srt {
             throw std::system_error(make_srt_error(srt_error_code::too_large_payload));
         }
 
-        if (!_sender_queue.capacity()) {
+        if (!_sender_queue->capacity()) {
             return -1;
         }
 
         std::weak_ptr<srt_socket_service> self(shared_from_this());
-        auto _block = std::make_shared<block>();
-        poller.post([self, buff, _block]() {
+        poller.post([self, buff]() {
             auto stronger_self = self.lock();
             if (!stronger_self) {
                 return;
@@ -251,27 +254,26 @@ namespace srt {
             /// 构造srt packet
             srt_packet pkt;
             pkt.set_control(false);
-            pkt.set_packet_sequence_number(stronger_self->_sender_queue.get_initial_sequence());
+            pkt.set_packet_sequence_number(stronger_self->_sender_queue->get_current_sequence());
             pkt.set_message_number(stronger_self->get_next_packet_message_number());
             pkt.set_timestamp(stronger_self->get_time_from<std::chrono::microseconds>(stronger_self->connect_point));
             pkt.set_socket_id(stronger_self->srt_socket_service::get_sock_id());
             auto pkt_buf = create_packet(pkt);
             pkt_buf->append(buff->data(), buff->size());
-            _block->content = pkt_buf;
             /// 放入发送缓冲
-            return stronger_self->_sender_queue.send_in(_block);
+            return stronger_self->_sender_queue->input_packet(pkt_buf, 0, 0);
         });
         return 0;
     }
 
-    void srt_socket_service::on_sender_packet(const block_type &type) {
+    void srt_socket_service::on_sender_packet(const packet_pointer &type) {
         if (occur_error || !type) {
             return;
         }
         if (type->is_retransmit) {
-            set_retransmit(true, type->content);
+            set_retransmit(true, type->pkt);
         }
-        return send_in(type->content, get_remote_endpoint());
+        return send_in(type->pkt, get_remote_endpoint());
     }
     /// 发送缓冲区 主动丢包回调
     void srt_socket_service::on_sender_drop_packet(size_t begin, size_t end) {
@@ -284,11 +286,11 @@ namespace srt {
     }
 
 
-    void srt_socket_service::on_receive_packet(const block_type &type) {
+    void srt_socket_service::on_receive_packet(const packet_pointer &type) {
         if (occur_error) {
             return;
         }
-        return onRecv(type->content);
+        return onRecv(type->pkt);
     }
 
     void srt_socket_service::on_receive_drop_packet(size_t begin, size_t end) {
@@ -374,7 +376,7 @@ namespace srt {
 
     void srt_socket_service::do_nak_in() {
         //// 检查接收队列
-        auto vec = _receive_queue.get_pending_seq();
+        auto vec = _receive_queue->get_pending_packets();
         if (vec.empty()) {
             report_nak_begin = false;
             return;
@@ -415,13 +417,13 @@ namespace srt {
         auto buff = std::make_shared<buffer>();
         buff->reserve(28);
         /// last acknowledged packet seq
-        buff->put_be<uint32_t>(_receive_queue.get_initial_sequence());
+        buff->put_be<uint32_t>(_receive_queue->get_current_sequence());
         /// rtt
         buff->put_be<uint32_t>(_ack_queue_.get_rto());
         /// rtt variance
         buff->put_be<uint32_t>(_ack_queue_.get_rtt_var());
         /// capacity
-        buff->put_be<uint32_t>(_receive_queue.capacity());
+        buff->put_be<uint32_t>(_receive_queue->capacity());
         /// packet receive rate
         buff->put_be<uint32_t>(_packet_receive_rate_->get_packet_receive_rate());
         /// estimated link capacity
@@ -439,7 +441,7 @@ namespace srt {
         auto pkt_buff = create_packet(pkt);
         pkt_buff->append(buff->data(), buff->size());
         send_in(pkt_buff, get_remote_endpoint());
-        if (_receive_queue.get_expected_size() == _receive_queue.get_buffer_size()) {
+        if (_receive_queue->get_expected_size() == _receive_queue->get_buffer_size()) {
             ack_begin = false;
         } else {
             common_timer->add_expired_from_now(10, ack_expired);
@@ -620,20 +622,20 @@ namespace srt {
         srt_socket_service::report_nak = extension->nak;
         /// 最终更新发送包序号
         Debug("init sender buffer");
-        _sender_queue.clear();
-        _sender_queue.set_initial_sequence(context->_sequence_number);
-        _sender_queue.set_window_size(context->_window_size);
-        _sender_queue.set_max_sequence(packet_max_seq);
+        _sender_queue->clear();
+        _sender_queue->set_current_sequence(context->_sequence_number);
+        _sender_queue->set_window_size(context->_window_size);
+        _sender_queue->set_max_sequence(packet_max_seq);
         Debug("init receive buffer");
-        _receive_queue.clear();
-        _receive_queue.set_initial_sequence(context->_sequence_number);
-        _receive_queue.set_window_size(context->_window_size);
-        _receive_queue.set_max_sequence(packet_max_seq);
+        _receive_queue->clear();
+        _receive_queue->set_current_sequence(context->_sequence_number);
+        _receive_queue->set_window_size(context->_window_size);
+        _receive_queue->set_max_sequence(packet_max_seq);
         //// 如果允许丢包
         if (srt_socket_service::drop_too_late_packet && srt_socket_service::time_deliver_) {
             auto delay = srt_socket_service::time_deliver_ < 120 ? 120 : srt_socket_service::time_deliver_;
-            _sender_queue.set_max_delay(delay);
-            _receive_queue.set_max_delay(delay);
+            _sender_queue->set_max_delay(delay);
+            _receive_queue->set_max_delay(delay);
         }
         Trace("srt handshake success, initial sequence={}, drop={}, report_nak={}, tsbpd={}, socket_id={}, window_size={}", context->_sequence_number, extension->drop, extension->nak,
               extension->receiver_tlpktd_delay, get_sock_id(), context->_window_size);
@@ -761,19 +763,19 @@ namespace srt {
         handshake_context::to_buffer(*_handshake_context, handshake_buffer);
         set_extension(*_handshake_context, handshake_buffer, extension->receiver_tlpktd_delay, extension->drop, extension->nak, extension->receiver_tlpktd_delay);
         Debug("init sender buffer");
-        _sender_queue.clear();
-        _sender_queue.set_initial_sequence(_handshake_context->_sequence_number);
-        _sender_queue.set_max_sequence(packet_max_seq);
-        _sender_queue.set_window_size(_handshake_context->_window_size);
+        _sender_queue->clear();
+        _sender_queue->set_current_sequence(_handshake_context->_sequence_number);
+        _sender_queue->set_max_sequence(packet_max_seq);
+        _sender_queue->set_window_size(_handshake_context->_window_size);
         Debug("init receive buffer");
-        _receive_queue.clear();
-        _receive_queue.set_initial_sequence(_handshake_context->_sequence_number);
-        _receive_queue.set_max_sequence(packet_max_seq);
-        _receive_queue.set_window_size(_handshake_context->_window_size);
+        _receive_queue->clear();
+        _receive_queue->set_current_sequence(_handshake_context->_sequence_number);
+        _receive_queue->set_max_sequence(packet_max_seq);
+        _receive_queue->set_window_size(_handshake_context->_window_size);
         if (extension->drop) {
             auto delay = extension->receiver_tlpktd_delay < 120 ? 120 : extension->receiver_tlpktd_delay;
-            _sender_queue.set_max_delay(delay);
-            _receive_queue.set_max_delay(delay);
+            _sender_queue->set_max_delay(delay);
+            _receive_queue->set_max_delay(delay);
         }
         send_in(handshake_buffer, get_remote_endpoint());
         on_connect_in();
@@ -842,7 +844,7 @@ namespace srt {
     void srt_socket_service::handle_data(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff) {
         /// 统计数据
         /// 丢入接收队列
-        _receive_queue.arrived_packet(pkt->get_packet_sequence_number(), pkt->get_time_stamp(), buff);
+        _receive_queue->input_packet(buff, pkt->get_packet_sequence_number(), pkt->get_time_stamp());
         if (srt_socket_base::report_nak && !report_nak_begin) {
             do_nak();
         }
@@ -873,11 +875,11 @@ namespace srt {
                 seq_begin = seq_begin & 0x7FFFFFFF;
                 ///seq_end 之前的全部重新发送一遍
                 Trace("handle nak {}-{}", seq_begin, seq_end);
-                _sender_queue.try_send_again(seq_begin, seq_end);
+                _sender_queue->send_again(seq_begin, seq_end);
                 continue;
             }
             //// 说明是单个包
-            _sender_queue.try_send_again(seq_begin, seq_begin);
+            _sender_queue->send_again(seq_begin, seq_begin);
         }
     }
 
@@ -911,7 +913,7 @@ namespace srt {
             _ack_queue_.set_rtt(_rtt, _rtt_variance);
         }
         /// 滑动序号
-        _sender_queue.sequence_to(_last_ack_packet_seq);
+        _sender_queue->drop(_last_ack_packet_seq, _last_ack_packet_seq);
     }
 
     void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
@@ -932,7 +934,7 @@ namespace srt {
         uint32_t first_packet_seq = buff->get_be<uint32_t>();
         uint32_t last_packet_seq = buff->get_be<uint32_t>();
         Warn("handle drop packet {}-{}", first_packet_seq, last_packet_seq);
-        _receive_queue.drop(first_packet_seq, last_packet_seq);
+        _receive_queue->drop(first_packet_seq, last_packet_seq);
     }
 
     void srt_socket_service::handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &) {

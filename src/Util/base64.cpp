@@ -65,7 +65,7 @@ int av_base64_decode(uint8_t *out, const char *in, int out_size)
         }
     }
 
-    return dst - out;
+    return (int)(dst - out);
 }
 
 /*****************************************************************************
@@ -99,7 +99,7 @@ char *av_base64_encode_l(char *out, int *out_size, const uint8_t *in, int in_siz
         *dst++ = '=';
     *dst = '\0';
 
-    *out_size = dst - out;
+    *out_size = (int)(dst - out);
     return ret;
 }
 
@@ -111,11 +111,11 @@ string encodeBase64(const string &txt) {
     if (txt.empty()) {
         return "";
     }
-    int size = AV_BASE64_SIZE(txt.size()) + 10;
+    int size = AV_BASE64_SIZE((int)txt.size()) + 10;
     string ret;
     ret.resize(size);
 
-    if (!av_base64_encode_l((char *) ret.data(), &size, (const uint8_t *) txt.data(), txt.size())) {
+    if (!av_base64_encode_l((char *) ret.data(), &size, (const uint8_t *) txt.data(), (int)txt.size())) {
         return "";
     }
     ret.resize(size);
@@ -128,7 +128,7 @@ string decodeBase64(const string &txt){
     }
     string ret;
     ret.resize(txt.size() * 3 / 4 + 10);
-    auto size = av_base64_decode((uint8_t *) ret.data(), txt.data(), ret.size());
+    auto size = av_base64_decode((uint8_t *) ret.data(), txt.data(), (int)ret.size());
 
     if (size <= 0) {
         return "";

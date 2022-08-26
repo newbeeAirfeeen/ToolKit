@@ -34,7 +34,7 @@ namespace srt {
         if (rate <= 1000) {
             return 50000;
         }
-        return rate;
+        return (uint32_t)rate;
     }
 
     estimated_link_capacity::estimated_link_capacity(const std::chrono::steady_clock::time_point &t) : _start(t) {}

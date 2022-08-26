@@ -115,7 +115,7 @@ MD5_digest::MD5_digest()
 MD5_digest::MD5_digest(const std::string &text)
 {
     init();
-    update(text.c_str(), text.length());
+    update(text.c_str(), (unsigned int)text.length());
     finalize();
 }
 
