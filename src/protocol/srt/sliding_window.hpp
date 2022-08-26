@@ -454,7 +454,7 @@ private:
 
 
         uint32_t latency = 0;
-        if (last > first) {
+        if (last_seq > first_seq) {
             latency = last_seq - first_seq;
         } else {
             latency = first_seq - last_seq;
