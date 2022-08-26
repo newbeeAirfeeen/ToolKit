@@ -455,9 +455,9 @@ private:
 
         uint32_t latency = 0;
         if (last > first) {
-            latency = last - first;
+            latency = last_seq - first_seq;
         } else {
-            latency = first - last;
+            latency = first_seq - last_seq;
         }
 
         if (latency > 0x80000000) {
