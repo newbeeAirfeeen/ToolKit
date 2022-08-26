@@ -21,7 +21,6 @@ elseif(LINUX)
 endif()
 
 
-
 add_subdirectory(3rdlib/wolfssl)
 add_subdirectory(3rdlib/googletest)
 

@@ -192,6 +192,7 @@ public:
         }
 
         /// 输出包
+        Trace("try to output packet, _start={}, _end={}, tmp_index={}",_start, _end, index);
         while (cache[_start] && _size.load(std::memory_order_relaxed) > 0) {
             on_packet(cache[_start]);
             _size.fetch_sub(1);
@@ -200,8 +201,10 @@ public:
             _start = (_start + 1) % cache.size();
         }
         if (_size.load(std::memory_order_relaxed) == 0 && _start >= _end) {
+            Trace("_size is 0, reset _start and _end");
             _start = _end = 0;
         }
+
         return drop_packet();
     }
 
@@ -420,6 +423,7 @@ private:
     }
 
     void drop_packet() {
+        Trace("begin drop packet, _start={}, _end={}, _size={}", _start, _end, _size.load(std::memory_order_relaxed));
         /// 主动丢包
         while (time_latency() > _max_delay && _max_delay && _size.load(std::memory_order_relaxed) > 0) {
             auto it = cache[_start];
@@ -431,6 +435,7 @@ private:
             _start = (_start + 1) % cache.size();
             _initial_sequence = (_initial_sequence + 1) % _max_sequence;
         }
+        Trace("end drop packet, _start={}, _end={}, _size={}", _start, _end, _size.load(std::memory_order_relaxed));
     }
 
     uint32_t time_latency() {
