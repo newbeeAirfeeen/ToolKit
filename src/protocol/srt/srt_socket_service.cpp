@@ -794,6 +794,12 @@ namespace srt {
         if (occur_error) {
             return;
         }
+
+        if(srt_pkt->get_socket_id() != srt_socket_base::sock_id){
+            Warn("receive socket id is not equal to current socket id which is invalid, ignore it");
+            return;
+        }
+
         /// 更新上一次收到的时间
         last_receive_point = std::chrono::steady_clock::now();
         if (_packet_receive_rate_)
