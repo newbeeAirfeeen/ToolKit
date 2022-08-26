@@ -343,18 +343,17 @@ namespace srt {
     }
 
     void srt_socket_service::on_error_in(const std::error_code &e) {
-        /// 已经发生过错误了
-        if (occur_error) {
-            return;
-        }
         /// 停止发送队列
         /// 停止相关定时器
         common_timer->stop();
         keep_alive_timer->stop();
         _is_connected.store(false);
-        occur_error = true;
-        Trace("there is something error, occur_error={}", occur_error);
-        on_error(e);
+        if(!occur_error){
+            occur_error = true;
+            Trace("there is something error, occur_error={}", occur_error);
+            on_error(e);
+        }
+
     }
 
     void srt_socket_service::do_keepalive() {

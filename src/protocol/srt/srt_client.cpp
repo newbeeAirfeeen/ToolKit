@@ -129,12 +129,15 @@ namespace srt {
         void on_error(const std::error_code &e) override {
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             /// 切换到其他线程调用回调
-            asio::post(get_thread_pool(), [e, self]() {
+            bool invoke_connect_func = false;
+            if (!is_connect_func) {
+                invoke_connect_func = is_connect_func = true;
+            }
+            asio::post(get_thread_pool(), [e, self, invoke_connect_func]() {
                 Error(e.message());
                 if (auto stronger_self = self.lock()) {
                     std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
-                    if (!stronger_self->is_connect_func) {
-                        stronger_self->is_connect_func = true;
+                    if (invoke_connect_func) {
                         return stronger_self->conn_func(e);
                     }
                     stronger_self->err_func(e);

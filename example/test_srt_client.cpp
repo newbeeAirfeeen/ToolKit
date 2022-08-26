@@ -9,8 +9,7 @@ using namespace std;
 void send_data(const std::shared_ptr<srt::srt_client> &client) {
     Info("begin send data..");
     for (int i = 0; i < 10000; i++) {
-        client->async_send(std::to_string(i + 1).data(), 1);
-        std::this_thread::sleep_for(std::chrono::microseconds(80));
+        client->async_send("this is message!", 16);
     }
 }
 #include "protocol/srt/srt_error.hpp"
@@ -19,8 +18,8 @@ int main() {
 
     asio::io_context context(1);
     asio::executor_work_guard<typename asio::io_context::executor_type> guard(context.get_executor());
-    asio::ip::udp::endpoint p(asio::ip::make_address("127.0.0.1"), 9000);
-    asio::ip::udp::endpoint p2(asio::ip::make_address("127.0.0.1"), 21000);
+    asio::ip::udp::endpoint p(asio::ip::make_address("49.235.73.47"), 9000);
+    asio::ip::udp::endpoint p2(asio::ip::udp::v4(), 12012);
     auto client = std::make_shared<srt::srt_client>(context, p2);
 
     std::thread t([&]() { context.run(); });

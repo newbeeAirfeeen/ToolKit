@@ -26,10 +26,10 @@
 #ifndef TOOLKIT_SENDER_BUFFER_HPP
 #define TOOLKIT_SENDER_BUFFER_HPP
 #include "sliding_window_iterator.hpp"
+#include "spdlog/logger.hpp"
 #include <memory>
 #include <utility>
 #include <vector>
-#include "spdlog/logger.hpp"
 template<typename _packet_type, typename _duration_type = std::chrono::milliseconds>
 class sliding_window {
 
@@ -48,7 +48,7 @@ public:
     using iterator = sliding_iterator<block_type>;
 
 public:
-    sliding_window():_size(0){}
+    sliding_window() : _size(0) {}
     virtual ~sliding_window() = default;
     ///
     virtual void on_packet(const block_type &) = 0;
@@ -84,7 +84,18 @@ public:
     }
 
     const block_type &get_first_block() const {
-        return std::cref(cache[_start]);
+        if (cache[_start]) {
+            return std::cref(cache[_start]);
+        }
+        auto start = _start;
+        auto size = _size.load(std::memory_order_relaxed);
+        while (size) {
+            if (cache[start]) {
+                return cache[start];
+            }
+            start = (start + 1) % cache.size();
+        }
+        return nullptr;
     }
 
     const block_type &get_last_block() const {
