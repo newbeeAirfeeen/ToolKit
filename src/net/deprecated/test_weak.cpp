@@ -1,11 +1,11 @@
-﻿//
+//
 // Created by 沈昊 on 2022/6/30.
 //
 #include <future>
 #include <iostream>
 #include <memory>
 #include <utility>
-
+#include <spdlog/logger.hpp>
 template<typename In, typename Out>
 class multiple_future {
 public:

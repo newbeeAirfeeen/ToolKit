@@ -28,8 +28,8 @@
 #include <limits.h>
 #include <sys/resource.h>
 #endif
-#include <fmt/fmt.h>
-#include <Util/onceToken.h>
+#include "fmt/fmt.h"
+#include "Util/onceToken.h"
 #include <iostream>
 toolkit::onceToken token([](){
 #if !defined(_WIN32)

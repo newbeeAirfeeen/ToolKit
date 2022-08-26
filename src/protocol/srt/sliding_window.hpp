@@ -29,7 +29,6 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include <functional>
 #include "spdlog/logger.hpp"
 template<typename _packet_type, typename _duration_type = std::chrono::milliseconds>
 class sliding_window {

@@ -27,6 +27,7 @@
 #define TOOLKIT_SLIDING_WINDOW_ITERATOR_HPP
 #include <iterator>
 #include <vector>
+#include <functional>
 template<typename type>
 class sliding_iterator : public std::iterator<std::forward_iterator_tag, type> {
 public:

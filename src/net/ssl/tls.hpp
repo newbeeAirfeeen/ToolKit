@@ -27,7 +27,7 @@
 #ifdef SSL_ENABLE
 #include "engine.hpp"
 #include "asio/ssl/context.hpp"
-#include <net/event_poller.hpp>
+#include "net/deprecated/event_poller.hpp"
 #include <net/buffer.hpp>
 #include "asio/basic_socket.hpp"
 template<typename session_type>
