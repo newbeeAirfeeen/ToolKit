@@ -71,7 +71,7 @@ namespace srt {
         virtual void on_connected() = 0;
         /// 发送行为
         virtual void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) = 0;
-        virtual void onRecv(const std::shared_ptr<buffer>&) = 0;
+        virtual void onRecv(const std::shared_ptr<buffer> &) = 0;
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
         virtual uint32_t get_cookie();
@@ -108,8 +108,8 @@ namespace srt {
         void do_shutdown();
 
         template<typename _duration>
-        inline uint32_t get_time_from(const clock_type::time_point &last_time_point) {
-            return static_cast<uint32_t>(std::chrono::duration_cast<_duration>(clock_type::now() - last_time_point).count());
+        inline uint32_t get_time_from(const std::chrono::steady_clock::time_point &last_time_point) {
+            return static_cast<uint32_t>(std::chrono::duration_cast<_duration>(std::chrono::steady_clock::now() - last_time_point).count());
         }
 
     private:
