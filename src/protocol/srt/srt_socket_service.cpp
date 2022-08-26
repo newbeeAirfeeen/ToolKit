@@ -109,7 +109,7 @@ namespace srt {
         handshake_context::to_buffer(ctx, _pkt);
         /// save induction message
         handshake_buffer = _pkt;
-        connect_point = clock_type::now();
+        connect_point = std::chrono::steady_clock::now();
         {
             _next_func = std::bind(&srt_socket_service::handle_server_induction, this, std::placeholders::_1);
             _next_func_with_pkt = std::bind(&srt_socket_service::handle_server_induction_1, this, std::placeholders::_1, std::placeholders::_2);
@@ -126,7 +126,7 @@ namespace srt {
     void srt_socket_service::connect_as_server() {
         _next_func = std::bind(&srt_socket_service::handle_client_induction, this, std::placeholders::_1);
         _next_func_with_pkt = std::bind(&srt_socket_service::handle_client_induction_1, this, std::placeholders::_1, std::placeholders::_2);
-        connect_point = clock_type::now();
+        connect_point = std::chrono::steady_clock::now();
     }
 
     void srt_socket_service::on_common_timer_expired(const int &val) {
@@ -183,7 +183,7 @@ namespace srt {
             return;
         }
 
-        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(clock_type::now() - last_send_point).count();
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - last_send_point).count();
         if (now < 1000) {
             return keep_alive_timer->add_expired_from_now(1000 - now, keep_alive_expired);
         }
@@ -313,7 +313,7 @@ namespace srt {
     void srt_socket_service::send_in(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) {
         send(buff, where);
         /// 更新 上一次发送的时间
-        last_send_point = clock_type::now();
+        last_send_point = std::chrono::steady_clock::now();
     }
 
 
@@ -330,8 +330,8 @@ namespace srt {
         /// 开启keepalive
         do_keepalive();
         /// 记录最后一个包接收的时间
-        last_receive_point = clock_type::now();
-        connect_point = clock_type ::now();
+        last_receive_point = std::chrono::steady_clock::now();
+        connect_point = last_receive_point;
         /// 创建
         _packet_receive_rate_ = std::make_shared<packet_receive_rate>(connect_point);
         _estimated_link_capacity_ = std::make_shared<estimated_link_capacity>(connect_point);
@@ -408,7 +408,7 @@ namespace srt {
 
     void srt_socket_service::do_ack() {
         ack_begin = true;
-        last_ack_response = clock_type::now();
+        last_ack_response = std::chrono::steady_clock::now();
         /// 至少执行一次
         common_timer->add_expired_from_now(10, ack_expired);
     }
@@ -797,7 +797,7 @@ namespace srt {
             return;
         }
         /// 更新上一次收到的时间
-        last_receive_point = clock_type::now();
+        last_receive_point = std::chrono::steady_clock::now();
         if (_packet_receive_rate_)
             _packet_receive_rate_->input_packet(last_receive_point);
         if (_estimated_link_capacity_)

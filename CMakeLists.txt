@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(ToolKit VERSION 1)
 
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED true)
 add_definitions(-DASIO_STANDALONE
                 -DASIO_HEADER_ONLY
  #               -DSRT_CORE_INTERNAL_DEBUG_LOG
@@ -26,6 +23,10 @@ endif()
 add_subdirectory(3rdlib/wolfssl)
 add_subdirectory(3rdlib/googletest)
 
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
+
 add_definitions(-DSSL_ENABLE -DWOLFSSL_ENABLE)
 
 include_directories(${CMAKE_SOURCE_DIR}/3rdlib/wolfssl)
@@ -40,7 +41,9 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/stun SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/srt SRC_LIST)
 
 add_library(${PROJECT_NAME}_static STATIC ${SRC_LIST} src/Util/endian.cpp)
-
+if(LINUX)
+    target_compile_options(${PROJECT_NAME}_static PUBLIC -std=c++11)
+endif()
 
 set(LINK_LIB_LIST ${PROJECT_NAME}_static wolfssl CACHE INTERNAL "link library list")
 

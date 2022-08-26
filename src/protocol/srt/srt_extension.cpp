@@ -26,6 +26,7 @@
 #include "Util/endian.hpp"
 #include "srt_error.hpp"
 #include <algorithm>
+
 namespace srt {
 
     bool extension_flag(uint32_t type_information) {

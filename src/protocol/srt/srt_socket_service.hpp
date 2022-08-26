@@ -43,7 +43,6 @@ namespace srt {
     using buffer_pointer = std::shared_ptr<buffer>;
     class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service> {
     public:
-        using clock_type = typename std::chrono::steady_clock;
         using time_point = typename std::chrono::steady_clock::time_point;
         using block_type = typename packet_queue<std::shared_ptr<buffer>>::block_type;
         using block = typename packet_queue<std::shared_ptr<buffer>>::block;

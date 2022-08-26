@@ -347,7 +347,7 @@ endif()
 # Harden, enable Timing Resistance and Blinding by default
 add_option("WOLFSSL_HARDEN"
     "Enable Hardened build, Enables Timing Resistance and Blinding (default: enabled)"
-    "yes" "yes;no")
+    "no" "yes;no")
 
 if(WOLFSSL_HARDEN)
     list(APPEND WOLFSSL_DEFINITIONS "-DTFM_TIMING_RESISTANT" "-DECC_TIMING_RESISTANT")
