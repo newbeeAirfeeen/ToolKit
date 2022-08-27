@@ -20,3 +20,7 @@ vs打开CMakeLists.txt
 
 ### 测试用例
 * src/protocol/srt/README.md
+
+部分实现参考
+* https://github.com/ZLMediaKit/ZLMediaKit.git
+* https://github.com/Haivision/srt.git
