@@ -114,7 +114,7 @@ namespace srt {
         if (it == ack_queue.end()) {
             return;
         }
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - it->second).count();
+        auto ms = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - it->second).count();
         ///Debug("")
         /// rtt = 7/8 * RTT + 1/8 * rtt
         _rtt = 7.0 / 8 * _rtt + 1.0 / 8 * ms;

@@ -75,8 +75,9 @@ namespace srt {
         uint32_t get_rtt_var() const;
 
     private:
-        double _rtt = 100;
-        double _rtt_var = 50;
+        /// 单位是微秒
+        double _rtt = 100000;
+        double _rtt_var = 50000;
         std::unordered_map<uint32_t, std::chrono::steady_clock::time_point> ack_queue;
     };
 }// namespace srt
