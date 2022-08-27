@@ -125,7 +125,8 @@ private:
 
     void drop_packet(){
         int64_t begin = -1, end = -1;
-        while(packet_interface<T>::get_time_latency() >= packet_interface<T>::get_max_delay() && !_pkt_cache.empty()){
+        uint32_t latency = 0;
+        while(((latency = packet_interface<T>::get_time_latency()) >= packet_interface<T>::get_max_delay()) && !_pkt_cache.empty()){
             if(begin == -1)
                 begin = _pkt_cache.front()->seq;
             end = _pkt_cache.front()->seq;
