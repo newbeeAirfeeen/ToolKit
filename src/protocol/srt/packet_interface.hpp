@@ -110,8 +110,8 @@ protected:
         if(!get_buffer_size() || !get_max_delay()){
             return 0;
         }
-        auto first = get_first_block()->seq;
-        auto last = get_last_block()->seq;
+        auto first = get_first_block()->submit_time;
+        auto last = get_last_block()->submit_time;
         uint32_t latency = 0;
         if(last > first){
             latency = last - first;
