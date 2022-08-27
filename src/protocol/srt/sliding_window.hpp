@@ -240,11 +240,13 @@ public:
 
         /// 回环 且序号落在窗口之外
         if (is_cycle() && end > last_seq) {
+            Warn("is cycle, but no seq range in {}-{}", begin, end);
             return;
         }
 
         /// 没有回环 且序号落在窗口之外
         if (!is_cycle() && (end < first_seq || end > last_seq)) {
+            Warn("no cycle, but no seq range in {}-{}", begin, end);
             return;
         }
 
