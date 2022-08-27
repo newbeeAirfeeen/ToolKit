@@ -74,10 +74,11 @@ public:
     }
 
     void input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
-
+        Trace("input packet, seq={}, time_point={}", seq, time_point);
         /// 窗口已经满了
         while(_size > 0 && _start == _end){
             if(_pkt_buf[_start]){
+                Debug("capacity is full, pop the front, seq={}, size={}", _pkt_buf[_start]->seq, _size);
                 on_packet(_pkt_buf[_start]);
                 --_size;
                 _pkt_buf[_start] = nullptr;
@@ -90,6 +91,7 @@ public:
         if(_cur_seq <= seq){
             diff = seq - _cur_seq;
             if(diff >= _pkt_buf.size()){
+                Debug("too new packet seq, current seq={}, seq={}, diff={}", _cur_seq, seq, diff);
                 return;
             }
         }
@@ -98,6 +100,7 @@ public:
             if(diff >= (packet_interface<T>::get_max_sequence() >> 1)){
                 diff = packet_interface<T>::get_max_sequence() - diff;
                 if(diff >= _pkt_buf.size()){
+                    Debug("cycle packet too new packet seq, current seq={}, seq={}, diff={}", _cur_seq, seq, diff);
                     return;
                 }
             }
@@ -105,6 +108,7 @@ public:
 
         auto pos = (_start + diff) % _pkt_buf.size();
         if(_pkt_buf[pos]){
+            Debug("same seq packet, ignore it, seq={}", _pkt_buf[pos]->seq);
             return;
         }
 
@@ -121,13 +125,13 @@ public:
 
         if (_start <= _end && pos < _start) {
             _end = (pos + 1) %  (uint32_t)_pkt_buf.size();
-            return;
         }
 
         if (_start > _end && _end <= pos && _start > pos) {
             _end = (pos + 1) % (uint32_t)_pkt_buf.size();
-            return;
         }
+
+        Trace("after input packet, start={}, end={}", _start, _end);
 
         auto it = _pkt_buf[_start];
         while(it){
@@ -143,6 +147,7 @@ public:
         while(time_latency && packet_interface<T>::get_time_latency() > time_latency ){
             auto iter = _pkt_buf[_start];
             if(iter){
+                Debug("drop the time packet, seq={}, time_point={}, size={}, _start={}, _end={}", _pkt_buf[_start]->seq,_pkt_buf[_start]->submit_time, _size, _start, _end);
                 _pkt_buf[_start] = nullptr;
                 on_packet(iter);
                 --_size;
@@ -161,12 +166,15 @@ public:
         }
         else{
             if(seq_end < _cur_seq){
+                Warn("step _cur_seq size={}, seq_end={}, ignore it", _cur_seq, seq_end);
                 return;
             }
             diff = seq_end - _cur_seq + 1;
         }
 
-        if( diff > get_expected_size()){
+        auto expected_size = get_expected_size();
+        if( diff > expected_size){
+            Warn("step size={}, expected_size={}, ignore it", diff, expected_size);
             return;
         }
 
@@ -210,6 +218,7 @@ public:
         auto last = get_last_block();
 
         if(!first || !last){
+            Warn("first or last is empty!!");
             return 0;
         }
         uint32_t max = 0, min = 0;
@@ -230,16 +239,19 @@ public:
 
     std::vector<std::pair<uint32_t, uint32_t>> get_pending_packets() const override{
         if(_size <= 0){
+            Trace("no pending packets.");
             return {};
         }
         std::vector<std::pair<uint32_t, uint32_t>> vec;
         int64_t begin_seq = -1, end_seq = -1;
         auto begin = _start;
-        auto end = (_end + 1) % _pkt_buf.size();
+        auto end = _end;
         auto size = _size;
-        while (begin != end || size > 0) {
+        Debug("pending packet, begin={}, end={}, size={}", begin, end, size);
+        while (begin != end && size > 0) {
             if (_pkt_buf[begin]) {
                 if (begin_seq >= 0 && end_seq >= 0) {
+                    Debug("insert nak pair, {}-{}", begin_seq, end_seq);
                     vec.emplace_back((uint32_t)begin_seq, (uint32_t)end_seq);
                     begin_seq = end_seq = -1;
                 }
@@ -264,6 +276,7 @@ public:
             begin = (begin + 1) % _pkt_buf.size();
         }
         if (begin_seq >= 0 && end_seq >= 0) {
+            Debug("insert nak pair, {}-{}", begin_seq, end_seq);
             vec.emplace_back((uint32_t)begin_seq, (uint32_t)end_seq);
         }
         return vec;

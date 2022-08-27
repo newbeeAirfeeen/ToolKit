@@ -28,6 +28,7 @@
 #include <list>
 #include <functional>
 #include <chrono>
+#include "spdlog/logger.hpp"
 template<typename T>
 class packet_send_queue : public packet_send_interface<T>{
 public:
@@ -57,8 +58,9 @@ public:
     }
 
     void input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
-
+        Trace("current seq={}, time_point={}", seq, time_point);
         if(packet_interface<T>::capacity() <= 0){
+            Trace("capacity is not enough, drop front, seq={}, submit_time={}", _pkt_cache.front()->seq, _pkt_cache.front()->submit_time);
             auto front = std::move(_pkt_cache.front());
             _pkt_cache.pop_front();
             on_drop_packet(front->seq, front->seq);
@@ -75,11 +77,13 @@ public:
 
     void drop(uint32_t seq_begin, uint32_t seq_end) override {
         if(_pkt_cache.empty()){
+            Debug("no packet to drop, cache is empty");
             return;
         }
 
         auto pair = find_packet_by_sequence(seq_begin, seq_end);
         if(pair.first == _pkt_cache.end() || pair.second == _pkt_cache.end()){
+            Debug("no packet to drop, not found begin or end sequence");
             return;
         }
 
@@ -97,6 +101,7 @@ public:
             return;
         }
         ++pair.second;
+        Debug("send again {}-{}", begin, end);
         while(pair.first != pair.second){
             on_packet(*pair.first);
             ++pair.first;
@@ -128,8 +133,10 @@ private:
         }
 
         if(begin == -1){
+            Debug("there is no packet require drop");
             return;
         }
+        Trace("drop packet {}-{}", begin, end);
         on_drop_packet((uint32_t)begin, (uint32_t)end);
     }
 
