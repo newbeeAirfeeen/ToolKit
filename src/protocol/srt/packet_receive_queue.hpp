@@ -117,7 +117,7 @@ public:
         pkt->pkt = t;
         pkt->submit_time = time_point;
         _pkt_buf[pos] = pkt;
-
+        ++_size;
 
         if(_start <= _end && pos >= _end){
             _end = (pos + 1) %  (uint32_t)_pkt_buf.size();
@@ -131,7 +131,7 @@ public:
             _end = (pos + 1) % (uint32_t)_pkt_buf.size();
         }
 
-        Trace("after input packet, start={}, end={}", _start, _end);
+        Trace("after input packet, start={}, end={}, size={}", _start, _end, _size);
 
         auto it = _pkt_buf[_start];
         while(it){
