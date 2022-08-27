@@ -206,6 +206,7 @@ namespace srt {
         if (it != _thread_local_session_map_.end()) {
             auto stronger = it->second.lock();
             if (stronger) {
+                Trace("receive data...");
                 stronger->receive(pkt, buff);
             } else {
                 /// 会话被删除,删除弱引用
