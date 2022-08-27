@@ -40,11 +40,11 @@ namespace srt {
         void set_max_payload(uint32_t length);
         void set_max_flow_window_size(uint32_t counts);
         void set_drop_too_late_packet(bool on);
-        void set_time_based_deliver(uint64_t ms);
+        void set_time_based_deliver(uint32_t ms);
         void set_report_nak(bool on);
         void set_stream_id(const std::string &stream_id);
         void set_sock_id(uint32_t id);
-        void set_connect_timeout(uint64_t ms);
+        void set_connect_timeout(uint32_t ms);
         void set_max_receive_time_out(uint32_t ms);
         uint32_t get_max_payload() const;
         uint32_t get_max_flow_window_size() const;

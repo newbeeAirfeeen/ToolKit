@@ -27,7 +27,7 @@ void io_context::run() {
         try {
             asio::executor_work_guard<typename asio::io_context::executor_type> guard(_context.get_executor());
             _context.run();
-        } catch (const thread_exit_exception &e) { break; } catch (const std::exception &e) {
+        } catch (const thread_exit_exception &) { break; } catch (const std::exception&) {
         }
     }
 }

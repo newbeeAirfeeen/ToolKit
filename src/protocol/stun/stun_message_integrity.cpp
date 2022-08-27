@@ -35,9 +35,8 @@ static size_t HMAC_SHA1(const char *key, size_t length, const char *data, size_t
     }
     char buf[2048] = {0};
     HMAC_CTX *ctx = (HMAC_CTX *) buf;
-    HMAC_Init_ex(ctx, (const void *) key, length, EVP_sha1(), nullptr);
-    auto len = strlen(data);
-    HMAC_Update(ctx, (const unsigned char *) data, len);
+    HMAC_Init_ex(ctx, (const void *) key, (int)length, EVP_sha1(), nullptr);
+    HMAC_Update(ctx, (const unsigned char *) data, (int)strlen(data));
     auto ret = HMAC_Final(ctx, (unsigned char *) out, (unsigned int *) &out_length);
     HMAC_CTX_cleanup(ctx);
     return ret;

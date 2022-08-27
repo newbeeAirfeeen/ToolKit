@@ -24,7 +24,7 @@ private:
 
 void push_operation(const std::shared_ptr<basic_window> &window) {
     auto fun = [&](size_t val, int *arr) {
-        window->send_to(val);
+        window->send_to((int)val);
         auto begin = window->get_flow_part_begin();
         auto end = window->get_flow_part_end();
         size_t pos = 0;

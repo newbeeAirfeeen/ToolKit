@@ -34,19 +34,17 @@
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
-#include "packet_queue.hpp"
 #include "srt_ack.hpp"
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include "srt_socket_base.hpp"
+#include "packet_interface.hpp"
 namespace srt {
     using buffer_pointer = std::shared_ptr<buffer>;
     class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service> {
     public:
         using time_point = typename std::chrono::steady_clock::time_point;
-        using block_type = typename packet_queue<std::shared_ptr<buffer>>::block_type;
-        using block = typename packet_queue<std::shared_ptr<buffer>>::block;
-
+        using packet_pointer = typename packet_interface<std::shared_ptr<buffer>>::packet_pointer;
     public:
         explicit srt_socket_service(asio::io_context &executor);
         ~srt_socket_service() override = default;
@@ -83,10 +81,10 @@ namespace srt {
 
     private:
         //// send_queue
-        void on_sender_packet(const block_type &type);
+        void on_sender_packet(const packet_pointer& type);
         void on_sender_drop_packet(size_t begin, size_t end);
         /// receive queue
-        void on_receive_packet(const block_type &type);
+        void on_receive_packet(const packet_pointer& type);
         void on_receive_drop_packet(size_t begin, size_t end);
 
     private:
@@ -176,8 +174,10 @@ namespace srt {
         /// 上一次发送包的序号
         uint32_t message_number = 1;
         /// 发送队列
-        packet_queue<std::shared_ptr<buffer>> _sender_queue;
-        packet_queue<std::shared_ptr<buffer>> _receive_queue;
+        std::shared_ptr<packet_send_interface<std::shared_ptr<buffer>>> _sender_queue;
+        /// 接收队列
+        std::shared_ptr<packet_receive_interface<std::shared_ptr<buffer>>> _receive_queue;
+
         std::shared_ptr<packet_receive_rate> _packet_receive_rate_;
         std::shared_ptr<estimated_link_capacity> _estimated_link_capacity_;
         std::shared_ptr<receive_rate> _receive_rate_;

@@ -141,8 +141,8 @@ namespace srt {
     }
 
     static void get_ext_string(const uint32_t *data, uint32_t block_size, std::string &stream_id) {
-        uint32_t i = 0;
-        for (i = 0; i < block_size; i++) {
+        size_t i = 0;
+        for (i = 0; i < (size_t)block_size; i++) {
             uint32_t raw = load_be32(data++);
             stream_id.append((const char *) &raw, sizeof(uint32_t));
         }
@@ -214,7 +214,7 @@ namespace srt {
             /// 放入extension type
             buf->put_be<uint16_t>(static_cast<uint16_t>(SRT_CMD_SID));
             /// 放入extension length
-            buf->put_be<uint16_t>(word_size);
+            buf->put_be<uint16_t>(static_cast<uint16_t>(word_size));
             /// 大小端倒序
             set_ext_string(buf, stream_id.data(), static_cast<uint32_t>(stream_id.size() + aligned_byte_size));
         }
