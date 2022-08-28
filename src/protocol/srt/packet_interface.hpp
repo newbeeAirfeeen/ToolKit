@@ -25,12 +25,13 @@
 
 #ifndef TOOLKIT_PACKET_INTERFACE_HPP
 #define TOOLKIT_PACKET_INTERFACE_HPP
+#include "srt_bandwidth.hpp"
 #include <cstdint>
 #include <memory>
-#include <vector>
 #include <utility>
+#include <vector>
 template<typename T>
-struct packet{
+struct packet {
     uint32_t seq = 0;
     uint64_t submit_time = 0;
     bool is_retransmit = false;
@@ -38,15 +39,17 @@ struct packet{
 };
 
 template<typename T>
-class packet_interface{
+class packet_interface {
 public:
     using packet_pointer = std::shared_ptr<packet<T>>;
+
 public:
     virtual ~packet_interface() = default;
+
 public:
-    packet_interface(){
-        _on_drop_packet_func_ = [](uint32_t, uint32_t){};
-        _on_packet_func_ = [](const packet_pointer&){};
+    packet_interface() {
+        _on_drop_packet_func_ = [](uint32_t, uint32_t) {};
+        _on_packet_func_ = [](const packet_pointer &) {};
     }
     void set_max_delay(uint32_t ms) {
         this->_max_delay = ms;
@@ -64,7 +67,7 @@ public:
         return this->_max_sequence;
     }
 
-    uint32_t get_window_size() const{
+    uint32_t get_window_size() const {
         return this->_window_size;
     }
 
@@ -81,49 +84,51 @@ public:
     virtual uint32_t get_buffer_size() const = 0;
     virtual packet_pointer get_first_block() const = 0;
     virtual packet_pointer get_last_block() const = 0;
-    virtual void input_packet(const T& t, uint32_t seq, uint64_t time_point) = 0;
+    virtual void input_packet(const T &t, uint32_t seq, uint64_t time_point) = 0;
     virtual void drop(uint32_t seq_begin, uint32_t seq_end) = 0;
     virtual void clear() = 0;
-    virtual void on_packet(const packet_pointer& p) = 0;
+    virtual void on_packet(const packet_pointer &p) = 0;
     virtual void on_drop_packet(uint32_t begin, uint32_t end) = 0;
-    void set_on_packet(const std::function<void(const packet_pointer&)>& f){
-        if(f){
+    virtual void start() {}
+    void set_on_packet(const std::function<void(const packet_pointer &)> &f) {
+        if (f) {
             this->_on_packet_func_ = f;
         }
     }
 
-    void set_on_drop_packet(const std::function<void(uint32_t,uint32_t)>& f){
-        if(f){
+    void set_on_drop_packet(const std::function<void(uint32_t, uint32_t)> &f) {
+        if (f) {
             this->_on_drop_packet_func_ = f;
         }
     }
+
 protected:
     virtual bool is_cycle() const {
-        if(!get_buffer_size()){
+        if (!get_buffer_size()) {
             return false;
         }
         auto begin = get_first_block()->seq;
         auto end = get_last_block()->seq;
-        return ( begin > end ) && ( begin - end > (get_max_sequence() >> 1));
+        return (begin > end) && (begin - end > (get_max_sequence() >> 1));
     }
-    uint32_t get_time_latency(){
-        if(!get_buffer_size() || !get_max_delay()){
+    uint32_t get_time_latency() {
+        if (!get_buffer_size() || !get_max_delay()) {
             return 0;
         }
         auto first = get_first_block()->submit_time;
         auto last = get_last_block()->submit_time;
         uint32_t latency = 0;
-        if(last > first){
+        if (last > first) {
             latency = last - first;
-        }
-        else{
+        } else {
             latency = first - last;
         }
 
         return latency > 0x80000000 ? (0xFFFFFFFF - latency) : latency;
     }
-    std::function<void(uint32_t,uint32_t)> _on_drop_packet_func_;
-    std::function<void(const packet_pointer&)> _on_packet_func_;
+    std::function<void(uint32_t, uint32_t)> _on_drop_packet_func_;
+    std::function<void(const packet_pointer &)> _on_packet_func_;
+
 private:
     uint32_t _max_delay = 0;
     uint32_t _window_size = 8192;
@@ -131,14 +136,32 @@ private:
 };
 
 template<typename T>
-class packet_send_interface : public packet_interface<T>{
+class packet_send_interface : public packet_interface<T> {
 public:
+    packet_send_interface() {
+        set_bandwidth_mode(std::make_shared<estimated_bandwidth_mode>());
+    }
     ~packet_send_interface() override = default;
+    void set_bandwidth_mode(const std::shared_ptr<bandwidth_mode> &mode) {
+        _mode = mode;
+    }
+    const std::shared_ptr<bandwidth_mode> &get_bandwidth_mode() {
+        return _mode;
+    }
+    void drop(uint32_t seq, uint32_t seq_) override = 0;
+
+public:
     virtual void send_again(uint32_t begin, uint32_t end) = 0;
+    virtual void ack_sequence_to(uint32_t seq) {
+        return drop(seq, seq);
+    }
+
+protected:
+    std::shared_ptr<bandwidth_mode> _mode;
 };
 
 template<typename T>
-class packet_receive_interface : public packet_interface<T>{
+class packet_receive_interface : public packet_interface<T> {
 public:
     ~packet_receive_interface() override = default;
     virtual uint32_t get_expected_size() const = 0;

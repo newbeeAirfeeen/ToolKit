@@ -24,13 +24,13 @@
 */
 #include "srt_socket_service.hpp"
 #include "Util/endian.hpp"
+#include "packet_limited_send_queue.hpp"
+#include "packet_receive_queue.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_error.hpp"
 #include "srt_extension.h"
 #include "srt_handshake.h"
 #include "srt_packet.h"
-#include "packet_send_queue.hpp"
-#include "packet_receive_queue.hpp"
 #include <chrono>
 #include <numeric>
 #include <random>
@@ -50,14 +50,6 @@ namespace srt {
     };
 
     srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
-        Trace("init sender/receiver buffer queue...");
-        _sender_queue = std::make_shared<packet_send_queue<std::shared_ptr<buffer>>>();
-        _receive_queue = std::make_shared<packet_receive_queue<std::shared_ptr<buffer>>>();
-        _sender_queue->set_on_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));
-        _sender_queue->set_on_drop_packet(std::bind(&srt_socket_service::on_sender_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
-        _receive_queue->set_on_packet(std::bind(&srt_socket_service::on_receive_packet, this, std::placeholders::_1));
-        _receive_queue->set_on_drop_packet(std::bind(&srt_socket_service::on_receive_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
-        Trace("start sender/receiver buffer...");
     }
 
     void srt_socket_service::begin() {
@@ -321,6 +313,30 @@ namespace srt {
 
     /// 已经成功建立连接
     void srt_socket_service::on_connect_in() {
+        Trace("init sender/receiver buffer queue...");
+        _sender_queue = std::make_shared<packet_limited_send_queue<std::shared_ptr<buffer>>>(poller, get_max_payload());
+        _receive_queue = std::make_shared<packet_receive_queue<std::shared_ptr<buffer>>>();
+        _sender_queue->set_on_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));
+        _sender_queue->set_on_drop_packet(std::bind(&srt_socket_service::on_sender_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
+        _receive_queue->set_on_packet(std::bind(&srt_socket_service::on_receive_packet, this, std::placeholders::_1));
+        _receive_queue->set_on_drop_packet(std::bind(&srt_socket_service::on_receive_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
+
+        _sender_queue->set_current_sequence(_handshake_context->_sequence_number);
+        _sender_queue->set_max_sequence(packet_max_seq);
+        _sender_queue->set_window_size(_handshake_context->_window_size);
+        _receive_queue->set_current_sequence(_handshake_context->_sequence_number);
+        _receive_queue->set_max_sequence(packet_max_seq);
+        _receive_queue->set_window_size(_handshake_context->_window_size);
+        //// 如果允许丢包
+        if (srt_socket_service::drop_too_late_packet && srt_socket_service::time_deliver_) {
+            auto delay = srt_socket_service::time_deliver_ < 120 ? 120 : srt_socket_service::time_deliver_;
+            _sender_queue->set_max_delay(delay);
+            _receive_queue->set_max_delay(delay);
+        }
+
+        Trace("start sender/receiver buffer queue...");
+        _sender_queue->start();
+        _receive_queue->start();
         /// 停止计时器
         common_timer->stop();
         _is_open.store(true, std::memory_order_relaxed);
@@ -358,9 +374,6 @@ namespace srt {
     }
 
     void srt_socket_service::do_keepalive() {
-        /// 清除握手缓存节省内存
-        handshake_buffer = nullptr;
-        _handshake_context = nullptr;
         /// 一秒一次
         keep_alive_timer->add_expired_from_now(1000, keep_alive_expired);
     }
@@ -620,23 +633,7 @@ namespace srt {
         srt_socket_service::time_deliver_ = extension->receiver_tlpktd_delay;
         srt_socket_service::drop_too_late_packet = extension->drop;
         srt_socket_service::report_nak = extension->nak;
-        /// 最终更新发送包序号
-        Debug("init sender buffer");
-        _sender_queue->clear();
-        _sender_queue->set_current_sequence(context->_sequence_number);
-        _sender_queue->set_window_size(context->_window_size);
-        _sender_queue->set_max_sequence(packet_max_seq);
-        Debug("init receive buffer");
-        _receive_queue->clear();
-        _receive_queue->set_current_sequence(context->_sequence_number);
-        _receive_queue->set_window_size(context->_window_size);
-        _receive_queue->set_max_sequence(packet_max_seq);
-        //// 如果允许丢包
-        if (srt_socket_service::drop_too_late_packet && srt_socket_service::time_deliver_) {
-            auto delay = srt_socket_service::time_deliver_ < 120 ? 120 : srt_socket_service::time_deliver_;
-            _sender_queue->set_max_delay(delay);
-            _receive_queue->set_max_delay(delay);
-        }
+        _handshake_context = context;
         Trace("srt handshake success, initial sequence={}, drop={}, report_nak={}, tsbpd={}, socket_id={}, window_size={}", context->_sequence_number, extension->drop, extension->nak,
               extension->receiver_tlpktd_delay, get_sock_id(), context->_window_size);
         return on_connect_in();
@@ -762,20 +759,9 @@ namespace srt {
         handshake_buffer = create_packet(_pkt);
         handshake_context::to_buffer(*_handshake_context, handshake_buffer);
         set_extension(*_handshake_context, handshake_buffer, extension->receiver_tlpktd_delay, extension->drop, extension->nak, extension->receiver_tlpktd_delay);
-        Debug("init sender buffer");
-        _sender_queue->clear();
-        _sender_queue->set_current_sequence(_handshake_context->_sequence_number);
-        _sender_queue->set_max_sequence(packet_max_seq);
-        _sender_queue->set_window_size(_handshake_context->_window_size);
-        Debug("init receive buffer");
-        _receive_queue->clear();
-        _receive_queue->set_current_sequence(_handshake_context->_sequence_number);
-        _receive_queue->set_max_sequence(packet_max_seq);
-        _receive_queue->set_window_size(_handshake_context->_window_size);
         if (extension->drop) {
             auto delay = extension->receiver_tlpktd_delay < 120 ? 120 : extension->receiver_tlpktd_delay;
-            _sender_queue->set_max_delay(delay);
-            _receive_queue->set_max_delay(delay);
+            set_time_based_deliver(delay);
         }
         send_in(handshake_buffer, get_remote_endpoint());
         on_connect_in();
@@ -797,7 +783,7 @@ namespace srt {
             return;
         }
 
-        if(srt_pkt->get_socket_id() != srt_socket_base::sock_id){
+        if (srt_pkt->get_socket_id() != srt_socket_base::sock_id) {
             Warn("receive socket id is not equal to current socket id which is invalid, ignore it");
             return;
         }

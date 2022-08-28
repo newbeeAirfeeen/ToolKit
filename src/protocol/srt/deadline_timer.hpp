@@ -45,6 +45,16 @@ public:
     typedef _duration_type duration_type;
 
 public:
+    void expired_at(uint64_t counts, tag_type tag) {
+        std::weak_ptr<deadline_timer<tag_type, duration_type>> self(base_type::shared_from_this());
+        executor.post([self, counts, tag]() {
+            if (auto stronger_self = self.lock()) {
+                stronger_self->triggered_sets.emplace(counts, tag);
+                stronger_self->update_timer();
+            }
+        });
+    }
+
     void add_expired_from_now(uint64_t counts, tag_type tag) {
         std::weak_ptr<deadline_timer<tag_type, duration_type>> self(base_type::shared_from_this());
         executor.post([self, counts, tag]() {
@@ -53,7 +63,7 @@ public:
                 return;
             }
             auto now = std::chrono::duration_cast<duration_type>(clock_type::now().time_since_epoch()).count();
-            stronger_self->triggered_sets.insert(std::make_pair(now + counts, std::move(tag)));
+            stronger_self->triggered_sets.emplace(now + counts, std::move(tag));
             stronger_self->update_timer();
         });
     }
@@ -117,6 +127,14 @@ public:
         }
         return tag;
     }
+
+    uint64_t get_last_time_expired() {
+        if (triggered_sets.empty()) {
+            return std::chrono::duration_cast<duration_type>(clock_type::now().time_since_epoch()).count();
+        }
+        return triggered_sets.rbegin()->first;
+    }
+
 
 private:
     explicit deadline_timer(asio::io_context &io) : executor(io), timer(io) {}

@@ -34,17 +34,18 @@
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
+#include "packet_interface.hpp"
 #include "srt_ack.hpp"
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include "srt_socket_base.hpp"
-#include "packet_interface.hpp"
 namespace srt {
     using buffer_pointer = std::shared_ptr<buffer>;
     class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service> {
     public:
         using time_point = typename std::chrono::steady_clock::time_point;
         using packet_pointer = typename packet_interface<std::shared_ptr<buffer>>::packet_pointer;
+
     public:
         explicit srt_socket_service(asio::io_context &executor);
         ~srt_socket_service() override = default;
@@ -81,10 +82,10 @@ namespace srt {
 
     private:
         //// send_queue
-        void on_sender_packet(const packet_pointer& type);
+        void on_sender_packet(const packet_pointer &type);
         void on_sender_drop_packet(size_t begin, size_t end);
         /// receive queue
-        void on_receive_packet(const packet_pointer& type);
+        void on_receive_packet(const packet_pointer &type);
         void on_receive_drop_packet(size_t begin, size_t end);
 
     private:
