@@ -119,9 +119,9 @@ protected:
         auto last = get_last_block()->submit_time;
         uint32_t latency = 0;
         if (last > first) {
-            latency = last - first;
+            latency = static_cast<uint32_t>(last - first);
         } else {
-            latency = first - last;
+            latency = static_cast<uint32_t>(first - last);
         }
 
         return latency > 0x80000000 ? (0xFFFFFFFF - latency) : latency;
