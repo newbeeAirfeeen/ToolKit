@@ -899,7 +899,7 @@ namespace srt {
             _ack_queue_.set_rtt(_rtt, _rtt_variance);
         }
         /// 滑动序号
-        _sender_queue->drop(_last_ack_packet_seq, _last_ack_packet_seq);
+        _sender_queue->ack_sequence_to(_last_ack_packet_seq);
     }
 
     void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
