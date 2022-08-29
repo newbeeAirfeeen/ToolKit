@@ -117,12 +117,12 @@ public:
         if (_pkt_cache.empty()) {
             return;
         }
-        iterator it = _pkt_cache.begin();
-        while (it != _pkt_cache.end()) {
-            if ((*it)->seq >= seq) {
+        while (!_pkt_cache.empty()) {
+            auto element = _pkt_cache.front();
+            if (element->seq >= seq && !packet_send_interface<T>::is_cycle()) {
                 break;
             }
-            it = _pkt_cache.erase(it);
+            _pkt_cache.pop_front();
         }
     }
 

@@ -62,10 +62,6 @@ public:
     void on_packet(const packet_pointer &p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
         /// 更新为上一次发送数据包的seq
-        if(!_last_ack_seq){
-            _last_ack_seq = p->seq;
-            _last_ack_response = std::chrono::duration_cast<duration_type>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        }
         return packet_send_queue<T>::on_packet(p);
     }
 
@@ -87,7 +83,6 @@ private:
 
     inline void update_snd_period() {
         /// 求出步长
-        uint64_t _tmp_last_ack_seq = _last_ack_seq;
 
         //_pkt_snd_period = avg_payload_size * 1e6 / packet_send_queue<T>::get_bandwidth_mode()->get_bandwidth() * 1.0;
         Trace("update packet send period={} us", static_cast<uint64_t>(_pkt_snd_period));
@@ -102,8 +97,6 @@ private:
     ///  microseconds
     double _pkt_snd_period = 11.776;
     std::shared_ptr<deadline_timer<packet_pointer, duration_type>> timer;
-    uint64_t _last_ack_seq = 0;
-    uint64_t _last_ack_response = 0;
 };
 
 
