@@ -91,6 +91,7 @@ public:
 
         ++pair.second;
         _pkt_cache.erase(pair.first, pair.second);
+        Trace("after drop, packet cache have size={}", _pkt_cache.size());
     }
 
     void clear() override {
@@ -109,6 +110,19 @@ public:
             (*pair.first)->is_retransmit = true;
             on_packet(*pair.first);
             ++pair.first;
+        }
+    }
+
+    void ack_sequence_to(uint32_t seq) override {
+        if (_pkt_cache.empty()) {
+            return;
+        }
+        iterator it = _pkt_cache.begin();
+        while (it != _pkt_cache.end()) {
+            if ((*it)->seq >= seq) {
+                break;
+            }
+            it = _pkt_cache.erase(it);
         }
     }
 

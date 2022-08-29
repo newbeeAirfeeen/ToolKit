@@ -36,11 +36,12 @@ public:
 
 private:
     using base_type = std::enable_shared_from_this<packet_limited_send_queue<T>>;
+    using duration_type = std::chrono::microseconds;
 
 public:
     explicit packet_limited_send_queue(asio::io_context &io_context, uint16_t payload = 1456) {
         Trace("create limited send queue, payload={}", payload);
-        timer = create_deadline_timer<packet_pointer, std::chrono::microseconds>(io_context);
+        timer = create_deadline_timer<packet_pointer, duration_type>(io_context);
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
         Trace("average payload size={}", avg_payload_size);
         update_snd_period();
@@ -60,7 +61,12 @@ public:
     /// update the value of average packet payload size (AvgPayloadSize):
     void on_packet(const packet_pointer &p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
-        timer->expired_at(timer->get_last_time_expired() + static_cast<uint64_t>(_pkt_snd_period), p);
+        /// 更新为上一次发送数据包的seq
+        if(!_last_ack_seq){
+            _last_ack_seq = p->seq;
+            _last_ack_response = std::chrono::duration_cast<duration_type>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        }
+        return packet_send_queue<T>::on_packet(p);
     }
 
     void ack_sequence_to(uint32_t seq) override {
@@ -80,7 +86,10 @@ private:
     }
 
     inline void update_snd_period() {
-        _pkt_snd_period = avg_payload_size * 1e6 / packet_send_queue<T>::get_bandwidth_mode()->get_bandwidth() * 1.0;
+        /// 求出步长
+        uint64_t _tmp_last_ack_seq = _last_ack_seq;
+
+        //_pkt_snd_period = avg_payload_size * 1e6 / packet_send_queue<T>::get_bandwidth_mode()->get_bandwidth() * 1.0;
         Trace("update packet send period={} us", static_cast<uint64_t>(_pkt_snd_period));
     }
 
@@ -92,7 +101,9 @@ private:
     /// PKT_SND_PERIOD = PktSize * 1000000 / MAX_BW
     ///  microseconds
     double _pkt_snd_period = 11.776;
-    std::shared_ptr<deadline_timer<packet_pointer, std::chrono::microseconds>> timer;
+    std::shared_ptr<deadline_timer<packet_pointer, duration_type>> timer;
+    uint64_t _last_ack_seq = 0;
+    uint64_t _last_ack_response = 0;
 };
 
 

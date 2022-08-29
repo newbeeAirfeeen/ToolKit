@@ -152,9 +152,7 @@ public:
 
 public:
     virtual void send_again(uint32_t begin, uint32_t end) = 0;
-    virtual void ack_sequence_to(uint32_t seq) {
-        return drop(seq, seq);
-    }
+    virtual void ack_sequence_to(uint32_t seq) = 0;
 
 protected:
     std::shared_ptr<bandwidth_mode> _mode;
