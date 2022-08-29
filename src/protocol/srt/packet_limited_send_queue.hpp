@@ -61,8 +61,11 @@ public:
     /// update the value of average packet payload size (AvgPayloadSize):
     void on_packet(const packet_pointer &p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
-        /// 更新为上一次发送数据包的seq
-        return packet_send_queue<T>::on_packet(p);
+        /// 当前发送数据的时间点
+        constexpr uint64_t _constant_internal = 120;
+        auto now_time_point = std::chrono::duration_cast<duration_type>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        auto internal = now_time_point - timer->get_last_time_expired() > _constant_internal ? 0 : _constant_internal;
+        timer->expired_at(timer->get_last_time_expired() + (_constant_internal - internal), p);
     }
 
     void ack_sequence_to(uint32_t seq) override {
@@ -83,7 +86,6 @@ private:
 
     inline void update_snd_period() {
         /// 求出步长
-
         //_pkt_snd_period = avg_payload_size * 1e6 / packet_send_queue<T>::get_bandwidth_mode()->get_bandwidth() * 1.0;
         Trace("update packet send period={} us", static_cast<uint64_t>(_pkt_snd_period));
     }
@@ -96,6 +98,7 @@ private:
     /// PKT_SND_PERIOD = PktSize * 1000000 / MAX_BW
     ///  microseconds
     double _pkt_snd_period = 11.776;
+    uint64_t _last_send_time_point = 0;
     std::shared_ptr<deadline_timer<packet_pointer, duration_type>> timer;
 };
 

@@ -45,14 +45,10 @@ public:
     typedef _duration_type duration_type;
 
 public:
+    /// 线程不安全
     void expired_at(uint64_t counts, tag_type tag) {
-        std::weak_ptr<deadline_timer<tag_type, duration_type>> self(base_type::shared_from_this());
-        executor.post([self, counts, tag]() {
-            if (auto stronger_self = self.lock()) {
-                stronger_self->triggered_sets.emplace(counts, tag);
-                stronger_self->update_timer();
-            }
-        });
+        triggered_sets.emplace(counts, tag);
+        update_timer();
     }
 
     void add_expired_from_now(uint64_t counts, tag_type tag) {

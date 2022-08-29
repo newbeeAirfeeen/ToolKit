@@ -330,8 +330,8 @@ namespace srt {
         //// 如果允许丢包
         if (srt_socket_service::drop_too_late_packet && srt_socket_service::time_deliver_) {
             auto delay = srt_socket_service::time_deliver_ < 120 ? 120 : srt_socket_service::time_deliver_;
-            _sender_queue->set_max_delay(delay);
-            _receive_queue->set_max_delay(delay);
+            _sender_queue->set_max_delay(delay < 1020 ? 1020 : delay);
+            _receive_queue->set_max_delay(delay < 1020 ? 1020 : delay);
         }
 
         Trace("start sender/receiver buffer queue...");
