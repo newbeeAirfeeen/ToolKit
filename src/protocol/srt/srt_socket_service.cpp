@@ -215,10 +215,28 @@ namespace srt {
     }
 
     int srt_socket_service::async_send(const char *data, size_t length) {
-        if (length <= get_max_payload()) {
-            return async_send(buffer::assign(data, length));
+        auto mss = get_max_payload();
+        size_t write_bytes = length;
+        size_t offset = 0;
+        int ret = 0;
+        while (write_bytes > 0) {
+            /// 最后一个包
+            if (write_bytes <= mss) {
+                ret = async_send(std::make_shared<buffer>(data + offset, write_bytes));
+                if (ret > 0) {
+                    write_bytes -= ret;
+                }
+                break;
+            }
+            ret = async_send(std::make_shared<buffer>(data + offset, write_bytes));
+            if (ret == -1 || ret == 0) {
+                break;
+            }
+            /// 移动
+            offset += mss;
+            write_bytes -= mss;
         }
-        return 0;
+        return ret == -1 ? -1 : static_cast<int>(length - write_bytes);
     }
 
     int srt_socket_service::async_send(const std::shared_ptr<buffer> &buff) {
