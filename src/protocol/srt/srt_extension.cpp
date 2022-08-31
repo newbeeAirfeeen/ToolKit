@@ -250,6 +250,7 @@ namespace srt {
                 extension->drop = static_cast<bool>(extension->flags & TLPKTDROP);
                 /// nak
                 extension->nak = static_cast<bool>(extension->flags & PERIODICNAK);
+                extension->buffer_mode = static_cast<bool>(extension->flags & STREAM);
             }
             /// 不支持加密
             else if (is_KM_REQ_set(ctx.extension_field) && extension_ == SRT_CMD_KM_RSP) {

@@ -133,6 +133,7 @@ namespace srt {
         uint16_t sender_tlpktd_delay = 0;
         bool drop = true;
         bool nak = true;
+        bool buffer_mode = false;
         std::string stream_id;
     };
 

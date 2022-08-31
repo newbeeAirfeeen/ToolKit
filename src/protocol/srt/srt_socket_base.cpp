@@ -34,7 +34,7 @@ namespace srt {
         if (length > 1500) {
             throw std::system_error(make_srt_error(srt_error_code::too_large_payload));
         }
-        this->max_payload = length;
+        this->max_payload = length == 0 ? 1500 : length;
     }
 
     void srt_socket_base::set_max_flow_window_size(uint32_t counts) {

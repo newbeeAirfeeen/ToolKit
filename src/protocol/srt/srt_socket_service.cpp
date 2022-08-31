@@ -260,7 +260,7 @@ namespace srt {
     }
 
     void srt_socket_service::send_reject(int e, const std::shared_ptr<buffer> &buff) {
-        Trace("send_reject..");
+        Trace("send_reject, error_code={}", e);
         if (buff->size() < 40) {
             throw std::invalid_argument("buff is MUST greater than 40");
         }
@@ -596,6 +596,12 @@ namespace srt {
             return handle_reject(context->_req_type);
         }
 
+        if (extension->buffer_mode) {
+            Debug("server handshake in buffer mode, reject it");
+            return send_reject(1012, buff);
+        }
+
+
         /// 最终更新mtu
         /// set_max_payload(context->_max_mss);
         /// 最终更新滑动窗口大小
@@ -688,6 +694,10 @@ namespace srt {
             return send_reject(1003, buff);
         }
 
+        if (extension->buffer_mode) {
+            Error("client handshake with buffer mode, reject it");
+            return send_reject(1012, buff);
+        }
 
         if (context->_version != 5) {
             Error("client version at least 5, send reject to peer");

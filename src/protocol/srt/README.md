@@ -12,7 +12,7 @@
 
 * **[p10001]** **srt_client**可以与官方**server**在无加密的情况下握手成功，如若失败，能正确提示原因
 * **[p10002]** **srt_server**可以正确处理除加密外所有**srt_client**的握手行为
-  * 包括buffer mode 和message mode
+  * &#x2705;只支持message mode
 
 * &#x2705; **[p10003]** 发送**induction**时，**socket_id,cookie**必须全部为0
 * &#x2705; **[p10004]** 能正确发送shutdown
@@ -35,12 +35,12 @@
 
 ### 数据部分
 * &#x2705; **[p30001]** **ack RTT，RTT-variance**计算不正确
-* **[p30002]** **client**能正常发送数据
+* &#x2705; **[p30002]** **client**能正常发送数据
 * **[p30003]** **client**能正确丢弃延时过大的数据包，且能发送**message drop request**
 * **[p30004]** **client**发送**message drop request**后。对应的数据队列也清空了对应要丢弃的包
 * **[p30005]** 数据包回环测试，能正确处理回环的情况
 * **[p30006]** **client**和**server**是否开启合并写
-* **[p30007]** client是否做发送数据速率限制
+* &#x2705; **[p30007]** client是否做发送简单数据速率限制
 * &#x2705; **[p30008]** server异步改为同步发送，避免提交过多的回调给asio导致性能问题
 * **[p30009]** server能正常收发数据
 * **[p30010]** client server 能双向通信
