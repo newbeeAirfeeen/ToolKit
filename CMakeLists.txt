@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
 project(ToolKit VERSION 1)
 
+
+option(ENABLE_SHARED "是否开启动态库编译" OFF)
+
+
+if(ENABLE_SHARED)
+    set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_shared CACHE INTERNAL "project name")
+else()
+    set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_static CACHE INTERNAL "project name")
+endif()
+
+
 add_definitions(-DASIO_STANDALONE
                 -DASIO_HEADER_ONLY
  #               -DSRT_CORE_INTERNAL_DEBUG_LOG
@@ -41,16 +52,22 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/src/net/ssl SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/stun SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/srt SRC_LIST)
 
-add_library(${PROJECT_NAME}_static STATIC ${SRC_LIST} src/Util/endian.cpp)
-if(LINUX)
-    target_compile_options(${PROJECT_NAME}_static PUBLIC -std=c++11)
+
+if(ENABLE_SHARED)
+    add_library(${TOOLKIT_TARGET_NAME} SHARED ${SRC_LIST} src/Util/endian.cpp)
+    target_link_libraries(${TOOLKIT_TARGET_NAME} PUBLIC wolfssl)
+    set(LINK_LIB_LIST ${TOOLKIT_TARGET_NAME} CACHE INTERNAL "link library list")
+else()
+    add_library(${TOOLKIT_TARGET_NAME} STATIC ${SRC_LIST} src/Util/endian.cpp)
+    set(LINK_LIB_LIST ${TOOLKIT_TARGET_NAME} wolfssl CACHE INTERNAL "link library list")
 endif()
 
-set(LINK_LIB_LIST ${PROJECT_NAME}_static wolfssl CACHE INTERNAL "link library list")
 
+if(LINUX)
+    target_compile_options(${TOOLKIT_TARGET_NAME} PUBLIC -std=c++11)
+endif()
 
-target_link_libraries(${PROJECT_NAME}_static INTERFACE ${LINK_LIB_LIST})
-target_include_directories(${PROJECT_NAME}_static PUBLIC ${CMAKE_SOURCE_DIR}/src
+target_include_directories(${TOOLKIT_TARGET_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/src
                                                   PUBLIC ${CMAKE_SOURCE_DIR}/src/net)
 if(NOT ANDROID)
 add_subdirectory(example)

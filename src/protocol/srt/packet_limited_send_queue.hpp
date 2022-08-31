@@ -66,10 +66,9 @@ public:
     }
 
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
-        auto size = _size.load(std::memory_order_relaxed);
+        auto size = _size.load();
         if (size <= 0 || this->capacity() <= 0) {
             Warn("temporary cache is full, which temporary cache size={}, window capacity={}", size, this->get_buffer_size());
-            _size.store(0, std::memory_order_relaxed);
             return 0;
         }
         {
