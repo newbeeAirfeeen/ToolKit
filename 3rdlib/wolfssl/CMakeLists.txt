@@ -1811,8 +1811,7 @@ if(${BUILD_SHARED_LIBS})
     target_compile_definitions(wolfssl PUBLIC "WOLFSSL_DLL")
 endif()
 
-if(${BUILD_SHARED_ALL} AND LINUX)
-    MESSAGE("SDFSD")
+if(${BUILD_SHARED_ALL} AND CMAKE_SYSTEM_NAME MATCHES "Linux")
     target_compile_options(wolfssl PUBLIC fPIC)
 endif()
 
