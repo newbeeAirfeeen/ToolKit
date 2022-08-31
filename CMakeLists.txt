@@ -7,6 +7,7 @@ option(ENABLE_SHARED "是否开启动态库编译" OFF)
 
 if(ENABLE_SHARED)
     set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_shared CACHE INTERNAL "project name")
+    set(BUILD_SHARED_ALL ON CACHE INTERNAL "build shared all")
 else()
     set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_static CACHE INTERNAL "project name")
 endif()
@@ -14,11 +15,11 @@ endif()
 
 add_definitions(-DASIO_STANDALONE
                 -DASIO_HEADER_ONLY
- #               -DSRT_CORE_INTERNAL_DEBUG_LOG
                 -DFMT_HEADER_ONLY
-                #-DASIO_ENABLE_HANDLER_TRACKING
                 -DENABLE_LOG
                 -DOPENSSL_EXTRA)
+        #-DSRT_CORE_INTERNAL_DEBUG_LOG
+        #-DASIO_ENABLE_HANDLER_TRACKING)
 
 
 if(WIN32)

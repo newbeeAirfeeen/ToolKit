@@ -1811,6 +1811,13 @@ if(${BUILD_SHARED_LIBS})
     target_compile_definitions(wolfssl PUBLIC "WOLFSSL_DLL")
 endif()
 
+if(${BUILD_SHARED_ALL} AND LINUX)
+    MESSAGE("SDFSD")
+    target_compile_options(wolfssl PUBLIC fPIC)
+endif()
+
+
+
 ####################################################
 # Include Directories
 ####################################################
