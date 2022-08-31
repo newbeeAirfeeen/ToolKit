@@ -225,6 +225,14 @@ namespace srt {
         if (buff->size() > get_max_payload()) {
             throw std::system_error(make_srt_error(srt_error_code::too_large_payload));
         }
+
+        if (!_is_connected.load(std::memory_order_relaxed)) {
+            auto e = make_srt_error(srt_error_code::not_connected_yet);
+            /// 在连接的时候 直接调用.不终止会话loop
+            on_error(e);
+            return -1;
+        }
+
         return _sender_queue->input_packet(buff, 0, 0);
     }
 
