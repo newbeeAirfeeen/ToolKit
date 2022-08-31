@@ -77,6 +77,7 @@ namespace srt {
 
     protected:
         //// 发送数据
+        int async_send(const char*, size_t length);
         int async_send(const std::shared_ptr<buffer> &);
         void on_error_in(const std::error_code &e);
 
@@ -141,8 +142,6 @@ namespace srt {
         void on_common_timer_expired(const int &);
         /// 保活定时器
         void on_keep_alive_expired(const int &);
-        inline uint32_t get_next_packet_message_number();
-
     private:
         asio::io_context &poller;
         /// 通常的定时器,处理ack,nak
@@ -172,8 +171,6 @@ namespace srt {
         /// 是否已经建立连接
         std::atomic<bool> _is_open{false};
         std::atomic<bool> _is_connected{false};
-        /// 上一次发送包的序号
-        uint32_t message_number = 1;
         /// 发送队列
         std::shared_ptr<packet_send_interface<std::shared_ptr<buffer>>> _sender_queue;
         /// 接收队列

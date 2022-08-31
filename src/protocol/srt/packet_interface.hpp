@@ -84,7 +84,7 @@ public:
     virtual uint32_t get_buffer_size() const = 0;
     virtual packet_pointer get_first_block() const = 0;
     virtual packet_pointer get_last_block() const = 0;
-    virtual void input_packet(const T &t, uint32_t seq, uint64_t time_point) = 0;
+    virtual int input_packet(const T &t, uint32_t seq, uint64_t time_point) = 0;
     virtual void drop(uint32_t seq_begin, uint32_t seq_end) = 0;
     virtual void clear() = 0;
     virtual void on_packet(const packet_pointer &p) = 0;

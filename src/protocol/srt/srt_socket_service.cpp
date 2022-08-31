@@ -36,7 +36,6 @@
 #include <random>
 namespace srt {
     static constexpr uint32_t packet_max_seq = 0x7FFFFFFF;
-    static constexpr uint32_t message_max_seq = 0x3FFFFFF;
     /// 连接回调, 发生在握手
     enum timer_expired_type {
         keep_alive_expired,
@@ -199,12 +198,6 @@ namespace srt {
         return keep_alive_timer->add_expired_from_now(1000, keep_alive_expired);
     }
 
-    inline uint32_t srt_socket_service::get_next_packet_message_number() {
-        auto tmp = message_number;
-        message_number = (message_number + 1) % message_max_seq;
-        return tmp;
-    }
-
     void srt_socket_service::input_packet(const std::shared_ptr<buffer> &buff) {
         _next_func(buff);
     }
@@ -221,41 +214,43 @@ namespace srt {
         return _is_connected.load(std::memory_order_relaxed);
     }
 
+    int srt_socket_service::async_send(const char *, size_t length) {
+
+
+        return 0;
+    }
+
     int srt_socket_service::async_send(const std::shared_ptr<buffer> &buff) {
         if (buff->size() >= 1500) {
             throw std::system_error(make_srt_error(srt_error_code::too_large_payload));
         }
-
-        if (!_sender_queue->capacity()) {
-            return -1;
-        }
-
-        std::weak_ptr<srt_socket_service> self(shared_from_this());
-        poller.post([self, buff]() {
-            auto stronger_self = self.lock();
-            if (!stronger_self) {
-                return;
-            }
-
-            if (!stronger_self->_is_connected.load(std::memory_order_relaxed)) {
-                auto e = make_srt_error(srt_error_code::not_connected_yet);
-                /// 在连接的时候 直接调用.不终止会话loop
-                return stronger_self->on_error(e);
-            }
-
-            /// 构造srt packet
-            srt_packet pkt;
-            pkt.set_control(false);
-            pkt.set_packet_sequence_number(stronger_self->_sender_queue->get_current_sequence());
-            pkt.set_message_number(stronger_self->get_next_packet_message_number());
-            pkt.set_timestamp(stronger_self->get_time_from<std::chrono::microseconds>(stronger_self->connect_point));
-            pkt.set_socket_id(stronger_self->srt_socket_service::get_sock_id());
-            auto pkt_buf = create_packet(pkt);
-            pkt_buf->append(buff->data(), buff->size());
-            /// 放入发送缓冲
-            return stronger_self->_sender_queue->input_packet(pkt_buf, 0, 0);
-        });
-        return 0;
+        return _sender_queue->input_packet(buff, 0, 0);
+//        std::weak_ptr<srt_socket_service> self(shared_from_this());
+//        poller.post([self, buff]() {
+//            auto stronger_self = self.lock();
+//            if (!stronger_self) {
+//                return;
+//            }
+//
+//            if (!stronger_self->_is_connected.load(std::memory_order_relaxed)) {
+//                auto e = make_srt_error(srt_error_code::not_connected_yet);
+//                /// 在连接的时候 直接调用.不终止会话loop
+//                return stronger_self->on_error(e);
+//            }
+//
+//            /// 构造srt packet
+//            srt_packet pkt;
+//            pkt.set_control(false);
+//            pkt.set_packet_sequence_number(stronger_self->_sender_queue->get_current_sequence());
+//            pkt.set_message_number(stronger_self->get_next_packet_message_number());
+//            pkt.set_timestamp(stronger_self->get_time_from<std::chrono::microseconds>(stronger_self->connect_point));
+//            pkt.set_socket_id(stronger_self->srt_socket_service::get_sock_id());
+//            auto pkt_buf = create_packet(pkt);
+//            pkt_buf->append(buff->data(), buff->size());
+//            /// 放入发送缓冲
+//            stronger_self->_sender_queue->input_packet(pkt_buf, 0, 0);
+//        });
+//        return 0;
     }
 
     void srt_socket_service::on_sender_packet(const packet_pointer &type) {
@@ -313,8 +308,11 @@ namespace srt {
 
     /// 已经成功建立连接
     void srt_socket_service::on_connect_in() {
+        /// 记录最后一个包接收的时间
+        last_receive_point = std::chrono::steady_clock::now();
+        connect_point = last_receive_point;
         Trace("init sender/receiver buffer queue...");
-        _sender_queue = std::make_shared<packet_limited_send_queue<std::shared_ptr<buffer>>>(poller, get_max_payload());
+        _sender_queue = std::make_shared<packet_limited_send_queue<std::shared_ptr<buffer>>>(poller, get_sock_id(), connect_point, get_max_payload());
         _receive_queue = std::make_shared<packet_receive_queue<std::shared_ptr<buffer>>>();
         _sender_queue->set_on_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));
         _sender_queue->set_on_drop_packet(std::bind(&srt_socket_service::on_sender_drop_packet, this, std::placeholders::_1, std::placeholders::_2));
@@ -347,9 +345,6 @@ namespace srt {
         }
         /// 开启keepalive
         do_keepalive();
-        /// 记录最后一个包接收的时间
-        last_receive_point = std::chrono::steady_clock::now();
-        connect_point = last_receive_point;
         /// 创建
         _packet_receive_rate_ = std::make_shared<packet_receive_rate>(connect_point);
         _estimated_link_capacity_ = std::make_shared<estimated_link_capacity>(connect_point);

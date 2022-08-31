@@ -59,7 +59,7 @@ public:
         return _pkt_cache.empty() ? nullptr : _pkt_cache.back();
     }
 
-    void input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
+    int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
         Trace("current seq={}, time_point={}", seq, time_point);
         if (packet_interface<T>::capacity() <= 0) {
             Trace("capacity is not enough, drop front, seq={}, submit_time={}", _pkt_cache.front()->seq, _pkt_cache.front()->submit_time);
@@ -74,7 +74,8 @@ public:
         pkt->pkt = t;
         on_packet(pkt);
         _pkt_cache.emplace_back(pkt);
-        return drop_packet();
+        drop_packet();
+        return static_cast<int>(t->size());
     }
 
     void drop(uint32_t seq_begin, uint32_t seq_end) override {
@@ -134,7 +135,7 @@ public:
         return packet_interface<T>::_on_drop_packet_func_(begin, end);
     }
 
-private:
+protected:
     inline uint32_t get_next_sequence() {
         auto seq = cur_seq;
         cur_seq = (cur_seq + 1) % packet_interface<T>::get_max_sequence();
@@ -191,7 +192,7 @@ private:
         return {seq_begin_it, seq_end_it};
     }
 
-private:
+protected:
     uint32_t cur_seq = 0;
     std::list<packet_pointer> _pkt_cache;
 };
