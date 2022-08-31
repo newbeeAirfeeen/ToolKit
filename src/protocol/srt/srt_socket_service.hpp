@@ -77,7 +77,7 @@ namespace srt {
 
     protected:
         //// 发送数据
-        int async_send(const char*, size_t length);
+        int async_send(const char *, size_t length);
         int async_send(const std::shared_ptr<buffer> &);
         void on_error_in(const std::error_code &e);
 
@@ -142,6 +142,7 @@ namespace srt {
         void on_common_timer_expired(const int &);
         /// 保活定时器
         void on_keep_alive_expired(const int &);
+
     private:
         asio::io_context &poller;
         /// 通常的定时器,处理ack,nak

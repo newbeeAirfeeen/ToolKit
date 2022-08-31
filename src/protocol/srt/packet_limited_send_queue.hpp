@@ -154,7 +154,7 @@ private:
             _is_commit.store(false);
             return;
         }
-        auto internal = now - _last_send_point > _duration ? 0 : (120 - (now - _last_send_point));
+        auto internal = now - _last_send_point > _duration ? 0 : (_duration - (now - _last_send_point));
         timer->add_expired_from_now(internal, 1);
         _last_send_point = now;
     }
