@@ -9,7 +9,7 @@ if(ENABLE_SHARED)
     set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_shared CACHE INTERNAL "project name")
     set(BUILD_SHARED_ALL ON CACHE INTERNAL "build shared all")
 else()
-    set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_static CACHE INTERNAL "project name")
+    set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_static wolfssl CACHE INTERNAL "project name")
 endif()
 
 
