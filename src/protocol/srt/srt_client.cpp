@@ -75,13 +75,6 @@ namespace srt {
             });
         }
 
-        int async_send(const char *data, size_t length) {
-            if (flag.load(std::memory_order_relaxed)) {
-                return -1;
-            }
-            return srt_socket_service::async_send(buffer::assign(data, length));
-        }
-
     protected:
         void onRecv(const std::shared_ptr<buffer> &buff) override {
             Info("receive: {}", buff->data());

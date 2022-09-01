@@ -54,6 +54,9 @@ namespace srt {
 
     public:
         asio::io_context &get_poller();
+        //// 发送数据
+        int async_send(const char *, size_t length);
+        int async_send(const std::shared_ptr<buffer> &);
 
     protected:
         void connect();
@@ -76,9 +79,6 @@ namespace srt {
         virtual uint32_t get_cookie();
 
     protected:
-        //// 发送数据
-        int async_send(const char *, size_t length);
-        int async_send(const std::shared_ptr<buffer> &);
         void on_error_in(const std::error_code &e);
 
     private:
