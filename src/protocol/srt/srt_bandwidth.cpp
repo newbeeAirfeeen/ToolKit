@@ -23,8 +23,46 @@
 * SOFTWARE.
 */
 #include "srt_bandwidth.hpp"
+#include <chrono>
+uint64_t &bandwidth_mode::bandwidth() {
+    return this->band_width;
+}
 
-constexpr uint32_t default_band = 1000000000 / 8;
-uint32_t estimated_bandwidth_mode::get_bandwidth() const {
-    return default_band;
+void bandwidth_mode::set_bandwidth(uint64_t t) {
+    this->band_width = t;
+}
+
+uint64_t bandwidth_mode::get_bandwidth() const {
+    return this->band_width;
+}
+
+void max_set_bandwidth_mode::input_packet(uint16_t) {}
+
+void constant_rate_mode::input_packet(uint16_t size) {}
+void constant_rate_mode::set_bandwidth(uint64_t t) {
+    this->bandwidth() = static_cast<uint64_t>(t * 1.25 + 0.5);
+}
+
+estimated_bandwidth_mode::estimated_bandwidth_mode() {
+    this->bandwidth() = 4 * 1024 * 1024;
+}
+
+void estimated_bandwidth_mode::input_packet(uint16_t size) {
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    std::lock_guard<std::mutex> lmtx(mtx);
+    bytes += size;
+    if (now - _last_input_time_point >= 1000 && _last_input_time_point) {
+        this->bandwidth() = static_cast<uint64_t>((double) bytes * 1.25);
+        bytes = 0;
+        _last_input_time_point = now;
+    }
+    if (!_last_input_time_point) {
+        _last_input_time_point = now;
+    }
+}
+
+uint64_t estimated_bandwidth_mode::get_bandwidth() const {
+    std::lock_guard<std::mutex> lmtx(mtx);
+    auto v = bandwidth_mode::get_bandwidth();
+    return v == 0 ? 1024 * 1024 : v;
 }

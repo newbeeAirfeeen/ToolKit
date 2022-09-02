@@ -26,6 +26,7 @@
 #ifndef TOOLKIT_SRT_BANDWIDTH_HPP
 #define TOOLKIT_SRT_BANDWIDTH_HPP
 #include <cstdint>
+#include <mutex>
 /***
  * To ensure smooth video playback on receiver peer during live stream,
  * SRT must control the sender's buffer level to prevent overfill and depletion.
@@ -47,13 +48,41 @@
 class bandwidth_mode {
 public:
     virtual ~bandwidth_mode() = default;
-    virtual uint32_t get_bandwidth() const = 0;
+    virtual void input_packet(uint16_t size) = 0;
+    virtual void set_bandwidth(uint64_t);
+    virtual uint64_t get_bandwidth() const;
+
+protected:
+    uint64_t &bandwidth();
+
+private:
+    uint64_t band_width = 1000000000 / 8;
 };
+
+
+class max_set_bandwidth_mode : public bandwidth_mode {
+public:
+    void input_packet(uint16_t size) override;
+};
+
+class constant_rate_mode : public bandwidth_mode {
+public:
+    void input_packet(uint16_t size) override;
+    void set_bandwidth(uint64_t) override;
+};
+
 
 class estimated_bandwidth_mode : public bandwidth_mode {
 public:
+    estimated_bandwidth_mode();
     ~estimated_bandwidth_mode() override = default;
-    uint32_t get_bandwidth() const override;
+    void input_packet(uint16_t size) override;
+    uint64_t get_bandwidth() const override;
+
+private:
+    mutable std::mutex mtx;
+    uint64_t _last_input_time_point = 0;
+    uint64_t bytes = 0;
 };
 
 
