@@ -100,6 +100,7 @@ public:
             this->_allocated_bytes -= p->pkt->size();
         });
         _pkt_cache.erase(pair.first, pair.second);
+        on_size_is_full(false, _pkt_cache.size());
         Trace("after drop, packet cache have size={}", _pkt_cache.size());
     }
 
@@ -135,6 +136,7 @@ public:
             _allocated_bytes -= element->pkt->size();
             _pkt_cache.pop_front();
         }
+        on_size_is_full(false, _pkt_cache.size());
     }
 
     void on_packet(const packet_pointer &p) override {
@@ -148,6 +150,8 @@ public:
     uint64_t get_allocated_bytes() override {
         return this->_allocated_bytes;
     }
+
+    void on_size_is_full(bool, uint32_t) override {}
 
 protected:
     inline uint32_t get_next_sequence() {
@@ -172,6 +176,7 @@ protected:
             return;
         }
         Trace("drop packet {}-{}", begin, end);
+        on_size_is_full(false, _pkt_cache.size());
         on_drop_packet((uint32_t) begin, (uint32_t) end);
     }
 

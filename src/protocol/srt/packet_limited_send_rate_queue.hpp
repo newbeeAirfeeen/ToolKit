@@ -106,15 +106,24 @@ public:
         update_snd_period();
     }
 
+
+    void on_size_is_full(bool full, uint32_t size) override {
+        if (full || size >= this->get_window_size()) {
+            Trace("window is full, wait not full to recover");
+            return;
+        }
+        //// 重新开启定时器
+        std::lock_guard<std::recursive_mutex> lmtx(mtx);
+        if (!_buffer_cache.empty() && !_is_commit) {
+            timer->add_expired_from_now(0, 1);
+        }
+    }
+
 private:
     void on_timer(const int &v) {
-
         if (packet_interface<T>::capacity() <= 0) {
-            Trace("capacity is not enough, drop front, seq={}, submit_time={}", this->_pkt_cache.front()->seq, this->_pkt_cache.front()->submit_time);
-            auto front = std::move(this->_pkt_cache.front());
-            this->_allocated_bytes -= front->pkt->size();
-            this->_pkt_cache.pop_front();
-            this->on_drop_packet(front->seq, front->seq);
+            Trace("window is full, wait it..");
+            return;
         }
 
         T t;

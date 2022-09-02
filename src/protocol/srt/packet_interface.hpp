@@ -90,6 +90,7 @@ public:
     virtual void on_packet(const packet_pointer &p) = 0;
     virtual void on_drop_packet(uint32_t begin, uint32_t end) = 0;
     virtual void start() {}
+    virtual void on_size_is_full(bool, uint32_t) = 0;
     virtual uint64_t get_allocated_bytes() = 0;
     void set_on_packet(const std::function<void(const packet_pointer &)> &f) {
         if (f) {
@@ -154,7 +155,7 @@ public:
 public:
     virtual void send_again(uint32_t begin, uint32_t end) = 0;
     virtual void ack_sequence_to(uint32_t seq) = 0;
-
+    void on_size_is_full(bool, uint32_t) override = 0;
 protected:
     std::shared_ptr<bandwidth_mode> _mode;
 };
@@ -165,6 +166,7 @@ public:
     ~packet_receive_interface() override = default;
     virtual uint32_t get_expected_size() const = 0;
     virtual std::vector<std::pair<uint32_t, uint32_t>> get_pending_packets() const = 0;
+    void on_size_is_full(bool, uint32_t) override{}
 };
 
 
