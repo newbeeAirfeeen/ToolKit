@@ -24,7 +24,7 @@
 */
 #include "srt_socket_service.hpp"
 #include "Util/endian.hpp"
-#include "packet_limited_send_queue.hpp"
+#include "packet_limited_send_rate_queue.hpp"
 #include "packet_receive_queue.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_error.hpp"
@@ -316,7 +316,7 @@ namespace srt {
             srt_socket_service::max_payload = 1456;
 
         Trace("init sender/receiver buffer queue...");
-        _sender_queue = std::make_shared<packet_limited_send_queue<std::shared_ptr<buffer>>>(poller, get_sock_id(), connect_point, get_max_payload());
+        _sender_queue = std::make_shared<packet_limited_send_rate_queue<std::shared_ptr<buffer>>>(poller, get_sock_id(), connect_point, get_max_payload());
         _receive_queue = std::make_shared<packet_receive_queue<std::shared_ptr<buffer>>>();
 
         _sender_queue->set_on_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));

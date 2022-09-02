@@ -90,6 +90,7 @@ public:
     virtual void on_packet(const packet_pointer &p) = 0;
     virtual void on_drop_packet(uint32_t begin, uint32_t end) = 0;
     virtual void start() {}
+    virtual uint64_t get_allocated_bytes() = 0;
     void set_on_packet(const std::function<void(const packet_pointer &)> &f) {
         if (f) {
             this->_on_packet_func_ = f;

@@ -27,6 +27,7 @@
 #define TOOLKIT_PACKET_SEND_QUEUE_HPP
 #include "spdlog/logger.hpp"
 #include "srt_bandwidth.hpp"
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <list>
@@ -65,6 +66,8 @@ public:
             Trace("capacity is not enough, drop front, seq={}, submit_time={}", _pkt_cache.front()->seq, _pkt_cache.front()->submit_time);
             auto front = std::move(_pkt_cache.front());
             _pkt_cache.pop_front();
+            /// 更新总字节数
+            _allocated_bytes -= front->pkt->size();
             on_drop_packet(front->seq, front->seq);
         }
 
@@ -72,6 +75,8 @@ public:
         pkt->seq = get_next_sequence();
         pkt->submit_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         pkt->pkt = t;
+        /// 增加总字节数目
+        _allocated_bytes += t->size();
         on_packet(pkt);
         _pkt_cache.emplace_back(pkt);
         drop_packet();
@@ -89,14 +94,18 @@ public:
             Debug("no packet to drop, not found begin or end sequence");
             return;
         }
-
         ++pair.second;
+
+        std::for_each(pair.first, pair.second, [this](const packet_pointer &p) {
+            this->_allocated_bytes -= p->pkt->size();
+        });
         _pkt_cache.erase(pair.first, pair.second);
         Trace("after drop, packet cache have size={}", _pkt_cache.size());
     }
 
     void clear() override {
         _pkt_cache.clear();
+        _allocated_bytes = 0;
     }
 
     void send_again(uint32_t begin, uint32_t end) override {
@@ -123,6 +132,7 @@ public:
             if (element->seq >= seq && !packet_send_interface<T>::is_cycle()) {
                 break;
             }
+            _allocated_bytes -= element->pkt->size();
             _pkt_cache.pop_front();
         }
     }
@@ -133,6 +143,10 @@ public:
 
     void on_drop_packet(uint32_t begin, uint32_t end) override {
         return packet_interface<T>::_on_drop_packet_func_(begin, end);
+    }
+
+    uint64_t get_allocated_bytes() override {
+        return this->_allocated_bytes;
     }
 
 protected:
@@ -149,6 +163,7 @@ protected:
             if (begin == -1)
                 begin = _pkt_cache.front()->seq;
             end = _pkt_cache.front()->seq;
+            _allocated_bytes -= _pkt_cache.front()->pkt->size();
             _pkt_cache.pop_front();
         }
 
@@ -195,6 +210,7 @@ protected:
 protected:
     uint32_t cur_seq = 0;
     std::list<packet_pointer> _pkt_cache;
+    uint64_t _allocated_bytes = 0;
 };
 
 

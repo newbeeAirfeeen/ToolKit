@@ -280,6 +280,9 @@ public:
         return vec;
     }
 
+    uint64_t get_allocated_bytes() override {
+        return bytes;
+    }
 
 private:
     bool is_seq_cycle(uint32_t first, uint32_t second) {
@@ -301,6 +304,7 @@ private:
     uint32_t _end = 0;
     uint32_t _size = 0;
     uint32_t _cur_seq = 0;
+    uint64_t bytes = 0;
 };
 
 
