@@ -22,7 +22,7 @@ namespace logger {
         void format(const spdlog::details::log_msg &msg, spdlog::memory_buf_t &dest) override {
             using namespace spdlog;
             /*%Y-%m-%d %H:%M:%S*/
-            constexpr const char *format_pattern = "[{:%Y-%m-%d %H:%M:%S}.{:0>3}] [thread {}] [{}] [{}:{}] {}\n";
+            constexpr const char *format_pattern = "[{:%Y-%m-%d %H:%M:%S}.{:0>6}] [thread {}] [{}] [{}:{}] {}\n";
             /* level */
             std::string level = "Trace";
             std::string line = msg.source.filename;
@@ -58,8 +58,8 @@ namespace logger {
             time_t tt = std::chrono::system_clock::to_time_t(msg.time);
             tm *local_time = ::localtime(&tt);
             auto index = msg.payload.size() - 1;
-            int64_t miliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(msg.time.time_since_epoch()).count() % 1000;
-            fmt::format_to(std::back_inserter(dest), format_pattern, *local_time, miliseconds, msg.thread_id, level, line, msg.source.line, msg.payload);
+            uint64_t microsecond = std::chrono::duration_cast<std::chrono::microseconds>(msg.time.time_since_epoch()).count() % 1000000;
+            fmt::format_to(std::back_inserter(dest), format_pattern, *local_time, microsecond, msg.thread_id, level, line, msg.source.line, msg.payload);
         }
         std::unique_ptr<spdlog::formatter> clone() const override {
             std::unique_ptr<basic_formatter> basic_formatter_(new basic_formatter);
