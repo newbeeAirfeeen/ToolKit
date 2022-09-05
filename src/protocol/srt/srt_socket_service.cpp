@@ -476,7 +476,7 @@ namespace srt {
         auto transmit_count = std::get<1>(_ack_entry);
         auto RTO = transmit_count * (rto + 4 * rtt_var + 20000) + 10000;
         auto spend = std::chrono::duration_cast<std::chrono::microseconds>(now - std::get<2>(_ack_entry)).count();
-        if (transmit_count >= 3 && spend >= RTO) {
+        if (spend >= RTO) {
             Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us, transmit_count={}", RTO, spend, transmit_count);
             _receive_queue->clear();
             return;
