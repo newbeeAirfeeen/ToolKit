@@ -464,15 +464,12 @@ namespace srt {
         auto expected_size = _receive_queue->get_expected_size();
 
         if (seq != std::get<0>(_ack_entry)) {
-            _ack_entry = std::make_tuple(seq, 0, now);
+            _ack_entry = std::make_tuple(seq, now);
         }
-        ++std::get<1>(_ack_entry);
-        /// micro
-        auto transmit_count = std::get<1>(_ack_entry);
-        auto RTO = transmit_count * (rto + 4 * rtt_var + 20000) + 10000;
-        auto spend = std::chrono::duration_cast<std::chrono::microseconds>(now - std::get<2>(_ack_entry)).count();
+        auto RTO = 5 * (rto + 4 * rtt_var + 20000) + 10000;
+        auto spend = std::chrono::duration_cast<std::chrono::microseconds>(now - std::get<1>(_ack_entry)).count();
         if (spend >= RTO) {
-            Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us, transmit_count={}", RTO, spend, transmit_count);
+            Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us, transmit_count={}", RTO, spend);
             _receive_queue->clear();
             ack_begin = false;
             return;

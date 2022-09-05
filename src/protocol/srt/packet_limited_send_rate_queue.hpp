@@ -76,7 +76,7 @@ public:
 
         auto size = _size.load(std::memory_order_relaxed);
         if (wait_capacity() || size <= 0) {
-            Trace("window temporary size={}, wait it...", size);
+            //Trace("window temporary size={}, wait it...", size);
             return 0;
         }
         {

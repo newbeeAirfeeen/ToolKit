@@ -45,7 +45,7 @@ namespace srt {
     public:
         using time_point = typename std::chrono::steady_clock::time_point;
         using packet_pointer = typename packet_interface<std::shared_ptr<buffer>>::packet_pointer;
-        using ack_entry = std::tuple<uint32_t, uint32_t, time_point>; /// ack number + counts
+        using ack_entry = std::tuple<uint32_t, time_point>; /// ack number + counts
     public:
         explicit srt_socket_service(asio::io_context &executor);
         ~srt_socket_service() override = default;
