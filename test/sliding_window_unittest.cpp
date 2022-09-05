@@ -2,7 +2,7 @@
 // Created by 沈昊 on 2022/8/14.
 //
 #include <gtest/gtest.h>
-#include <protocol/srt/sliding_window.hpp>
+#include "net/deprecated/sliding_window.hpp"
 class basic_window : public sliding_window<int>, public std::enable_shared_from_this<basic_window> {
 public:
     void on_packet(const block_type &type) override {
