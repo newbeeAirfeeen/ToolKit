@@ -42,7 +42,7 @@ private:
     using duration_type = std::chrono::nanoseconds;
 
 public:
-    packet_limited_send_rate_queue(asio::io_context &io_context, uint32_t sock_id, const std::chrono::steady_clock::time_point &t, uint16_t payload = 1456) : context(io_context), _size(0) {
+    packet_limited_send_rate_queue(asio::io_context &io_context, uint32_t sock_id, const std::chrono::steady_clock::time_point &t, uint16_t payload = 1456) : packet_send_queue<T>(io_context), _size(0) {
         Trace("create limited send queue, payload={}", payload);
         timer = create_deadline_timer<int, duration_type>(io_context);
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
@@ -88,7 +88,7 @@ public:
 
         /// 如果比较成功，说明在进程中..
         std::weak_ptr<packet_limited_send_rate_queue<T>> self(base_type::shared_from_this());
-        context.post([self]() {
+        packet_send_queue<T>::get_context().post([self]() {
             auto stronger_self = self.lock();
             if (!stronger_self) {
                 return;
@@ -149,33 +149,31 @@ private:
             _size.fetch_add(1);
         }
 
+        auto now = std::chrono::steady_clock::now();
+
         srt::srt_packet pkt;
         pkt.set_control(false);
         pkt.set_packet_sequence_number(this->get_current_sequence());
         pkt.set_message_number(this->get_next_packet_message_number());
-        pkt.set_timestamp(static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _conn).count()));
+        pkt.set_timestamp(static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(now - _conn).count()));
         pkt.set_socket_id(_sock_id);
         auto pkt_buf = create_packet(pkt);
+
         pkt_buf->append(t->data(), t->size());
         update_avg_payload(t->size());
-        auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        auto now_nano = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
         if (!_last_send_point) {
-            _last_send_point = now;
+            _last_send_point = now_nano;
         }
-        auto pkt_buffer = std::make_shared<packet<T>>();
-        pkt_buffer->seq = this->get_next_sequence();
-        pkt_buffer->submit_time = now / 1e6;
-        pkt_buffer->pkt = pkt_buf;
 
+        auto p = packet_send_queue<T>::insert_packet(pkt_buf, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
         /// 尝试发送数据
-        packet_send_queue<T>::on_packet(pkt_buffer);
-        this->_pkt_cache.emplace_back(pkt_buffer);
-        this->_allocated_bytes += pkt_buf->size();
+        packet_send_queue<T>::on_packet(p);
         this->drop_packet();
 
-        auto internal = (now - _last_send_point) / 1e3;
+        auto internal = (now_nano - _last_send_point) / 1e3;
         auto _next_send_point = ((uint64_t) _pkt_snd_period * 1000);
-        _last_send_point = now;
+        _last_send_point = now_nano;
         //// 更新发送间隔
         {
             std::lock_guard<std::recursive_mutex> lmtx(mtx);
@@ -217,7 +215,6 @@ private:
     }
 
 private:
-    asio::io_context &context;
     /// AvgPayloadSize is equal to the maximum
     /// allowed packet payload size, which cannot be larger than 1456 bytes.
     /// AvgPayloadSize = 7/8 * AvgPayloadSize + 1/8 * PacketPayloadSize
