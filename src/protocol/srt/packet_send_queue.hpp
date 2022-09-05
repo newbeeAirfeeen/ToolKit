@@ -253,7 +253,7 @@ protected:
     /// 超时重传
     void on_timer(const uint32_t &v) {
         if (_pkt_cache.empty()) {
-            Trace("pkt cache empty, stopping timer");
+            ///Trace("pkt cache empty, stopping timer");
             return;
         }
 
