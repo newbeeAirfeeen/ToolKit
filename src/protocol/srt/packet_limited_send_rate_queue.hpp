@@ -33,16 +33,19 @@
 #include <map>
 #include <mutex>
 template<typename T>
-class packet_limited_send_rate_queue : public packet_send_queue<T>, public std::enable_shared_from_this<packet_limited_send_rate_queue<T>> {
+class packet_limited_send_rate_queue : public packet_send_queue<T> {
 public:
     using packet_pointer = typename packet_send_queue<T>::packet_pointer;
 
 private:
-    using base_type = std::enable_shared_from_this<packet_limited_send_rate_queue<T>>;
     using duration_type = std::chrono::nanoseconds;
 
 public:
-    packet_limited_send_rate_queue(asio::io_context &io_context, uint32_t sock_id, const std::chrono::steady_clock::time_point &t, uint16_t payload = 1456) : packet_send_queue<T>(io_context), _size(0) {
+    packet_limited_send_rate_queue(asio::io_context &io_context,
+                                   const std::shared_ptr<srt::srt_ack_queue> &ack,
+                                   uint32_t sock_id,
+                                   const std::chrono::steady_clock::time_point &t,
+                                   uint16_t payload = 1456) : packet_send_queue<T>(io_context, ack), _size(0) {
         Trace("create limited send queue, payload={}", payload);
         timer = create_deadline_timer<int, duration_type>(io_context);
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
@@ -55,7 +58,8 @@ public:
 
 public:
     void start() override {
-        std::weak_ptr<packet_limited_send_rate_queue<T>> self(base_type::shared_from_this());
+        packet_send_queue<T>::start();
+        std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(packet_send_queue<T>::shared_from_this()));
         timer->set_on_expired([self](const int &v) {
             auto stronger_self = self.lock();
             if (!stronger_self) { return; }
@@ -87,7 +91,7 @@ public:
         }
 
         /// 如果比较成功，说明在进程中..
-        std::weak_ptr<packet_limited_send_rate_queue<T>> self(base_type::shared_from_this());
+        std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(packet_send_queue<T>::shared_from_this()));
         packet_send_queue<T>::get_context().post([self]() {
             auto stronger_self = self.lock();
             if (!stronger_self) {

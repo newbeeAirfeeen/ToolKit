@@ -66,7 +66,7 @@ uint64_t estimated_bandwidth_mode::get_bandwidth() const {
     std::lock_guard<std::mutex> lmtx(mtx);
     uint32_t v = bandwidth_mode::get_bandwidth();
     if( v == 0){
-        v  = 512 * 1024;
+        v  = 1024 * 1024;
     }
     Trace("get bandwidth {}",v);
     return v;

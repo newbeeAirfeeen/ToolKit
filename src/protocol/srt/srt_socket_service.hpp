@@ -178,7 +178,7 @@ namespace srt {
         std::shared_ptr<packet_calculate_window<16, 64>> _packet_receive_rate_;
         //// ack
         ack_entry _ack_entry;
-        srt_ack_queue _ack_queue_;
+        std::shared_ptr<srt_ack_queue> _ack_queue_;
         /// 上一次接收ack的时间
         time_point last_ack_response;
     };

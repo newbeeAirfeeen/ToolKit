@@ -49,6 +49,7 @@ namespace srt {
     };
 
     srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
+        _ack_queue_ = std::make_shared<srt::srt_ack_queue>();
     }
 
     void srt_socket_service::begin() {
@@ -316,7 +317,7 @@ namespace srt {
             srt_socket_service::max_payload = 1456;
 
         Trace("init sender/receiver buffer queue...");
-        _sender_queue = std::make_shared<packet_limited_send_rate_queue<std::shared_ptr<buffer>>>(poller, get_sock_id(), connect_point, get_max_payload());
+        _sender_queue = std::make_shared<packet_limited_send_rate_queue<std::shared_ptr<buffer>>>(poller, _ack_queue_, get_sock_id(), connect_point, get_max_payload());
         _receive_queue = std::make_shared<packet_receive_queue<std::shared_ptr<buffer>>>();
 
         _sender_queue->set_on_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));
@@ -415,7 +416,7 @@ namespace srt {
         pkt_buff->append(buff->data(), buff->size());
         Debug("send nak, pair size={}", vec.size());
         send_in(pkt_buff, get_remote_endpoint());
-        uint32_t nak_interval = (_ack_queue_.get_rto() + 4 * _ack_queue_.get_rtt_var()) / 2;
+        uint32_t nak_interval = (_ack_queue_->get_rto() + 4 * _ack_queue_->get_rtt_var()) / 2;
         nak_interval = nak_interval < 20 ? 20 : nak_interval;
         common_timer->add_expired_from_now(nak_interval, nak_expired);
     }
@@ -430,8 +431,8 @@ namespace srt {
     void srt_socket_service::do_ack_in() {
         auto buff = std::make_shared<buffer>();
         auto seq = _receive_queue->get_current_sequence();
-        auto rto = _ack_queue_.get_rto();
-        auto rtt_var = _ack_queue_.get_rtt_var();
+        auto rto = _ack_queue_->get_rto();
+        auto rtt_var = _ack_queue_->get_rtt_var();
         auto now = std::chrono::steady_clock::now();
         auto receive_rate = _packet_receive_rate_->get_pkt_receive_rate();
         buff->reserve(28);
@@ -455,7 +456,7 @@ namespace srt {
         pkt.set_timestamp(std::chrono::duration_cast<std::chrono::microseconds>(now - connect_point).count());
         pkt.set_socket_id(get_sock_id());
         /// 添加到ack队列中
-        _ack_queue_.add_ack(ack_number);
+        _ack_queue_->add_ack(ack_number);
         ack_number = (ack_number + 1) % 0xFFFFFFFF;
         auto pkt_buff = create_packet(pkt);
         pkt_buff->append(buff->data(), buff->size());
@@ -928,7 +929,7 @@ namespace srt {
             }
             /// 更新rtt rtt_variance.
             Trace("update rtt={}, rtt_variance={}, peer available buffer size={}", _rtt, _rtt_variance, _available_buffer_size);
-            _ack_queue_.set_rtt(_rtt, _rtt_variance);
+            _ack_queue_->set_rtt(_rtt, _rtt_variance);
             _sender_queue->update_flow_window(_available_buffer_size);
         }
         /// 滑动序号
@@ -937,8 +938,8 @@ namespace srt {
 
     void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
         auto ack_seq = pkt.get_type_information();
-        _ack_queue_.calculate(ack_seq);
-        Debug("handle ack ack, rtt={}, rtt_variance={}", _ack_queue_.get_rto(), _ack_queue_.get_rtt_var());
+        _ack_queue_->calculate(ack_seq);
+        Debug("handle ack ack, rtt={}, rtt_variance={}", _ack_queue_->get_rto(), _ack_queue_->get_rtt_var());
     }
 
     void srt_socket_service::handle_peer_error(const srt_packet &pkt, const std::shared_ptr<buffer> &) {

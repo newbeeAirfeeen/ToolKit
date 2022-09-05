@@ -26,14 +26,14 @@
 #ifndef TOOLKIT_PACKET_SEND_QUEUE_HPP
 #define TOOLKIT_PACKET_SEND_QUEUE_HPP
 #include "spdlog/logger.hpp"
+#include "srt_ack.hpp"
 #include "srt_bandwidth.hpp"
 #include <algorithm>
 #include <chrono>
 #include <functional>
 #include <list>
-
 template<typename T>
-class packet_send_queue : public packet_send_interface<T> {
+class packet_send_queue : public packet_send_interface<T>, public std::enable_shared_from_this<packet_send_queue<T>> {
 public:
     using packet_pointer = typename packet_interface<T>::packet_pointer;
 
@@ -41,7 +41,9 @@ private:
     using iterator = typename std::list<packet_pointer>::iterator;
 
 public:
-    explicit packet_send_queue(asio::io_context &context) : context(context) {}
+    packet_send_queue(asio::io_context &context, const std::shared_ptr<srt::srt_ack_queue> &ack_queue) : context(context), _ack_queue(ack_queue) {
+        retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(context);
+    }
 
     void set_current_sequence(uint32_t seq) override {
         this->cur_seq = seq;
@@ -61,6 +63,15 @@ public:
 
     packet_pointer get_last_block() const override {
         return _pkt_cache.empty() ? nullptr : _pkt_cache.back();
+    }
+
+    void start() override {
+        std::weak_ptr<packet_send_queue<T>> self(packet_send_queue<T>::shared_from_this());
+        retransmit_timer->set_on_expired([self](const uint32_t &v) {
+            if (auto stronger_self = self.lock()) {
+                return stronger_self->on_timer(v);
+            }
+        });
     }
 
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
@@ -153,7 +164,7 @@ public:
     void update_flow_window(uint32_t) override {}
 
 protected:
-    asio::io_context& get_context(){
+    asio::io_context &get_context() {
         return context;
     }
 
@@ -168,6 +179,7 @@ protected:
         /// 增加总字节数目
         _allocated_bytes += pkt->pkt->size();
         _pkt_cache.emplace_back(pkt);
+        update_retransmit_timer(pkt->seq);
         return pkt;
     }
 
@@ -229,10 +241,53 @@ protected:
         return {seq_begin_it, seq_end_it};
     }
 
+    void update_retransmit_timer(uint32_t seq, uint32_t counts = 1) {
+        auto rto = _ack_queue->get_rto();
+        auto rtt_var = _ack_queue->get_rtt_var();
+        auto RTO = counts * (rto + 4 * rtt_var + 20000) + 10000;
+        /// 当前这个包的重传时间
+        Trace("set retransmit packet time, RTO={}", RTO);
+        retransmit_timer->add_expired_from_now(RTO, seq);
+    }
+
+    /// 超时重传
+    void on_timer(const uint32_t &v) {
+        if (_pkt_cache.empty()) {
+            Trace("pkt cache empty, stopping timer");
+            return;
+        }
+
+        auto iter = find_packet_by_sequence(v, v);
+        const auto &pkt_pointer = (*iter.first);
+        if (iter.first == _pkt_cache.end()) {
+            Warn("the packet is missing, seq={}", v);
+            return;
+        }
+
+        /// 超时丢弃
+        auto now = std::chrono::steady_clock::now();
+        auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        if (latency >= packet_interface<T>::get_max_delay()) {
+            Trace("pkt retransmit time out, drop it");
+            on_drop_packet(pkt_pointer->seq, pkt_pointer->seq);
+            _pkt_cache.erase(iter.first);
+            on_size_changed(false, _pkt_cache.size());
+            return;
+        }
+
+        //// 重传数据包
+        ++pkt_pointer->retransmit_count;
+        on_packet(pkt_pointer);
+        /// 更新下一次重传的时间
+        update_retransmit_timer(pkt_pointer->seq, pkt_pointer->retransmit_count);
+    }
+
 protected:
     uint32_t cur_seq = 0;
     std::list<packet_pointer> _pkt_cache;
     uint64_t _allocated_bytes = 0;
+    std::shared_ptr<deadline_timer<uint32_t, std::chrono::microseconds>> retransmit_timer;
+    std::shared_ptr<srt::srt_ack_queue> _ack_queue;
     asio::io_context &context;
 };
 
