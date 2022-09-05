@@ -21,6 +21,14 @@ namespace logger{
 #define Error(...)		SPDLOG_LOGGER_CALL(get_logger(), spdlog::level::err, __VA_ARGS__)
 #define Critical(...)  SPDLOG_LOGGER_CALL(get_logger(), spdlog::level::critical, __VA_ARGS__)
 #else
+namespace spdlog{
+    namespace level{
+        enum level_enum{trace,info,warn,error};
+    };
+};
+namespace logger{
+    void initialize(const std::string& base_name, const spdlog::level::level_enum&, int hours = 23, int minutes = 0);
+};
 #define Trace(...)		;
 #define Debug(...)		;
 #define Info(...)		  ;

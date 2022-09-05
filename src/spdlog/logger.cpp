@@ -119,4 +119,9 @@ namespace logger {
         std::call_once(flag, func);
     }
 }
+#else
+namespace logger{
+    void initialize(const std::string& base_name, const spdlog::level::level_enum&, int hours, int minutes){}
+};
+
 #endif
