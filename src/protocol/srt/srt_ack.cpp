@@ -34,7 +34,7 @@ namespace srt {
         if (rate <= 1000) {
             return 50000;
         }
-        return (uint32_t)rate;
+        return (uint32_t) rate;
     }
 
     estimated_link_capacity::estimated_link_capacity(const std::chrono::steady_clock::time_point &t) : _start(t) {}
@@ -114,23 +114,22 @@ namespace srt {
         if (it == ack_queue.end()) {
             return;
         }
-        auto ms = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - it->second).count();
-        ///Debug("")
+        auto rtt = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - it->second).count();
         /// rtt = 7/8 * RTT + 1/8 * rtt
-        _rtt = 7.0 / 8 * _rtt + 1.0 / 8 * ms;
         /// rtt_var = 3/4 * rtt_var + 1/4 * abs(RTT - rtt)
-        _rtt_var = 3.0 / 4 * _rtt_var + 1.0 / 4 * std::abs(_rtt - ms);
-        Debug("rtt={}, rtt_variance={}, ms={}", _rtt, _rtt_var, ms);
+        _rtt_var = (3 * _rtt_var + std::abs((long) _rtt - (long) rtt)) / 4;
+        _rtt = (7 * rtt + _rtt) / 8;
+        Debug("rtt={}, rtt_variance={}, ms={}", _rtt, _rtt_var, rtt);
         ack_queue.erase(it);
     }
 
 
     uint32_t srt_ack_queue::get_rto() const {
-        return static_cast<uint32_t>(this->_rtt);
+        return this->_rtt;
     }
 
     uint32_t srt_ack_queue::get_rtt_var() const {
-        return static_cast<uint32_t>(this->_rtt_var);
+        return this->_rtt_var;
     }
 
 }// namespace srt
