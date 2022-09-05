@@ -168,7 +168,7 @@ protected:
         return context;
     }
 
-    packet_pointer insert_packet(const T &t, uint32_t seq,uint64_t submit_time = 0) {
+    packet_pointer insert_packet(const T &t, uint32_t seq, uint64_t submit_time = 0) {
         auto pkt = std::make_shared<packet<T>>();
         pkt->seq = seq;
         if (submit_time == 0)

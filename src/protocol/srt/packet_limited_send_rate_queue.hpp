@@ -119,7 +119,7 @@ public:
 
     void on_size_changed(bool full, uint32_t size) override {
         if (full || size >= this->get_window_size()) {
-            Trace("window is full, wait not full to recover");
+            ///Trace("window is full, wait not full to recover");
             return;
         }
         //// 重新开启定时器
