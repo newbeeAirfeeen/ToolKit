@@ -206,6 +206,9 @@ public:
 
         if (!first || !last) {
             Warn("first or last is empty!!");
+            if(get_buffer_size() != 0) {
+                Error("but buffer size is not 0, size={}", get_buffer_size());
+            }
             return 0;
         }
         uint32_t max = 0, min = 0;

@@ -465,7 +465,7 @@ namespace srt {
         auto expected_size = _receive_queue->get_expected_size();
 
         if (seq != std::get<0>(_ack_entry)) {
-            _ack_entry = std::make_tuple(seq, 0, std::chrono::steady_clock::now());
+            _ack_entry = std::make_tuple(seq, 0, now);
         }
         ++std::get<1>(_ack_entry);
 
