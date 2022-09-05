@@ -109,7 +109,7 @@ public:
             this->_allocated_bytes -= p->pkt->size();
         });
         _pkt_cache.erase(pair.first, pair.second);
-        on_size_changed(false, _pkt_cache.size());
+        on_size_changed(false, (uint32_t)_pkt_cache.size());
         Trace("after drop, packet cache have size={}", _pkt_cache.size());
     }
 
@@ -145,7 +145,7 @@ public:
             _allocated_bytes -= element->pkt->size();
             _pkt_cache.pop_front();
         }
-        on_size_changed(false, _pkt_cache.size());
+        on_size_changed(false, (uint32_t)_pkt_cache.size());
     }
 
     void on_packet(const packet_pointer &p) override {
@@ -205,7 +205,7 @@ protected:
             return;
         }
         Trace("drop packet {}-{}", begin, end);
-        on_size_changed(false, _pkt_cache.size());
+        on_size_changed(false, (uint32_t)_pkt_cache.size());
         on_drop_packet((uint32_t) begin, (uint32_t) end);
     }
 
@@ -265,12 +265,11 @@ protected:
 
 
         auto iter = find_packet_by_sequence(v, v);
-        const auto &pkt_pointer = (*iter.first);
         if (iter.first == _pkt_cache.end()) {
             Warn("the packet is missing, seq={}", v);
             return;
         }
-
+        const auto &pkt_pointer = (*iter.first);
         /// 超时丢弃
         auto now = std::chrono::steady_clock::now();
         auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() - pkt_pointer->submit_time;
@@ -278,7 +277,7 @@ protected:
             Trace("pkt retransmit time out, drop it, latency={}", latency);
             on_drop_packet(pkt_pointer->seq, pkt_pointer->seq);
             _pkt_cache.erase(iter.first);
-            on_size_changed(false, _pkt_cache.size());
+            on_size_changed(false, (uint32_t)_pkt_cache.size());
             return;
         }
 

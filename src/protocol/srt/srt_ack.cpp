@@ -4,7 +4,7 @@
 #include <vector>
 namespace srt {
 
-    void srt_ack_queue::set_rtt(double _rtt, double _rtt_var) {
+    void srt_ack_queue::set_rtt(uint32_t _rtt, uint32_t _rtt_var) {
         this->_rtt = _rtt;
         this->_rtt_var = _rtt_var;
     }

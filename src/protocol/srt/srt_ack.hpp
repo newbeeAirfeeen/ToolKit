@@ -48,7 +48,7 @@ namespace srt {
     public:
         void update_receive_rate(uint16_t size) {
             auto now = std::chrono::steady_clock::now();
-            pkt_window[index] = std::chrono::duration_cast<std::chrono::microseconds>(now - last_receive_point).count();
+            pkt_window[index] = (uint32_t)std::chrono::duration_cast<std::chrono::microseconds>(now - last_receive_point).count();
             bytes_window[index] = size;
             index = (index + 1) % NUM;
             last_receive_point = now;
@@ -165,7 +165,7 @@ namespace srt {
 
     class srt_ack_queue {
     public:
-        void set_rtt(double _rtt, double _rtt_var);
+        void set_rtt(uint32_t _rtt, uint32_t _rtt_var);
         void add_ack(uint32_t);
         void calculate(uint32_t);
         uint32_t get_rto() const;

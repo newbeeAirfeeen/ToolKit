@@ -72,7 +72,7 @@ public:
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
         /// 更新输入率
         /// Trace("input packet to bandwidth, size={}", t->size());
-        packet_send_interface<T>::get_bandwidth_mode()->input_packet(t->size());
+        packet_send_interface<T>::get_bandwidth_mode()->input_packet((uint16_t)t->size());
 
         auto size = _size.load(std::memory_order_relaxed);
         if (wait_capacity() || size <= 0) {
@@ -84,7 +84,7 @@ public:
             _buffer_cache.push_back(t);
             _size.fetch_sub(1);
             if (_is_commit) {
-                Trace("already in sending proc..");
+                //Trace("already in sending proc..");
                 return static_cast<int>(t->size());
             }
             _is_commit = true;
@@ -164,7 +164,7 @@ private:
         auto pkt_buf = create_packet(pkt);
 
         pkt_buf->append(t->data(), t->size());
-        update_avg_payload(t->size());
+        update_avg_payload((uint16_t)t->size());
         auto now_nano = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
         if (!_last_send_point) {
             _last_send_point = now_nano;

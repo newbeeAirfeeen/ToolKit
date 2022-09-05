@@ -64,7 +64,7 @@ void estimated_bandwidth_mode::input_packet(uint16_t size) {
 
 uint64_t estimated_bandwidth_mode::get_bandwidth() const {
     std::lock_guard<std::mutex> lmtx(mtx);
-    uint32_t v = bandwidth_mode::get_bandwidth();
+    uint64_t v = bandwidth_mode::get_bandwidth();
     if( v == 0){
         v  = 1024 * 1024;
     }

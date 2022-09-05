@@ -8,7 +8,7 @@ using namespace std;
 
 void send_data(const std::shared_ptr<srt::srt_client> &client) {
     Info("begin send data..");
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 1000000; i++) {
         auto ret = client->async_send("this is message!", 16);
         if( ret == 0){
             /// Info("window size is full..wait...");
