@@ -257,6 +257,13 @@ protected:
             return;
         }
 
+        auto diff = packet_interface<T>::sequence_diff(get_current_sequence(), v);
+        if (diff > packet_interface<T>::get_window_size()) {
+            Trace("out of window or too old packet to send");
+            return;
+        }
+
+
         auto iter = find_packet_by_sequence(v, v);
         const auto &pkt_pointer = (*iter.first);
         if (iter.first == _pkt_cache.end()) {
