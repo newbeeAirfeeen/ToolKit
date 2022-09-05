@@ -142,7 +142,7 @@ namespace srt {
             }
             auto now = std::chrono::steady_clock::now();
             auto micro_dur = std::chrono::duration_cast<std::chrono::microseconds>(now - commit_1).count();
-            auto pl_size = 1473 * micro_dur;
+            auto pl_size = 1456 * micro_dur;
 
 
             commit_1 = now;
