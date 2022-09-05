@@ -467,12 +467,6 @@ namespace srt {
             _ack_entry = std::make_tuple(seq, 0, now);
         }
         ++std::get<1>(_ack_entry);
-
-        if (expected_size == _receive_queue->get_buffer_size()) {
-            Trace("receive queue expected size={}, buffer size={}", expected_size, _receive_queue->get_buffer_size());
-            ack_begin = false;
-            return;
-        }
         /// micro
         auto transmit_count = std::get<1>(_ack_entry);
         auto RTO = transmit_count * (rto + 4 * rtt_var + 20000) + 10000;
@@ -480,6 +474,7 @@ namespace srt {
         if (spend >= RTO) {
             Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us, transmit_count={}", RTO, spend, transmit_count);
             _receive_queue->clear();
+            ack_begin = false;
             return;
         }
         common_timer->add_expired_from_now(10, ack_expired);

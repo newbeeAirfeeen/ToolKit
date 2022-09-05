@@ -273,9 +273,9 @@ protected:
 
         /// 超时丢弃
         auto now = std::chrono::steady_clock::now();
-        auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() - pkt_pointer->submit_time;
         if (latency >= packet_interface<T>::get_max_delay()) {
-            Trace("pkt retransmit time out, drop it");
+            Trace("pkt retransmit time out, drop it, latency={}", latency);
             on_drop_packet(pkt_pointer->seq, pkt_pointer->seq);
             _pkt_cache.erase(iter.first);
             on_size_changed(false, _pkt_cache.size());
