@@ -84,7 +84,7 @@ public:
             _allocated_bytes -= front->pkt->size();
             on_drop_packet(front->seq, front->seq);
         }
-        auto pkt = insert_packet(t);
+        auto pkt = insert_packet(t, this->get_current_sequence());
         /// 尝试直接发送数据
         on_packet(pkt);
         /// 放入lost queue
@@ -168,9 +168,9 @@ protected:
         return context;
     }
 
-    packet_pointer insert_packet(const T &t, uint64_t submit_time = 0) {
+    packet_pointer insert_packet(const T &t, uint32_t seq,uint64_t submit_time = 0) {
         auto pkt = std::make_shared<packet<T>>();
-        pkt->seq = get_next_sequence();
+        pkt->seq = seq;
         if (submit_time == 0)
             pkt->submit_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         else

@@ -466,9 +466,9 @@ namespace srt {
         if (seq != std::get<0>(_ack_entry)) {
             _ack_entry = std::make_tuple(seq, now);
         }
-        auto RTO = 5 * (rto + 4 * rtt_var + 20000) + 10000;
+        auto RTO = 3 * (rto + 4 * rtt_var + 20000) + 10000;
         auto spend = std::chrono::duration_cast<std::chrono::microseconds>(now - std::get<1>(_ack_entry)).count();
-        if (spend >= RTO) {
+        if (spend > RTO) {
             Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us, transmit_count={}", RTO, spend);
             _receive_queue->clear();
             ack_begin = false;

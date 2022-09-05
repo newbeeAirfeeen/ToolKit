@@ -157,7 +157,7 @@ private:
 
         srt::srt_packet pkt;
         pkt.set_control(false);
-        pkt.set_packet_sequence_number(this->get_current_sequence());
+        pkt.set_packet_sequence_number(this->get_next_sequence());
         pkt.set_message_number(this->get_next_packet_message_number());
         pkt.set_timestamp(static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(now - _conn).count()));
         pkt.set_socket_id(_sock_id);
@@ -170,7 +170,7 @@ private:
             _last_send_point = now_nano;
         }
 
-        auto p = packet_send_queue<T>::insert_packet(pkt_buf, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+        auto p = packet_send_queue<T>::insert_packet(pkt_buf, this->get_current_sequence(), std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
         /// 尝试发送数据
         packet_send_queue<T>::on_packet(p);
         this->drop_packet();
