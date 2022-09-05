@@ -31,6 +31,7 @@
 #include <chrono>
 #include <functional>
 #include <list>
+
 template<typename T>
 class packet_send_queue : public packet_send_interface<T> {
 public:
@@ -40,6 +41,8 @@ private:
     using iterator = typename std::list<packet_pointer>::iterator;
 
 public:
+    explicit packet_send_queue(asio::io_context &context) : context(context) {}
+
     void set_current_sequence(uint32_t seq) override {
         this->cur_seq = seq;
     }
@@ -70,15 +73,10 @@ public:
             _allocated_bytes -= front->pkt->size();
             on_drop_packet(front->seq, front->seq);
         }
-
-        auto pkt = std::make_shared<packet<T>>();
-        pkt->seq = get_next_sequence();
-        pkt->submit_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        pkt->pkt = t;
-        /// 增加总字节数目
-        _allocated_bytes += t->size();
+        auto pkt = insert_packet(t);
+        /// 尝试直接发送数据
         on_packet(pkt);
-        _pkt_cache.emplace_back(pkt);
+        /// 放入lost queue
         drop_packet();
         return static_cast<int>(t->size());
     }
@@ -155,6 +153,24 @@ public:
     void update_flow_window(uint32_t) override {}
 
 protected:
+    asio::io_context& get_context(){
+        return context;
+    }
+
+    packet_pointer insert_packet(const T &t, uint64_t submit_time = 0) {
+        auto pkt = std::make_shared<packet<T>>();
+        pkt->seq = get_next_sequence();
+        if (submit_time == 0)
+            pkt->submit_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        else
+            pkt->submit_time = submit_time;
+        pkt->pkt = t;
+        /// 增加总字节数目
+        _allocated_bytes += pkt->pkt->size();
+        _pkt_cache.emplace_back(pkt);
+        return pkt;
+    }
+
     inline uint32_t get_next_sequence() {
         auto seq = cur_seq;
         cur_seq = (cur_seq + 1) % packet_interface<T>::get_max_sequence();
@@ -217,6 +233,7 @@ protected:
     uint32_t cur_seq = 0;
     std::list<packet_pointer> _pkt_cache;
     uint64_t _allocated_bytes = 0;
+    asio::io_context &context;
 };
 
 
