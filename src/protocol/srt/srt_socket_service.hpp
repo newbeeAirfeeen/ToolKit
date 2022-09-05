@@ -175,9 +175,7 @@ namespace srt {
         /// 接收队列
         std::shared_ptr<packet_receive_interface<std::shared_ptr<buffer>>> _receive_queue;
 
-        std::shared_ptr<packet_receive_rate> _packet_receive_rate_;
-        std::shared_ptr<estimated_link_capacity> _estimated_link_capacity_;
-        std::shared_ptr<receive_rate> _receive_rate_;
+        std::shared_ptr<packet_calculate_window<16, 64>> _packet_receive_rate_;
         //// ack
         ack_entry _ack_entry;
         srt_ack_queue _ack_queue_;

@@ -354,9 +354,7 @@ namespace srt {
         /// 开启keepalive
         do_keepalive();
         /// 创建
-        _packet_receive_rate_ = std::make_shared<packet_receive_rate>(connect_point);
-        _estimated_link_capacity_ = std::make_shared<estimated_link_capacity>(connect_point);
-        _receive_rate_ = std::make_shared<receive_rate>(connect_point);
+        _packet_receive_rate_ = std::make_shared<packet_calculate_window<16, 64>>();
         common_timer->add_expired_from_now(srt_socket_service::max_receive_time_out, receive_timeout);
         /// 成功连接
         on_connected();
@@ -435,7 +433,7 @@ namespace srt {
         auto rto = _ack_queue_.get_rto();
         auto rtt_var = _ack_queue_.get_rtt_var();
         auto now = std::chrono::steady_clock::now();
-
+        auto receive_rate = _packet_receive_rate_->get_pkt_receive_rate();
         buff->reserve(28);
         /// last acknowledged packet seq
         buff->put_be<uint32_t>(seq);
@@ -446,11 +444,11 @@ namespace srt {
         /// capacity
         buff->put_be<uint32_t>(_receive_queue->capacity());
         /// packet receive rate
-        buff->put_be<uint32_t>(_packet_receive_rate_->get_packet_receive_rate());
+        buff->put_be<uint32_t>(receive_rate.pkt_per_sec);
         /// estimated link capacity
-        buff->put_be<uint32_t>(_estimated_link_capacity_->get_estimated_link_capacity());
+        buff->put_be<uint32_t>(_packet_receive_rate_->get_bandwidth());
         /// receiving rate
-        buff->put_be<uint32_t>(_receive_rate_->get_receive_rate());
+        buff->put_be<uint32_t>(receive_rate.bytes_per_sec);
         srt_packet pkt;
         pkt.set_control_type(ack);
         pkt.set_type_information(ack_number);
@@ -826,11 +824,8 @@ namespace srt {
         /// 更新上一次收到的时间
         last_receive_point = std::chrono::steady_clock::now();
         if (_packet_receive_rate_)
-            _packet_receive_rate_->input_packet(last_receive_point);
-        if (_estimated_link_capacity_)
-            _estimated_link_capacity_->input_packet(last_receive_point);
-        if (_receive_rate_)
-            _receive_rate_->input_packet(last_receive_point, buff->size());
+            _packet_receive_rate_->update_receive_rate(buff->size() + 16);
+
         if (srt_pkt->get_control()) {
             return handle_control(srt_pkt, buff);
         }
@@ -865,6 +860,8 @@ namespace srt {
     void srt_socket_service::handle_data(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff) {
         /// 统计数据
         /// 丢入接收队列
+        if (_packet_receive_rate_)
+            _packet_receive_rate_->update_estimated_capacity(pkt->get_packet_sequence_number(), buff->size() + 16, pkt->get_in_order() || pkt->is_retransmitted());
         _receive_queue->input_packet(buff, pkt->get_packet_sequence_number(), pkt->get_time_stamp());
         if (srt_socket_base::report_nak && !report_nak_begin) {
             do_nak();
