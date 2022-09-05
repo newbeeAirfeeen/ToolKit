@@ -34,7 +34,7 @@ template<typename T>
 struct packet {
     uint32_t seq = 0;
     uint64_t submit_time = 0;
-    bool is_retransmit = false;
+    uint16_t retransmit_count = 1;
     T pkt;
 };
 
@@ -90,7 +90,7 @@ public:
     virtual void on_packet(const packet_pointer &p) = 0;
     virtual void on_drop_packet(uint32_t begin, uint32_t end) = 0;
     virtual void start() {}
-    virtual void on_size_is_full(bool, uint32_t) = 0;
+    virtual void on_size_changed(bool, uint32_t) = 0;
     virtual uint64_t get_allocated_bytes() = 0;
     void set_on_packet(const std::function<void(const packet_pointer &)> &f) {
         if (f) {
@@ -105,6 +105,20 @@ public:
     }
 
 protected:
+    /// start = receive, end = send
+    uint32_t sequence_diff(uint32_t start, uint32_t end) {
+        uint32_t diff = 0;
+        if (start <= end) {
+            diff = end - start;
+        } else {
+            diff = start - end;
+            if (diff >= (packet_interface<T>::get_max_sequence() >> 1)) {
+                diff = packet_interface<T>::get_max_sequence() - diff;
+            }
+        }
+        return diff;
+    }
+
     virtual bool is_cycle() const {
         if (!get_buffer_size()) {
             return false;
@@ -155,7 +169,9 @@ public:
 public:
     virtual void send_again(uint32_t begin, uint32_t end) = 0;
     virtual void ack_sequence_to(uint32_t seq) = 0;
-    void on_size_is_full(bool, uint32_t) override = 0;
+    virtual void update_flow_window(uint32_t) = 0;
+    void on_size_changed(bool, uint32_t) override = 0;
+
 protected:
     std::shared_ptr<bandwidth_mode> _mode;
 };
@@ -166,7 +182,7 @@ public:
     ~packet_receive_interface() override = default;
     virtual uint32_t get_expected_size() const = 0;
     virtual std::vector<std::pair<uint32_t, uint32_t>> get_pending_packets() const = 0;
-    void on_size_is_full(bool, uint32_t) override{}
+    void on_size_changed(bool, uint32_t) override {}
 };
 
 

@@ -27,7 +27,7 @@ void io_context::run() {
         try {
             asio::executor_work_guard<typename asio::io_context::executor_type> guard(_context.get_executor());
             _context.run();
-        } catch (const thread_exit_exception &) { break; } catch (const std::exception&) {
+        } catch (const thread_exit_exception &) { break; } catch (const std::exception &) {
         }
     }
 }
@@ -35,7 +35,7 @@ void io_context::run() {
 io_pool::io_pool() {
     _pool_.reset(new std::list<std::shared_ptr<io_context>>());
     auto size = std::thread::hardware_concurrency() / 4;
-    if(size <= 0) size = 1;
+    if (size <= 0) size = 1;
     for (decltype(size) i = 0; i < size; i++) {
         _pool_->emplace_back(std::make_shared<io_context>());
     }

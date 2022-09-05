@@ -30,7 +30,7 @@
 #include <functional>
 #include <mutex>
 #include <string>
-
+#include <tuple>
 #include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
@@ -45,7 +45,7 @@ namespace srt {
     public:
         using time_point = typename std::chrono::steady_clock::time_point;
         using packet_pointer = typename packet_interface<std::shared_ptr<buffer>>::packet_pointer;
-
+        using ack_entry = std::tuple<uint32_t, uint32_t, time_point>; /// ack number + counts
     public:
         explicit srt_socket_service(asio::io_context &executor);
         ~srt_socket_service() override = default;
@@ -167,8 +167,6 @@ namespace srt {
         time_point last_send_point;
         /// 上一次接收数据的时间
         time_point last_receive_point;
-        /// 上一次接收ack的时间
-        time_point last_ack_response;
         /// 是否已经建立连接
         std::atomic<bool> _is_open{false};
         std::atomic<bool> _is_connected{false};
@@ -180,7 +178,11 @@ namespace srt {
         std::shared_ptr<packet_receive_rate> _packet_receive_rate_;
         std::shared_ptr<estimated_link_capacity> _estimated_link_capacity_;
         std::shared_ptr<receive_rate> _receive_rate_;
+        //// ack
+        ack_entry _ack_entry;
         srt_ack_queue _ack_queue_;
+        /// 上一次接收ack的时间
+        time_point last_ack_response;
     };
 };// namespace srt
 

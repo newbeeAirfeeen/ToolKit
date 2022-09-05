@@ -100,7 +100,7 @@ public:
             this->_allocated_bytes -= p->pkt->size();
         });
         _pkt_cache.erase(pair.first, pair.second);
-        on_size_is_full(false, _pkt_cache.size());
+        on_size_changed(false, _pkt_cache.size());
         Trace("after drop, packet cache have size={}", _pkt_cache.size());
     }
 
@@ -118,7 +118,7 @@ public:
         Debug("send again {}-{}", begin, end);
         while (pair.first != pair.second) {
             /// 设置为重传
-            (*pair.first)->is_retransmit = true;
+            ++((*pair.first)->retransmit_count);
             on_packet(*pair.first);
             ++pair.first;
         }
@@ -136,7 +136,7 @@ public:
             _allocated_bytes -= element->pkt->size();
             _pkt_cache.pop_front();
         }
-        on_size_is_full(false, _pkt_cache.size());
+        on_size_changed(false, _pkt_cache.size());
     }
 
     void on_packet(const packet_pointer &p) override {
@@ -151,7 +151,8 @@ public:
         return this->_allocated_bytes;
     }
 
-    void on_size_is_full(bool, uint32_t) override {}
+    void on_size_changed(bool, uint32_t) override {}
+    void update_flow_window(uint32_t) override {}
 
 protected:
     inline uint32_t get_next_sequence() {
@@ -176,7 +177,7 @@ protected:
             return;
         }
         Trace("drop packet {}-{}", begin, end);
-        on_size_is_full(false, _pkt_cache.size());
+        on_size_changed(false, _pkt_cache.size());
         on_drop_packet((uint32_t) begin, (uint32_t) end);
     }
 

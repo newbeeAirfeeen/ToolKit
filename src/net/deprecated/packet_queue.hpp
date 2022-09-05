@@ -27,9 +27,9 @@
 #define TOOLKIT_PACKET_QUEUE_HPP
 #include "net/buffer.hpp"
 #include "sliding_window.hpp"
-#include "packet_interface.hpp"
-#include "packet_send_queue.hpp"
-#include "packet_receive_queue.hpp"
+#include "protocol/srt/packet_interface.hpp"
+#include "protocol/srt/packet_send_queue.hpp"
+#include "protocol/srt/packet_receive_queue.hpp"
 template<typename T>
 class packet_queue : public sliding_window<T> {
 public:

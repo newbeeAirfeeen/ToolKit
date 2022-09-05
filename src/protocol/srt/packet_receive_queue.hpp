@@ -89,22 +89,10 @@ public:
             _cur_seq = (_cur_seq + 1) % packet_interface<T>::get_max_sequence();
         }
 
-        uint32_t diff = 0;
-        if (_cur_seq <= seq) {
-            diff = seq - _cur_seq;
-            if (diff >= _pkt_buf.size()) {
-                Debug("too new packet seq, current seq={}, seq={}, diff={}", _cur_seq, seq, diff);
-                return -1;
-            }
-        } else {
-            diff = _cur_seq - seq;
-            if (diff >= (packet_interface<T>::get_max_sequence() >> 1)) {
-                diff = packet_interface<T>::get_max_sequence() - diff;
-                if (diff >= _pkt_buf.size()) {
-                    Debug("cycle packet too new packet seq, current seq={}, seq={}, diff={}", _cur_seq, seq, diff);
-                    return -1;
-                }
-            }
+        uint32_t diff = packet_interface<T>::sequence_diff(_cur_seq, seq);
+        if (diff >= _pkt_buf.size()) {
+            Debug("cycle packet too new packet seq, current seq={}, seq={}, diff={}", _cur_seq, seq, diff);
+            return -1;
         }
 
         auto pos = (_start + diff) % _pkt_buf.size();

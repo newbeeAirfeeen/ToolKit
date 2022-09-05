@@ -66,9 +66,13 @@ public:
     }
 
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
-        auto size = _size.load();
-        if (size <= 0 || this->capacity() <= 0) {
-            Warn("temporary cache is full, which temporary cache size={}, window capacity={}", size, this->get_buffer_size());
+        /// 更新输入率
+        /// Trace("input packet to bandwidth, size={}", t->size());
+        packet_send_interface<T>::get_bandwidth_mode()->input_packet(t->size());
+
+        auto size = _size.load(std::memory_order_relaxed);
+        if (wait_capacity() || size <= 0) {
+            Trace("window temporary size={}, wait it...", size);
             return 0;
         }
         {
@@ -81,6 +85,7 @@ public:
             }
             _is_commit = true;
         }
+
         /// 如果比较成功，说明在进程中..
         std::weak_ptr<packet_limited_send_rate_queue<T>> self(base_type::shared_from_this());
         context.post([self]() {
@@ -101,13 +106,14 @@ public:
 
     void ack_sequence_to(uint32_t seq) override {
         packet_send_queue<T>::ack_sequence_to(seq);
-        auto average_size = this->get_allocated_bytes() / this->get_buffer_size();
-        update_avg_payload(average_size == 0 ? 1456 : average_size);
+        _last_ack_number = seq;
+        // auto average_size = this->get_allocated_bytes() / this->get_buffer_size();
+        // update_avg_payload(average_size == 0 ? 1456 : average_size);
         update_snd_period();
     }
 
 
-    void on_size_is_full(bool full, uint32_t size) override {
+    void on_size_changed(bool full, uint32_t size) override {
         if (full || size >= this->get_window_size()) {
             Trace("window is full, wait not full to recover");
             return;
@@ -117,12 +123,17 @@ public:
         if (!_buffer_cache.empty() && !_is_commit) {
             timer->add_expired_from_now(0, 1);
         }
+        _is_commit = true;
+    }
+
+    void update_flow_window(uint32_t cwnd) override {
+        flow_window = cwnd;
+        Trace("update flow window, peer cwnd={}, current window size={}", flow_window, this->get_window_size());
     }
 
 private:
     void on_timer(const int &v) {
-        if (packet_interface<T>::capacity() <= 0) {
-            Trace("window is full, wait it..");
+        if (wait_capacity()) {
             return;
         }
 
@@ -146,6 +157,7 @@ private:
         pkt.set_socket_id(_sock_id);
         auto pkt_buf = create_packet(pkt);
         pkt_buf->append(t->data(), t->size());
+        update_avg_payload(t->size());
         auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         if (!_last_send_point) {
             _last_send_point = now;
@@ -154,6 +166,7 @@ private:
         pkt_buffer->seq = this->get_next_sequence();
         pkt_buffer->submit_time = now / 1e6;
         pkt_buffer->pkt = pkt_buf;
+
         /// 尝试发送数据
         packet_send_queue<T>::on_packet(pkt_buffer);
         this->_pkt_cache.emplace_back(pkt_buffer);
@@ -175,6 +188,17 @@ private:
     }
 
 private:
+    inline bool wait_capacity() {
+        /// 如果窗口的容量 和 发送
+        auto cwnd = std::min(flow_window, this->get_window_size());
+        auto diff = packet_interface<T>::sequence_diff(_last_ack_number, this->get_current_sequence());
+        if (this->capacity() <= 0 || diff >= cwnd) {
+            Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}", cwnd, diff, flow_window, this->capacity());
+            return true;
+        }
+        return false;
+    }
+
     inline uint32_t get_next_packet_message_number() {
         auto tmp = message_number;
         message_number = (message_number + 1) % 0x3FFFFFF;
@@ -210,6 +234,8 @@ private:
     std::chrono::steady_clock::time_point _conn;
     /// 上一次发送包的序号
     uint32_t message_number = 1;
+    uint32_t flow_window = 0;
+    uint32_t _last_ack_number = 0;
     uint64_t _last_send_point = 0;
 };
 

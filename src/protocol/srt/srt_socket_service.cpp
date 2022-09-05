@@ -258,7 +258,7 @@ namespace srt {
         if (occur_error || !type) {
             return;
         }
-        if (type->is_retransmit) {
+        if (type->retransmit_count > 1) {
             set_retransmit(true, type->pkt);
         }
         return send_in(type->pkt, get_remote_endpoint());
@@ -327,6 +327,9 @@ namespace srt {
         _sender_queue->set_current_sequence(_handshake_context->_sequence_number);
         _sender_queue->set_max_sequence(packet_max_seq);
         _sender_queue->set_window_size(_handshake_context->_window_size);
+        _sender_queue->update_flow_window(_handshake_context->_window_size);
+        _sender_queue->ack_sequence_to(_handshake_context->_sequence_number);
+
         _receive_queue->set_current_sequence(_handshake_context->_sequence_number);
         _receive_queue->set_max_sequence(packet_max_seq);
         _receive_queue->set_window_size(_handshake_context->_window_size);
@@ -428,13 +431,18 @@ namespace srt {
 
     void srt_socket_service::do_ack_in() {
         auto buff = std::make_shared<buffer>();
+        auto seq = _receive_queue->get_current_sequence();
+        auto rto = _ack_queue_.get_rto();
+        auto rtt_var = _ack_queue_.get_rtt_var();
+        auto now = std::chrono::steady_clock::now();
+
         buff->reserve(28);
         /// last acknowledged packet seq
-        buff->put_be<uint32_t>(_receive_queue->get_current_sequence());
+        buff->put_be<uint32_t>(seq);
         /// rtt
-        buff->put_be<uint32_t>(_ack_queue_.get_rto());
+        buff->put_be<uint32_t>(rto);
         /// rtt variance
-        buff->put_be<uint32_t>(_ack_queue_.get_rtt_var());
+        buff->put_be<uint32_t>(rtt_var);
         /// capacity
         buff->put_be<uint32_t>(_receive_queue->capacity());
         /// packet receive rate
@@ -446,7 +454,7 @@ namespace srt {
         srt_packet pkt;
         pkt.set_control_type(ack);
         pkt.set_type_information(ack_number);
-        pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
+        pkt.set_timestamp(std::chrono::duration_cast<std::chrono::microseconds>(now - connect_point).count());
         pkt.set_socket_id(get_sock_id());
         /// 添加到ack队列中
         _ack_queue_.add_ack(ack_number);
@@ -454,11 +462,28 @@ namespace srt {
         auto pkt_buff = create_packet(pkt);
         pkt_buff->append(buff->data(), buff->size());
         send_in(pkt_buff, get_remote_endpoint());
-        if (_receive_queue->get_expected_size() == _receive_queue->get_buffer_size()) {
-            ack_begin = false;
-        } else {
-            common_timer->add_expired_from_now(10, ack_expired);
+        auto expected_size = _receive_queue->get_expected_size();
+
+        if (seq != std::get<0>(_ack_entry)) {
+            _ack_entry = std::make_tuple(seq, 0, std::chrono::steady_clock::now());
         }
+        ++std::get<1>(_ack_entry);
+
+        if (expected_size == _receive_queue->get_buffer_size()) {
+            Trace("receive queue expected size={}, buffer size={}", expected_size, _receive_queue->get_buffer_size());
+            ack_begin = false;
+            return;
+        }
+        /// micro
+        auto transmit_count = std::get<1>(_ack_entry);
+        auto RTO = transmit_count * (rto + 4 * rtt_var + 20000) + 10000;
+        auto spend = std::chrono::duration_cast<std::chrono::microseconds>(now - std::get<2>(_ack_entry)).count();
+        if (transmit_count >= 3 && spend >= RTO) {
+            Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us, transmit_count={}", RTO, spend, transmit_count);
+            _receive_queue->clear();
+            return;
+        }
+        common_timer->add_expired_from_now(10, ack_expired);
     }
 
     void srt_socket_service::do_ack_ack(uint32_t ack_number) {
@@ -907,6 +932,7 @@ namespace srt {
             /// 更新rtt rtt_variance.
             Trace("update rtt={}, rtt_variance={}, peer available buffer size={}", _rtt, _rtt_variance, _available_buffer_size);
             _ack_queue_.set_rtt(_rtt, _rtt_variance);
+            _sender_queue->update_flow_window(_available_buffer_size);
         }
         /// 滑动序号
         _sender_queue->ack_sequence_to(_last_ack_packet_seq);
