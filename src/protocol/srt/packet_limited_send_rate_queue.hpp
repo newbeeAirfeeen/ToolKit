@@ -126,8 +126,8 @@ public:
         std::lock_guard<std::recursive_mutex> lmtx(mtx);
         if (!_buffer_cache.empty() && !_is_commit) {
             timer->add_expired_from_now(0, 1);
+            _is_commit = true;
         }
-        _is_commit = true;
     }
 
     void update_flow_window(uint32_t cwnd) override {
