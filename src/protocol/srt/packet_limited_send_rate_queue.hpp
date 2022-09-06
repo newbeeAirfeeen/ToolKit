@@ -146,7 +146,7 @@ public:
         _size.store(this->get_window_size());
     }
 
-    void rexmit_packet(const packet_pointer& p){
+    void rexmit_packet(const packet_pointer& p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
         packet_send_queue<T>::rexmit_packet(p);
     }

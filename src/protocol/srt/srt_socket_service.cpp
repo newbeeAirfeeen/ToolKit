@@ -270,7 +270,7 @@ namespace srt {
         if (perform_error) {
             return;
         }
-        Info("drop packet {}-{}", begin, end);
+        Debug("drop packet {}-{}", begin, end);
         /// 需要发送 message drop request
         return do_drop_request(begin, end);
     }

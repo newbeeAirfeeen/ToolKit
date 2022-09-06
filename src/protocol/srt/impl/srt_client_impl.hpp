@@ -85,13 +85,14 @@ namespace srt {
     protected:
         void onRecv(const std::shared_ptr<buffer> &buff) override {
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
-            asio::post(get_thread_pool(), [buff, self]() {
+            auto buf = std::make_shared<buffer>(buff->data(), buff->size());
+            asio::post(get_thread_pool(), [buf, self]() {
                 if (auto stronger_self = self.lock()) {
                     std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
                     if (!stronger_self->receive_func) {
                         return;
                     }
-                    return stronger_self->receive_func(buff);
+                    return stronger_self->receive_func(buf);
                 }
             });
         }

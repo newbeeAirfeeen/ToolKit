@@ -274,7 +274,7 @@ protected:
 
         auto iter = find_packet_by_sequence(v, v);
         if (iter.first == _pkt_cache.end()) {
-            Warn("the packet is missing, seq={}", v);
+            Debug("the packet is missing, seq={}", v);
             return;
         }
         const auto &pkt_pointer = (*iter.first);

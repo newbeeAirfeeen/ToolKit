@@ -23,7 +23,7 @@ protected:
 int main() {
 
 
-    logger::initialize("logs/test_srt_server.log", spdlog::level::trace);
+    logger::initialize("logs/test_srt_server.log", spdlog::level::info);
 
     asio::io_context context;
     asio::executor_work_guard<typename asio::io_context::executor_type> guard(context.get_executor());
