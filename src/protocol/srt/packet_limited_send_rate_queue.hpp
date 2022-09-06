@@ -43,9 +43,10 @@ private:
 public:
     packet_limited_send_rate_queue(asio::io_context &io_context,
                                    const std::shared_ptr<srt::srt_ack_queue> &ack,
+                                   bool enable_retransmit,
                                    uint32_t sock_id,
                                    const std::chrono::steady_clock::time_point &t,
-                                   uint16_t payload = 1456) : packet_send_queue<T>(io_context, ack), _size(0) {
+                                   uint16_t payload = 1456) : packet_send_queue<T>(io_context, ack, enable_retransmit), _size(0) {
         Trace("create limited send queue, payload={}", payload);
         timer = create_deadline_timer<int, duration_type>(io_context);
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
@@ -106,6 +107,7 @@ public:
     /// update the value of average packet payload size (AvgPayloadSize):
     void on_packet(const packet_pointer &p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
+        packet_send_queue<T>::on_packet(p);
     }
 
     void ack_sequence_to(uint32_t seq) override {
@@ -144,6 +146,10 @@ public:
         _size.store(this->get_window_size());
     }
 
+    void rexmit_packet(const packet_pointer& p){
+        update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
+        packet_send_queue<T>::rexmit_packet(p);
+    }
 private:
     void on_timer(const int &v) {
         if (wait_capacity()) {

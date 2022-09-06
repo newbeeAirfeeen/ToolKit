@@ -41,7 +41,7 @@ private:
     using iterator = typename std::list<packet_pointer>::iterator;
 
 public:
-    packet_send_queue(asio::io_context &context, const std::shared_ptr<srt::srt_ack_queue> &ack_queue) : context(context), _ack_queue(ack_queue) {
+    packet_send_queue(asio::io_context &context, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true) : context(context), _ack_queue(ack_queue), enable_nak(enable_nak) {
         retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(context);
     }
 
@@ -153,12 +153,19 @@ public:
         return packet_interface<T>::_on_packet_func_(p);
     }
 
+
     void on_drop_packet(uint32_t begin, uint32_t end) override {
         return packet_interface<T>::_on_drop_packet_func_(begin, end);
     }
 
     uint64_t get_allocated_bytes() override {
         return this->_allocated_bytes;
+    }
+
+    virtual void rexmit_packet(const packet_pointer &p) {
+        if (!enable_nak) {
+            return on_packet(p);
+        }
     }
 
     void on_size_changed(bool, uint32_t) override {}
@@ -285,7 +292,7 @@ protected:
 
         //// 重传数据包
         ++pkt_pointer->retransmit_count;
-        on_packet(pkt_pointer);
+        rexmit_packet(pkt_pointer);
         /// 更新下一次重传的时间
         update_retransmit_timer(pkt_pointer->seq, pkt_pointer->retransmit_count);
     }
@@ -297,6 +304,7 @@ protected:
     std::shared_ptr<deadline_timer<uint32_t, std::chrono::microseconds>> retransmit_timer;
     std::shared_ptr<srt::srt_ack_queue> _ack_queue;
     asio::io_context &context;
+    bool enable_nak = true;
 };
 
 
