@@ -72,7 +72,7 @@ public:
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
         /// 更新输入率
         /// Trace("input packet to bandwidth, size={}", t->size());
-        packet_send_interface<T>::get_bandwidth_mode()->input_packet((uint16_t)t->size());
+        packet_send_interface<T>::get_bandwidth_mode()->input_packet((uint16_t) t->size());
 
         auto size = _size.load(std::memory_order_relaxed);
         if (wait_capacity() || size <= 0) {
@@ -135,6 +135,15 @@ public:
         Trace("update flow window, peer cwnd={}, current window size={}", flow_window, this->get_window_size());
     }
 
+    void clear() override {
+        packet_send_queue<T>::clear();
+        timer->stop();
+        std::lock_guard<std::recursive_mutex> lmtx(mtx);
+        _buffer_cache.clear();
+        _is_commit = false;
+        _size.store(this->get_window_size());
+    }
+
 private:
     void on_timer(const int &v) {
         if (wait_capacity()) {
@@ -164,7 +173,7 @@ private:
         auto pkt_buf = create_packet(pkt);
 
         pkt_buf->append(t->data(), t->size());
-        update_avg_payload((uint16_t)t->size());
+        update_avg_payload((uint16_t) t->size());
         auto now_nano = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
         if (!_last_send_point) {
             _last_send_point = now_nano;

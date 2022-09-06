@@ -369,6 +369,8 @@ namespace srt {
         common_timer->stop();
         keep_alive_timer->stop();
         _is_connected.store(false);
+        if(_sender_queue)_sender_queue->clear();
+        if(_receive_queue)_receive_queue->clear();
         if (!occur_error) {
             occur_error = true;
             Trace("there is something error, occur_error={}", occur_error);

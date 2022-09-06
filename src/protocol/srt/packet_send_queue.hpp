@@ -109,11 +109,12 @@ public:
             this->_allocated_bytes -= p->pkt->size();
         });
         _pkt_cache.erase(pair.first, pair.second);
-        on_size_changed(false, (uint32_t)_pkt_cache.size());
+        on_size_changed(false, (uint32_t) _pkt_cache.size());
         Trace("after drop, packet cache have size={}", _pkt_cache.size());
     }
 
     void clear() override {
+        retransmit_timer->stop();
         _pkt_cache.clear();
         _allocated_bytes = 0;
     }
@@ -145,7 +146,7 @@ public:
             _allocated_bytes -= element->pkt->size();
             _pkt_cache.pop_front();
         }
-        on_size_changed(false, (uint32_t)_pkt_cache.size());
+        on_size_changed(false, (uint32_t) _pkt_cache.size());
     }
 
     void on_packet(const packet_pointer &p) override {
@@ -205,7 +206,7 @@ protected:
             return;
         }
         Trace("drop packet {}-{}", begin, end);
-        on_size_changed(false, (uint32_t)_pkt_cache.size());
+        on_size_changed(false, (uint32_t) _pkt_cache.size());
         on_drop_packet((uint32_t) begin, (uint32_t) end);
     }
 
@@ -277,7 +278,7 @@ protected:
             Trace("pkt retransmit time out, drop it, latency={}", latency);
             on_drop_packet(pkt_pointer->seq, pkt_pointer->seq);
             _pkt_cache.erase(iter.first);
-            on_size_changed(false, (uint32_t)_pkt_cache.size());
+            on_size_changed(false, (uint32_t) _pkt_cache.size());
             return;
         }
 

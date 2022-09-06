@@ -188,7 +188,7 @@ public:
 
     void clear() override {
         _pkt_buf.clear();
-        _start = _end = _size = 0;
+        _start = _end = _size = bytes = 0;
         _pkt_buf.resize(packet_interface<T>::get_window_size());
     }
 
