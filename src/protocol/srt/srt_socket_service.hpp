@@ -157,7 +157,7 @@ namespace srt {
         int handshake_conclusion = 0;
         bool report_nak_begin = false;
         bool ack_begin = false;
-        bool occur_error = false;
+        bool perform_error = false;
         uint32_t ack_number = 1;
         std::function<void(const std::shared_ptr<buffer> &)> _next_func;
         std::function<void(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &)> _next_func_with_pkt;

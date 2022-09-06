@@ -127,6 +127,7 @@ namespace srt {
 
     void srt_socket_service::on_common_timer_expired(const int &val) {
         int v = val;
+        if (perform_error) return;
         switch (v) {
             /// 用于客户端握手
             case timer_expired_type::induction_expired:
@@ -256,7 +257,7 @@ namespace srt {
     }
 
     void srt_socket_service::on_sender_packet(const packet_pointer &type) {
-        if (occur_error || !type) {
+        if (perform_error || !type) {
             return;
         }
         if (type->retransmit_count > 1) {
@@ -266,7 +267,7 @@ namespace srt {
     }
     /// 发送缓冲区 主动丢包回调
     void srt_socket_service::on_sender_drop_packet(size_t begin, size_t end) {
-        if (occur_error) {
+        if (perform_error) {
             return;
         }
         Info("drop packet {}-{}", begin, end);
@@ -276,7 +277,7 @@ namespace srt {
 
 
     void srt_socket_service::on_receive_packet(const packet_pointer &type) {
-        if (occur_error) {
+        if (perform_error) {
             return;
         }
         return onRecv(type->pkt);
@@ -369,11 +370,11 @@ namespace srt {
         common_timer->stop();
         keep_alive_timer->stop();
         _is_connected.store(false);
-        if(_sender_queue)_sender_queue->clear();
-        if(_receive_queue)_receive_queue->clear();
-        if (!occur_error) {
-            occur_error = true;
-            Trace("there is something error, occur_error={}", occur_error);
+        if (_sender_queue) _sender_queue->clear();
+        if (_receive_queue) _receive_queue->clear();
+        if (!perform_error) {
+            perform_error = true;
+            Trace("there is something error, perform_error={}", perform_error);
             on_error(e);
         }
     }
@@ -456,7 +457,7 @@ namespace srt {
         srt_packet pkt;
         pkt.set_control_type(ack);
         pkt.set_type_information(ack_number);
-        pkt.set_timestamp((uint32_t)std::chrono::duration_cast<std::chrono::microseconds>(now - connect_point).count());
+        pkt.set_timestamp((uint32_t) std::chrono::duration_cast<std::chrono::microseconds>(now - connect_point).count());
         pkt.set_socket_id(get_sock_id());
         /// 添加到ack队列中
         _ack_queue_->add_ack(ack_number);
@@ -807,7 +808,7 @@ namespace srt {
     }
 
     void srt_socket_service::handle_receive_1(const std::shared_ptr<srt_packet> &srt_pkt, const std::shared_ptr<buffer> &buff) {
-        if (occur_error) {
+        if (perform_error) {
             return;
         }
 
@@ -819,7 +820,7 @@ namespace srt {
         /// 更新上一次收到的时间
         last_receive_point = std::chrono::steady_clock::now();
         if (_packet_receive_rate_)
-            _packet_receive_rate_->update_receive_rate((uint16_t)buff->size() + 16);
+            _packet_receive_rate_->update_receive_rate((uint16_t) buff->size() + 16);
 
         if (srt_pkt->get_control()) {
             return handle_control(srt_pkt, buff);
@@ -856,7 +857,7 @@ namespace srt {
         /// 统计数据
         /// 丢入接收队列
         if (_packet_receive_rate_)
-            _packet_receive_rate_->update_estimated_capacity(pkt->get_packet_sequence_number(), (uint16_t)buff->size() + 16, pkt->get_in_order() || pkt->is_retransmitted());
+            _packet_receive_rate_->update_estimated_capacity(pkt->get_packet_sequence_number(), (uint16_t) buff->size() + 16, pkt->get_in_order() || pkt->is_retransmitted());
         _receive_queue->input_packet(buff, pkt->get_packet_sequence_number(), pkt->get_time_stamp());
         if (srt_socket_base::report_nak && !report_nak_begin) {
             do_nak();
