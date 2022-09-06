@@ -294,6 +294,7 @@ namespace srt {
         ////
         buff->backward();
         auto *p = (uint32_t *) (buff->data() + 36);
+        /// conclusion error code
         set_be32(p, static_cast<uint32_t>(e));
         auto reject_buf = std::make_shared<buffer>(buff->data(), buff->size());
         send_in(reject_buf, get_remote_endpoint());
