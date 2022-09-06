@@ -76,6 +76,12 @@ public:
     }
 
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
+
+        if(_cur_seq > seq && !is_seq_cycle(seq, _cur_seq)){
+            Warn("too old packet seq, seq={}, current_seq={}, ignore it", seq, _cur_seq);
+            return 0;
+        }
+
         Trace("input packet, seq={}, time_point={}", seq, time_point);
         /// 窗口已经满了
         while (_size > 0 && _start == _end) {
@@ -95,7 +101,10 @@ public:
             return -1;
         }
 
+
+
         auto pos = (_start + diff) % _pkt_buf.size();
+        Trace("current seq={}, seq={}, sequence diff={}", _cur_seq, seq, diff);
         if (_pkt_buf[pos]) {
             Debug("same seq packet, ignore it, seq={}", _pkt_buf[pos]->seq);
             return -1;
