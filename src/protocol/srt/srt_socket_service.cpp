@@ -470,7 +470,7 @@ namespace srt {
         auto RTO = 3 * (rto + 4 * rtt_var + 20000) + 10000;
         auto spend = std::chrono::duration_cast<std::chrono::microseconds>(now - std::get<1>(_ack_entry)).count();
         if (spend > RTO) {
-            Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us, transmit_count={}", RTO, spend);
+            Trace("stop to receive data, time out of RTO, RTO={} us, spend={} us", RTO, spend);
             _receive_queue->clear();
             ack_begin = false;
             return;
