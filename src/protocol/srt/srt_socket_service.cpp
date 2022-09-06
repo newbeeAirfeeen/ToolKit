@@ -462,7 +462,6 @@ namespace srt {
         auto pkt_buff = create_packet(pkt);
         pkt_buff->append(buff->data(), buff->size());
         send_in(pkt_buff, get_remote_endpoint());
-        auto expected_size = _receive_queue->get_expected_size();
 
         if (seq != std::get<0>(_ack_entry)) {
             _ack_entry = std::make_tuple(seq, now);
