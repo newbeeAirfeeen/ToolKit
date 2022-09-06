@@ -893,6 +893,7 @@ namespace srt {
                 continue;
             }
             //// 说明是单个包
+            Trace("handle nak {}", seq_begin);
             _sender_queue->send_again(seq_begin, seq_begin);
         }
     }
