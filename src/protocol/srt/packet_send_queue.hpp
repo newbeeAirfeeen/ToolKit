@@ -247,7 +247,7 @@ protected:
         auto rtt_var = _ack_queue->get_rtt_var();
         auto RTO = counts * (rto + 4 * rtt_var + 20000) + 10000;
         /// 当前这个包的重传时间
-        Trace("set retransmit packet time, RTO={}", RTO);
+        Trace("seq {} set retransmit packet time, RTO={}, counts={}", seq, RTO, counts);
         retransmit_timer->add_expired_from_now(RTO, seq);
     }
 
