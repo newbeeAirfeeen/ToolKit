@@ -163,25 +163,24 @@ private:
         }
 
         auto now = std::chrono::steady_clock::now();
-
+        auto seq = this->get_next_sequence();
         srt::srt_packet pkt;
         pkt.set_control(false);
-        pkt.set_packet_sequence_number(this->get_next_sequence());
+        pkt.set_packet_sequence_number(seq);
         pkt.set_message_number(this->get_next_packet_message_number());
         pkt.set_timestamp(static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(now - _conn).count()));
         pkt.set_socket_id(_sock_id);
         auto pkt_buf = create_packet(pkt);
 
         pkt_buf->append(t->data(), t->size());
-        update_avg_payload((uint16_t) t->size());
         auto now_nano = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
         if (!_last_send_point) {
             _last_send_point = now_nano;
         }
 
-        auto p = packet_send_queue<T>::insert_packet(pkt_buf, this->get_current_sequence(), std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+        auto p = packet_send_queue<T>::insert_packet(pkt_buf, seq, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
         /// 尝试发送数据
-        packet_send_queue<T>::on_packet(p);
+        on_packet(p);
         this->drop_packet();
 
         auto internal = (now_nano - _last_send_point) / 1e3;
