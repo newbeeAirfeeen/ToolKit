@@ -277,6 +277,7 @@ protected:
         if (latency >= packet_interface<T>::get_max_delay()) {
             Trace("pkt retransmit time out, drop it, latency={}", latency);
             on_drop_packet(pkt_pointer->seq, pkt_pointer->seq);
+            _allocated_bytes -= (*iter.first)->pkt->size();
             _pkt_cache.erase(iter.first);
             on_size_changed(false, (uint32_t) _pkt_cache.size());
             return;
