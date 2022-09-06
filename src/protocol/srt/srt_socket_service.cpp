@@ -176,7 +176,7 @@ namespace srt {
 
     void srt_socket_service::on_keep_alive_expired(const int &v) {
         /// 如果没有连接 停止发送
-        if (!_is_connected.load(std::memory_order_relaxed)) {
+        if (!_is_connected.load(std::memory_order_relaxed) || perform_error) {
             return;
         }
 
