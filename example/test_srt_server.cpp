@@ -5,6 +5,20 @@
 #include <spdlog/logger.hpp>
 using namespace srt;
 
+class srt_echo_session : public srt_session {
+public:
+    srt_echo_session(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context) : srt_session(sock, context) {}
+    ~srt_echo_session() override = default;
+protected:
+    void onRecv(const std::shared_ptr<buffer> &ptr) override {
+        Info("recv: {}", ptr->data());
+        async_send("server msg", 10);
+    }
+    void onError(const std::error_code &e) override {
+        srt_session::onError(e);
+    }
+};
+
 
 int main() {
 
@@ -18,7 +32,7 @@ int main() {
 
     /// 设置创建session回调
     server->on_create_session([](const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context) -> std::shared_ptr<srt_session> {
-        return std::make_shared<srt_session>(sock, context);
+        return std::make_shared<srt_echo_session>(sock, context);
     });
 
     server->start(endpoint);
