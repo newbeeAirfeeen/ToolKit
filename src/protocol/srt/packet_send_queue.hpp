@@ -25,6 +25,7 @@
 
 #ifndef TOOLKIT_PACKET_SEND_QUEUE_HPP
 #define TOOLKIT_PACKET_SEND_QUEUE_HPP
+#include "event_poller.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_ack.hpp"
 #include "srt_bandwidth.hpp"
@@ -41,8 +42,8 @@ private:
     using iterator = typename std::list<packet_pointer>::iterator;
 
 public:
-    packet_send_queue(asio::io_context &context, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true) : context(context), _ack_queue(ack_queue), enable_nak(enable_nak) {
-        retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(context);
+    packet_send_queue(const event_poller::Ptr poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true) : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak) {
+        retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(poller->get_executor());
     }
 
     void set_current_sequence(uint32_t seq) override {
@@ -172,8 +173,8 @@ public:
     void update_flow_window(uint32_t) override {}
 
 protected:
-    asio::io_context &get_context() {
-        return context;
+    event_poller::Ptr get_poller() {
+        return poller;
     }
 
     packet_pointer insert_packet(const T &t, uint32_t seq, uint64_t submit_time = 0) {
@@ -303,7 +304,7 @@ protected:
     uint64_t _allocated_bytes = 0;
     std::shared_ptr<deadline_timer<uint32_t, std::chrono::microseconds>> retransmit_timer;
     std::shared_ptr<srt::srt_ack_queue> _ack_queue;
-    asio::io_context &context;
+    event_poller::Ptr poller;
     bool enable_nak = true;
 };
 

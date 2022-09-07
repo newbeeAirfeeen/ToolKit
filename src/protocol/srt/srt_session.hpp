@@ -25,6 +25,7 @@
 
 #ifndef TOOLKIT_SRT_SESSION_HPP
 #define TOOLKIT_SRT_SESSION_HPP
+#include "executor.hpp"
 #include "srt_socket_service.hpp"
 #include <memory>
 
@@ -34,7 +35,7 @@ namespace srt {
         friend class srt_server;
 
     public:
-        srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context);
+        srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, const event_poller::Ptr &context);
         ~srt_session() override;
 
     protected:
@@ -43,6 +44,7 @@ namespace srt {
         const asio::ip::udp::endpoint &get_local_endpoint() final;
         /// 统一数据接收接口
         void onRecv(const std::shared_ptr<buffer> &) override;
+        std::shared_ptr<executor> get_executor() const override;
         virtual void onError(const std::error_code &e);
 
     private:
@@ -63,6 +65,7 @@ namespace srt {
         asio::ip::udp::endpoint _remote;
         asio::ip::udp::endpoint _local;
         uint32_t cookie_ = 0;
+        std::shared_ptr<executor> executor_;
     };
 };// namespace srt
 

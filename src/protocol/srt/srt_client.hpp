@@ -36,7 +36,7 @@ namespace srt {
         class impl;
 
     public:
-        explicit srt_client(asio::io_context &poller, const endpoint_type &host = {asio::ip::udp::v4(), 12000});
+        explicit srt_client(const event_poller::Ptr &poller, const endpoint_type &host = {asio::ip::udp::v4(), 12000});
         void async_connect(const endpoint_type &remote, const std::function<void(const std::error_code &e)> &f);
         void set_on_error(const std::function<void(const std::error_code &)> &f);
         void set_on_receive(const std::function<void(const std::shared_ptr<buffer> &)> &f);

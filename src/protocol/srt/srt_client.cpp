@@ -26,7 +26,7 @@
 
 namespace srt {
 
-    srt_client::srt_client(asio::io_context &poller, const endpoint_type &host) {
+    srt_client::srt_client(const event_poller::Ptr& poller, const endpoint_type &host) {
         _impl = std::make_shared<srt_client::impl>(poller, host);
         _impl->begin();
     }

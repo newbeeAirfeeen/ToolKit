@@ -48,13 +48,13 @@ namespace srt {
         ack_expired,
     };
 
-    srt_socket_service::srt_socket_service(asio::io_context &executor) : poller(executor) {
+    srt_socket_service::srt_socket_service(const event_poller::Ptr &poller) : poller(poller) {
         _ack_queue_ = std::make_shared<srt::srt_ack_queue>();
     }
 
     void srt_socket_service::begin() {
         Debug("init common timer..");
-        common_timer = create_deadline_timer<int>(poller);
+        common_timer = create_deadline_timer<int>(poller->get_executor());
         std::weak_ptr<srt_socket_service> self(shared_from_this());
         common_timer->set_on_expired([self](const int &v) {
             auto stronger_self = self.lock();
@@ -63,7 +63,7 @@ namespace srt {
             }
         });
         Trace("init keep alive timer...");
-        keep_alive_timer = create_deadline_timer<int>(poller);
+        keep_alive_timer = create_deadline_timer<int>(poller->get_executor());
         keep_alive_timer->set_on_expired([self](const int &v) {
             auto stronger_self = self.lock();
             if (!stronger_self)
@@ -76,7 +76,7 @@ namespace srt {
         return 0;
     }
 
-    asio::io_context &srt_socket_service::get_poller() {
+    event_poller::Ptr srt_socket_service::get_poller() {
         return this->poller;
     }
 
@@ -280,7 +280,14 @@ namespace srt {
         if (perform_error) {
             return;
         }
-        return onRecv(type->pkt);
+        std::weak_ptr<srt_socket_service> self(shared_from_this());
+        auto buff = std::make_shared<buffer>(type->pkt->data(), type->pkt->size());
+        auto executor = get_executor();
+        return executor->async([self, buff]() {
+            if (auto stronger_self = self.lock()) {
+                stronger_self->onRecv(buff);
+            }
+        });
     }
 
     void srt_socket_service::on_receive_drop_packet(size_t begin, size_t end) {
@@ -371,12 +378,21 @@ namespace srt {
         common_timer->stop();
         keep_alive_timer->stop();
         _is_connected.store(false);
-        if (_sender_queue) _sender_queue->clear();
-        if (_receive_queue) _receive_queue->clear();
+        if (_sender_queue)
+            _sender_queue->clear();
+        if (_receive_queue)
+            _receive_queue->clear();
+
         if (!perform_error) {
             perform_error = true;
             Trace("there is something error, perform_error={}", perform_error);
-            on_error(e);
+            auto executor = get_executor();
+            std::weak_ptr<srt_socket_service> self(shared_from_this());
+            return executor->async([self, e]() {
+                if (auto stronger_self = self.lock()) {
+                    return stronger_self->on_error(e);
+                }
+            });
         }
     }
 

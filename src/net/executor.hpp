@@ -1,6 +1,6 @@
 ﻿/*
-* @file_name: EventPollerPool.hpp
-* @date: 2022/04/04
+* @file_name: executor.hpp
+* @date: 2022/09/07
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
 *
@@ -22,49 +22,48 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#ifndef TOOLKIT_EVENT_POLLER_POOL_HPP
-#define TOOLKIT_EVENT_POLLER_POOL_HPP
-#include <vector>
-#include "Util/nocopyable.hpp"
+
+#ifndef TOOLKIT_TASK_EXECUTOR_HPP
+#define TOOLKIT_TASK_EXECUTOR_HPP
+#include <atomic>
+#include <condition_variable>
+#include <list>
+#include <memory>
+#include <mutex>
 #include <thread>
-#include "event_poller.hpp"
-class event_poller_pool : public noncopyable{
+class executor : public std::enable_shared_from_this<executor> {
 public:
-    ~event_poller_pool();
-public:
-    static event_poller_pool& Instance();
-public:
-    const event_poller::Ptr& get_poller(bool current_thread = true);
-    /*!
-     * 当前线程的数量
-     */
-    size_t size() const;
-    /*!
-     * 广播所有线程执行任务
-     * @tparam Func 可执行函数对象
-     * @tparam Args 任意个数的参数
-     * @param f
-     * @param args
-     */
-    template<typename Func, typename...Args>
-    void for_each(Func&& f, Args&&...args){
-        auto func = std::bind(f, std::forward<Args>(args)...);
-        for(auto& poller : poller_pool){
-            poller->template async(func);
+    ~executor();
+    const std::thread::id &get_thread_id() const;
+
+    template<typename FUNC, typename... Args>
+    auto async(FUNC &&F, Args &&...args) -> void {
+        auto id = std::this_thread::get_id();
+        if (id == _id) {
+            F(std::forward<Args>(args)...);
+            return;
         }
+
+        auto func = std::bind(F, std::forward<Args>(args)...);
+        std::lock_guard<std::mutex> lmtx(mtx);
+        funcs.emplace_back(func);
+        cv.notify_one();
     }
-    /*!
-     * 调用此方法后，线程池会等待内部所有线程执行完毕
-     */
+
+    void start();
+    void stop();
     void wait();
 private:
-    explicit event_poller_pool(size_t num = std::thread::hardware_concurrency());
+    void run();
+
 private:
-    std::vector<event_poller::Ptr> poller_pool;
-    size_t _num;
-    std::atomic<size_t> index;
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::unique_ptr<std::thread> _executor;
+    std::list<std::function<void()>> funcs;
+    std::thread::id _id;
+    std::atomic<int> is_start{0};
 };
 
 
-
-#endif//TOOLKIT_EVENT_POLLER_POOL_HPP
+#endif//TOOLKIT_TASK_EXECUTOR_HPP

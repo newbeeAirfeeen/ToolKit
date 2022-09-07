@@ -34,7 +34,7 @@ namespace srt {
 
     class srt_server : public std::enable_shared_from_this<srt_server> {
     public:
-        using on_create_session_func = std::function<std::shared_ptr<srt_session>(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context)>;
+        using on_create_session_func = std::function<std::shared_ptr<srt_session>(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context)>;
 
     public:
         srt_server();
@@ -49,14 +49,14 @@ namespace srt {
         void on_create_session(const on_create_session_func &f);
 
     private:
-        void on_receive(const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller);
-        void handle_handshake(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller);
+        void on_receive(const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr&);
+        void handle_handshake(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr&);
         void handle_data(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &);
 
     private:
-        std::shared_ptr<asio::ip::udp::socket> create(asio::io_context &poller, const asio::ip::udp::endpoint &);
-        void start(const std::shared_ptr<asio::ip::udp::socket> &, asio::io_context &context);
-        void read_l(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context);
+        std::shared_ptr<asio::ip::udp::socket> create(const event_poller::Ptr&, const asio::ip::udp::endpoint &);
+        void start(const std::shared_ptr<asio::ip::udp::socket> &, const event_poller::Ptr&context);
+        void read_l(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr&context);
         std::shared_ptr<srt_session> get_session(uint32_t);
         std::shared_ptr<srt_session> get_session_with_cookie(uint32_t);
 

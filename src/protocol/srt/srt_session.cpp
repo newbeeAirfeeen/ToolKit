@@ -1,10 +1,12 @@
 ﻿#include "srt_session.hpp"
+#include "executor_pool.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_error.hpp"
 #include "srt_server.hpp"
 namespace srt {
-    srt_session::srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, asio::io_context &context) : _sock(*_sock), srt_socket_service(context) {
+    srt_session::srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, const event_poller::Ptr &poller) : _sock(*_sock), srt_socket_service(poller) {
         _local = _sock->local_endpoint();
+        executor_ = executor_pool::instance().get_executor();
     }
 
     srt_session::~srt_session() {
@@ -53,6 +55,10 @@ namespace srt {
         Info("receive: {}", buff->data());
     }
 
+    std::shared_ptr<executor> srt_session::get_executor() const {
+        return executor_;
+    }
+
     void srt_session::onError(const std::error_code &e) {
         Error(e.message());
     }
@@ -67,18 +73,6 @@ namespace srt {
     }
 
     void srt_session::send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) {
-#if 0
-//        std::weak_ptr<srt_session> self(std::static_pointer_cast<srt_session>(srt_socket_service::shared_from_this()));
-//        _sock.async_send_to(asio::buffer(buff->data(), buff->size()), _remote, [self](const std::error_code &e, size_t length) {
-//            auto stronger_self = self.lock();
-//            if (!stronger_self) {
-//                return;
-//            }
-//            if (e) {
-//                return stronger_self->on_error_in(e);
-//            }
-//        });
-#else
         try {
             if (!_sock.native_non_blocking()) {
                 _sock.native_non_blocking(true);
@@ -87,7 +81,6 @@ namespace srt {
         } catch (const std::system_error &e) {
             return on_error_in(e.code());
         }
-#endif
     }
 
     void srt_session::on_error(const std::error_code &e) {

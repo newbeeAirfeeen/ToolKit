@@ -1,6 +1,6 @@
 ﻿#include "srt_server.hpp"
 #include "Util/endian.hpp"
-#include "execution_io_context.hpp"
+#include "event_poller_pool.hpp"
 #include "net/buffer.hpp"
 #include "srt_packet.h"
 #include <algorithm>
@@ -14,7 +14,7 @@ namespace srt {
     /// handle handshake
     static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session>> _cookie_map;
     srt_server::srt_server() {
-        _on_create_session_func_ = [](const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context) -> std::shared_ptr<srt_session> {
+        _on_create_session_func_ = [](const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) -> std::shared_ptr<srt_session> {
             return std::make_shared<srt_session>(sock, context);
         };
     }
@@ -23,18 +23,16 @@ namespace srt {
         std::weak_ptr<srt_server> self(shared_from_this());
         std::shared_ptr<asio::io_context> _context;
         std::atomic<int> _flag{0};
-        auto &pool = io_pool::instance();
-        pool.for_each([&, endpoint](io_context &io) {
-            io.get_poller().post([&, endpoint, self]() {
-                if (auto stronger_self = self.lock()) {
-                    auto _sock = stronger_self->create(io.get_poller(), endpoint);
-                    {
-                        std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
-                        stronger_self->_socks.push_back(_sock);
-                    }
-                    stronger_self->start(_sock, io.get_poller());
+        auto &pool = event_poller_pool::Instance();
+        pool.for_each([self, endpoint](const event_poller::Ptr &poller) {
+            if (auto stronger_self = self.lock()) {
+                auto _sock = stronger_self->create(poller, endpoint);
+                {
+                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
+                    stronger_self->_socks.push_back(_sock);
                 }
-            });
+                stronger_self->start(_sock, poller);
+            }
         });
     }
 
@@ -65,19 +63,19 @@ namespace srt {
 
 
     /// 由各自线程的io_context 调用
-    void srt_server::start(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context) {
+    void srt_server::start(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &poller) {
         Info("srt server start on {}:{}", sock->local_endpoint().address().to_string(), sock->local_endpoint().port());
-        return read_l(sock, context);
+        return read_l(sock, poller);
     }
 
-    void srt_server::read_l(const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &context) {
+    void srt_server::read_l(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &poller) {
         std::weak_ptr<srt_server> self(shared_from_this());
         std::weak_ptr<asio::ip::udp::socket> sock_self(sock);
         static thread_local auto endpoint = std::make_shared<asio::ip::udp::endpoint>();
         static thread_local auto buff = std::make_shared<buffer>();
         buff->resize(1500);
         buff->backward();
-        sock->async_receive_from(asio::buffer((char *) buff->data(), buff->size()), *endpoint, [&, self, sock_self](const std::error_code &e, size_t length) {
+        sock->async_receive_from(asio::buffer((char *) buff->data(), buff->size()), *endpoint, [&, poller, self, sock_self](const std::error_code &e, size_t length) {
             auto stronger_self = self.lock();
             auto sock_stronger_self = sock_self.lock();
             if (!stronger_self || !sock_stronger_self) {
@@ -89,13 +87,13 @@ namespace srt {
             }
 
             if (length <= 0) {
-                return stronger_self->read_l(sock_stronger_self, context);
+                return stronger_self->read_l(sock_stronger_self, poller);
             }
 
             buff->resize(length);
             buff->backward();
-            stronger_self->on_receive(buff, *endpoint, sock_stronger_self, context);
-            return stronger_self->read_l(sock_stronger_self, context);
+            stronger_self->on_receive(buff, *endpoint, sock_stronger_self, poller);
+            return stronger_self->read_l(sock_stronger_self, poller);
         });
     }
 
@@ -117,8 +115,8 @@ namespace srt {
         return it->second;
     }
 
-    std::shared_ptr<asio::ip::udp::socket> srt_server::create(asio::io_context &poller, const asio::ip::udp::endpoint &endpoint) {
-        auto _sock = std::make_shared<asio::ip::udp::socket>(poller);
+    std::shared_ptr<asio::ip::udp::socket> srt_server::create(const event_poller::Ptr &poller, const asio::ip::udp::endpoint &endpoint) {
+        auto _sock = std::make_shared<asio::ip::udp::socket>(poller->get_executor());
         _sock->open(endpoint.protocol());
         asio::ip::udp::socket::reuse_address option(true);
         asio::ip::udp::socket::receive_buffer_size rbs(256 * 1024);
@@ -131,7 +129,7 @@ namespace srt {
         return _sock;
     }
 
-    void srt_server::on_receive(const std::shared_ptr<buffer> &buf, const asio::ip::udp::endpoint &endpoint, const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller) {
+    void srt_server::on_receive(const std::shared_ptr<buffer> &buf, const asio::ip::udp::endpoint &endpoint, const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &poller) {
         try {
             auto pkt = from_buffer(buf->data(), buf->size());
             buf->remove(16);
@@ -144,7 +142,7 @@ namespace srt {
         } catch (...) {}
     }
     void srt_server::handle_handshake(const std::shared_ptr<srt_packet> &pkt, const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &endpoint,
-                                      const std::shared_ptr<asio::ip::udp::socket> &sock, asio::io_context &poller) {
+                                      const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &poller) {
         //// 握手包
         if (buff->size() < 48) {
             return;
@@ -191,7 +189,7 @@ namespace srt {
             Warn("data received in other thread, switch to session thread...");
             auto buf_tmp = buffer::assign(buff->data(), buff->size());
             std::weak_ptr<srt_session> session_self(session);
-            session->get_poller().post([pkt, buf_tmp, endpoint, session_self]() {
+            session->get_poller()->async([pkt, buf_tmp, endpoint, session_self]() {
                 if (auto stronger_session_self = session_self.lock()) {
                     stronger_session_self->receive(pkt, buf_tmp);
                 }
@@ -224,7 +222,7 @@ namespace srt {
             auto buff_tmp = buffer::assign(buff->data(), buff->size());
             /// 切换到其他线程
             std::weak_ptr<srt_session> session_self(session);
-            session->get_poller().post([buff_tmp, session_self, pkt]() {
+            session->get_poller()->async([buff_tmp, session_self, pkt]() {
                 if (auto session_stronger = session_self.lock()) {
                     session_stronger->receive(pkt, buff_tmp);
                 }

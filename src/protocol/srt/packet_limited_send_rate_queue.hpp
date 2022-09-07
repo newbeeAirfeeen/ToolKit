@@ -41,14 +41,14 @@ private:
     using duration_type = std::chrono::nanoseconds;
 
 public:
-    packet_limited_send_rate_queue(asio::io_context &io_context,
+    packet_limited_send_rate_queue(const event_poller::Ptr& poller,
                                    const std::shared_ptr<srt::srt_ack_queue> &ack,
                                    bool enable_retransmit,
                                    uint32_t sock_id,
                                    const std::chrono::steady_clock::time_point &t,
-                                   uint16_t payload = 1456) : packet_send_queue<T>(io_context, ack, enable_retransmit), _size(0) {
+                                   uint16_t payload = 1456) : packet_send_queue<T>(poller, ack, enable_retransmit), _size(0) {
         Trace("create limited send queue, payload={}", payload);
-        timer = create_deadline_timer<int, duration_type>(io_context);
+        timer = create_deadline_timer<int, duration_type>(poller->get_executor());
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
         Trace("average payload size={}", avg_payload_size);
         this->_sock_id = sock_id;
@@ -93,7 +93,7 @@ public:
 
         /// 如果比较成功，说明在进程中..
         std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(packet_send_queue<T>::shared_from_this()));
-        packet_send_queue<T>::get_context().post([self]() {
+        packet_send_queue<T>::get_poller()->async([self]() {
             auto stronger_self = self.lock();
             if (!stronger_self) {
                 return;

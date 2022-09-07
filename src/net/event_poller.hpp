@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: EventPoller.hpp
+* @file_name: event_poller.hpp
 * @date: 2022/04/04
 * @author: oaho
 * Copyright @ hz oaho, All rights reserved.
@@ -24,18 +24,19 @@
 */
 #ifndef TOOLKIT_EVENT_POLLER_HPP
 #define TOOLKIT_EVENT_POLLER_HPP
-#include <memory>
-#include <thread>
+#include "net/asio/basic_waitable_timer.hpp"
+#include "net/asio/io_context.hpp"
+#include "executor_pool.hpp"
 #include <atomic>
 #include <functional>
-#include "spdlog/logger.hpp"
-#include "net/asio/io_context.hpp"
-#include "net/asio/executor_work_guard.hpp"
-#include "net/asio/basic_waitable_timer.hpp"
+#include <memory>
+#include <thread>
+
 class event_poller : public std::enable_shared_from_this<event_poller> {
 public:
     using Ptr = std::shared_ptr<event_poller>;
     using timer_type = asio::basic_waitable_timer<std::chrono::system_clock>;
+
 public:
     event_poller();
 
@@ -58,22 +59,21 @@ public:
      * 得到当前poller中的绑定的io_context上下文
      * @return
      */
-    asio::io_context& get_executor();
+    asio::io_context &get_executor();
     /*!
      * 返回当前event_poller的线程id
      * @return 当前线程的id
      */
-    const std::thread::id& get_thread_id() const;
+    const std::thread::id &get_thread_id() const;
     /*!
      * 异步执行任务,如果在本线程，则直接执行
      */
-    template<typename Func, typename...Args>
-    void async(Func&& func, Args&&...args){
+    template<typename Func, typename... Args>
+    void async(Func &&func, Args &&...args) {
         auto current_thread_id = std::this_thread::get_id();
-        if(id == current_thread_id){
+        if (id == current_thread_id) {
             func(std::forward<Args>(args)...);
-        }
-        else{
+        } else {
             auto _func = std::bind(func, std::forward<Args>(args)...);
             _io_context.post(std::move(_func));
         }
@@ -83,7 +83,7 @@ public:
      * @param duration 多少时间后开始执行,单位为毫秒
      * @param func
      */
-    std::shared_ptr<timer_type> execute_delay_task(const std::chrono::milliseconds& time, const std::function<size_t()>& func){
+    std::shared_ptr<timer_type> do_delay_task(const std::chrono::milliseconds &time, const std::function<size_t()> &func) {
         std::shared_ptr<timer_type> timer = std::make_shared<timer_type>(get_executor());
         auto self(shared_from_this());
         auto timer_func = std::bind(&event_poller::timer_func_helper, self, std::placeholders::_1, timer, func);
@@ -96,11 +96,12 @@ public:
      * 创建一个绑定event_poller的定时器
      * @return 定时器
      */
-    inline std::shared_ptr<timer_type> create_timer(){
+    inline std::shared_ptr<timer_type> create_timer() {
         return std::make_shared<timer_type>(get_executor());
     }
 
     void run();
+
 private:
     /*!
      * 内部定时器帮助函数
@@ -108,11 +109,11 @@ private:
      * @param timer 定时器
      * @param func 回调函数
      */
-    void timer_func_helper(const std::error_code& e, const std::shared_ptr<timer_type>& timer,
-                           const std::function<size_t()>& func);
+    void timer_func_helper(const std::error_code &e, const std::shared_ptr<timer_type> &timer,
+                           const std::function<size_t()> &func);
+
 private:
     asio::io_context _io_context;
-    asio::executor_work_guard<typename asio::io_context::executor_type> work_guard;
     /*!
      * 执行_io_context.run()的线程
      */

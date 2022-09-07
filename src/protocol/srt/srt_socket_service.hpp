@@ -25,35 +25,35 @@
 
 #ifndef TOOLKIT_SRT_SOCKET_SERVICE_HPP
 #define TOOLKIT_SRT_SOCKET_SERVICE_HPP
+#include "Util/nocopyable.hpp"
+#include "deadline_timer.hpp"
+#include "net/asio.hpp"
+#include "net/buffer.hpp"
+#include "net/event_poller.hpp"
+#include "packet_interface.hpp"
+#include "srt_ack.hpp"
+#include "srt_handshake.h"
+#include "srt_packet.h"
+#include "srt_socket_base.hpp"
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <tuple>
-#include "deadline_timer.hpp"
-#include "net/asio.hpp"
-#include "net/buffer.hpp"
-#include "packet_interface.hpp"
-#include "srt_ack.hpp"
-#include "srt_handshake.h"
-#include "srt_packet.h"
-#include "srt_socket_base.hpp"
+
 namespace srt {
-    using buffer_pointer = std::shared_ptr<buffer>;
-    class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service> {
+    class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service>, public noncopyable {
     public:
         using time_point = typename std::chrono::steady_clock::time_point;
         using packet_pointer = typename packet_interface<std::shared_ptr<buffer>>::packet_pointer;
-        using ack_entry = std::tuple<uint32_t, time_point>; /// ack number + counts
+        using ack_entry = std::tuple<uint32_t, time_point>;/// ack number + counts
     public:
-        explicit srt_socket_service(asio::io_context &executor);
+        explicit srt_socket_service(const event_poller::Ptr &poller);
         ~srt_socket_service() override = default;
-        srt_socket_service(const srt_socket_service &) = delete;
-        srt_socket_service &operator=(const srt_socket_service &) = delete;
 
     public:
-        asio::io_context &get_poller();
+        event_poller::Ptr get_poller();
         //// 发送数据
         int async_send(const char *, size_t length);
         int async_send(const std::shared_ptr<buffer> &);
@@ -69,6 +69,7 @@ namespace srt {
         //// 需要在连接的时候调用
         virtual const asio::ip::udp::endpoint &get_remote_endpoint() = 0;
         virtual const asio::ip::udp::endpoint &get_local_endpoint() = 0;
+        virtual std::shared_ptr<executor> get_executor() const = 0;
         /// 连接成功
         virtual void on_connected() = 0;
         /// 发送行为
@@ -144,7 +145,7 @@ namespace srt {
         void on_keep_alive_expired(const int &);
 
     private:
-        asio::io_context &poller;
+        event_poller::Ptr poller;
         /// 通常的定时器,处理ack,nak
         std::shared_ptr<deadline_timer<int>> common_timer;
         std::shared_ptr<deadline_timer<int>> keep_alive_timer;

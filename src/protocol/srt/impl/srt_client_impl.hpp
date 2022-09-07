@@ -24,15 +24,15 @@
 */
 #include <mutex>
 
-#include "../execution_io_context.hpp"
 #include "../srt_client.hpp"
 #include "../srt_error.hpp"
-
+#include "executor_pool.hpp"
+#include "net/event_poller.hpp"
 
 namespace srt {
     class srt_client::impl : public srt_socket_service {
     public:
-        impl(asio::io_context &poller, const endpoint_type &host) : poller(poller), srt_socket_service(poller), _sock(poller) {
+        impl(const event_poller::Ptr &poller, const endpoint_type &host) : poller(poller), srt_socket_service(poller), _sock(poller->get_executor()) {
             _sock.open(host.protocol());
             _sock.bind(host);
             _sock.native_non_blocking(true);
@@ -46,6 +46,7 @@ namespace srt {
             conn_func = [](const std::error_code &e) {};
             receive_func = [](const std::shared_ptr<buffer> &) {};
             err_func = conn_func;
+            task_executor = executor_pool::instance().get_executor();
         }
 
         const asio::ip::udp::endpoint &get_remote_endpoint() override {
@@ -68,7 +69,7 @@ namespace srt {
 
         void async_connect(const endpoint_type &_remote, const std::function<void(const std::error_code &e)> &f) {
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
-            poller.post([self, _remote, f]() {
+            poller->async([self, _remote, f]() {
                 auto stronger_self = self.lock();
                 if (!stronger_self) {
                     return;
@@ -83,10 +84,14 @@ namespace srt {
         }
 
     protected:
+        std::shared_ptr<executor> get_executor() const override{
+            return task_executor;
+        }
+
         void onRecv(const std::shared_ptr<buffer> &buff) override {
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             auto buf = std::make_shared<buffer>(buff->data(), buff->size());
-            asio::post(get_thread_pool(), [buf, self]() {
+            task_executor->async([buf, self]() {
                 if (auto stronger_self = self.lock()) {
                     std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
                     if (!stronger_self->receive_func) {
@@ -106,11 +111,11 @@ namespace srt {
         }
 
         void on_connected() override {
-            is_connect_func = true;
+            is_connect_func.store(true);
             auto c = srt::make_srt_error(success);
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             /// 切换到其他线程调用回调
-            asio::post(get_thread_pool(), [c, self]() {
+            task_executor->async([c, self]() {
                 if (auto stronger_self = self.lock()) {
                     std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
                     if (stronger_self->conn_func)
@@ -122,14 +127,15 @@ namespace srt {
         void on_error(const std::error_code &e) override {
             std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
             /// 切换到其他线程调用回调
-            bool invoke_connect_func = false;
-            if (!is_connect_func) {
-                invoke_connect_func = is_connect_func = true;
+            bool _ = false;
+            if (!is_connect_func.compare_exchange_strong(_, true)) {
+                return;
             }
-            asio::post(get_thread_pool(), [e, self, invoke_connect_func]() {
+            _ = true;
+            task_executor->async([e, self, _]() {
                 if (auto stronger_self = self.lock()) {
                     std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
-                    if (invoke_connect_func && stronger_self->conn_func) {
+                    if (_ && stronger_self->conn_func) {
                         return stronger_self->conn_func(e);
                     } else if (stronger_self->err_func)
                         stronger_self->err_func(e);
@@ -187,9 +193,10 @@ namespace srt {
     private:
         std::shared_ptr<buffer> receive_cache;
         asio::ip::udp::socket _sock;
-        asio::io_context &poller;
+        event_poller::Ptr poller;
+        std::shared_ptr<executor> task_executor;
         std::atomic<bool> flag{false};
-        bool is_connect_func = false;
+        std::atomic<bool> is_connect_func{false};
         endpoint_type host;
         endpoint_type remote;
         /// callback

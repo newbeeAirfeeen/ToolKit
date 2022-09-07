@@ -37,7 +37,7 @@ set(LINK_LIB_LIST "")
 
 #添加包含路径
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/spdlog SRC_LIST)
-
+aux_source_directory(${CMAKE_SOURCE_DIR}/src/net SRC_LIST)
 if(ENABLE_TEST)
     add_subdirectory(3rdlib/googletest)
 endif()
