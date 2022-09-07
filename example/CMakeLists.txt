@@ -1,21 +1,12 @@
 ﻿aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} TEST_EXE)
 
-if(Linux)
-    if(CMAKE_BUILD_TYPE MATCHES "Release")
-        add_compile_options(-O3)
-    endif()
-endif()
-
 include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/net)
+message("---- ${LINK_LIBS_GLOBAL}")
 foreach(item ${TEST_EXE})
     string(REGEX MATCH ".*[/\\](.*).cpp$" item_src ${item})
     message("-- 正在构建 ${item} --> ${CMAKE_MATCH_1} ${CMAKE_EXECUTABLE_SUFFIX}")
     add_executable(${CMAKE_MATCH_1} ${item})
-    if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-        target_link_libraries(${CMAKE_MATCH_1} PUBLIC ${LINK_LIBS_GLOBAL} -lpthread)
-    else()
-        target_link_libraries(${CMAKE_MATCH_1} ${LINK_LIBS_GLOBAL})
-    endif()
+    target_link_libraries(${CMAKE_MATCH_1} PUBLIC ${LINK_LIBS_GLOBAL})
 endforeach()
 
 

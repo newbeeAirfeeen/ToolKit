@@ -36,7 +36,6 @@ set(SRC_LIST "")
 set(LINK_LIB_LIST "")
 
 #添加包含路径
-#aux_source_directory(${CMAKE_SOURCE_DIR}/src/Util SRC_LIST)
 aux_source_directory(${CMAKE_SOURCE_DIR}/src/spdlog SRC_LIST)
 
 if(ENABLE_TEST)
@@ -71,6 +70,11 @@ endif()
 set(IS_STATIC STATIC)
 if(ENABLE_SHARED)
     set(IS_STATIC SHARED)
+endif()
+
+
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    list(APPEND LINK_LIB_LIST -lpthread)
 endif()
 
 string(TOLOWER ${IS_STATIC} shared_or_static)
