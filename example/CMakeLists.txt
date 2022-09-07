@@ -1,7 +1,7 @@
 ﻿aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} TEST_EXE)
 
 include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/net)
-message("---- ${LINK_LIBS_GLOBAL}")
+message("-- ${LINK_LIBS_GLOBAL}")
 foreach(item ${TEST_EXE})
     string(REGEX MATCH ".*[/\\](.*).cpp$" item_src ${item})
     message("-- 正在构建 ${item} --> ${CMAKE_MATCH_1} ${CMAKE_EXECUTABLE_SUFFIX}")
