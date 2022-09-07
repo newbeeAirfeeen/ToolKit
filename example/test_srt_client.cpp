@@ -2,10 +2,9 @@
 // Created by 沈昊 on 2022/8/7.
 //
 #include "protocol/srt/srt_error.hpp"
-#include "protocol/srt/srt_server.hpp"
 #include <protocol/srt/srt_client.hpp>
 #include <spdlog/logger.hpp>
-
+#include "net/event_poller_pool.hpp"
 using namespace std;
 void send_data(const std::shared_ptr<srt::srt_client> &client) {
 //    Info("begin send data..");
@@ -23,15 +22,12 @@ void send_data(const std::shared_ptr<srt::srt_client> &client) {
 int main() {
     logger::initialize("logs/test_srt_client.log", spdlog::level::info);
 
-    asio::io_context context(1);
-    asio::executor_work_guard<typename asio::io_context::executor_type> guard(context.get_executor());
+    auto poller = event_poller_pool::Instance().get_poller(false);
+
     asio::ip::udp::endpoint p(asio::ip::udp::v4(), 9000);
     //asio::ip::udp::endpoint p(asio::ip::make_address("49.235.73.47"), 9000);
     asio::ip::udp::endpoint p2(asio::ip::udp::v4(), 12012);
-    auto client = std::make_shared<srt::srt_client>(context, p2);
-
-    std::thread t([&]() { context.run(); });
-
+    auto client = std::make_shared<srt::srt_client>(poller, p2);
 
     client->set_on_receive([&](const std::shared_ptr<buffer> &buff) {
         Info("receive: {}", buff->data());
@@ -52,6 +48,7 @@ int main() {
         return send_data(client);
     });
 
-    t.join();
+
+    event_poller_pool::Instance().wait();
     return 0;
 }
