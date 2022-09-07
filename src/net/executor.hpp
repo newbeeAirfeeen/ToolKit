@@ -31,6 +31,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <functional>
 class executor : public std::enable_shared_from_this<executor> {
 public:
     ~executor();

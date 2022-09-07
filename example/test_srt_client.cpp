@@ -24,8 +24,8 @@ int main() {
 
     auto poller = event_poller_pool::Instance().get_poller(false);
 
-    asio::ip::udp::endpoint p(asio::ip::udp::v4(), 9000);
-    //asio::ip::udp::endpoint p(asio::ip::make_address("49.235.73.47"), 9000);
+    //asio::ip::udp::endpoint p(asio::ip::udp::v4(), 9000);
+    asio::ip::udp::endpoint p(asio::ip::make_address("49.235.73.47"), 9000);
     asio::ip::udp::endpoint p2(asio::ip::udp::v4(), 12012);
     auto client = std::make_shared<srt::srt_client>(poller, p2);
 
