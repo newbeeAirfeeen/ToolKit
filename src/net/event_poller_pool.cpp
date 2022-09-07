@@ -23,6 +23,7 @@
 * SOFTWARE.
 */
 #include "event_poller_pool.hpp"
+#include <algorithm>
 event_poller_pool &event_poller_pool::Instance() {
     auto num = (std::thread::hardware_concurrency() / 2) & 0xFFFFFFFE;
     static event_poller_pool pool(num ? num : 1);
