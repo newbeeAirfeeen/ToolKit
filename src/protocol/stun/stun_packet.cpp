@@ -211,11 +211,11 @@ namespace stun {
         this->mapped_address_port = port;
     }
 
-
+#ifdef WOLFSSL_ENABLE
     void stun_packet::set_message_integrity(bool on) {
         this->message_integrity = on;
     }
-
+#endif
     stun_method stun_packet::get_method() const {
         return this->_method;
     }

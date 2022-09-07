@@ -2,7 +2,7 @@
 // Created by 沈昊 on 2022/8/2.
 //
 #include <gtest/gtest.h>
-#include <net/asio.hpp>
+#include "net/asio.hpp"
 #include <net/buffer.hpp>
 #include <protocol/stun/stun.h>
 void compare_binary(const std::shared_ptr<buffer> &buf, const char *buff, size_t length) {
@@ -38,7 +38,9 @@ TEST(attribute, stun) {
         // tlv = 4 + 8 = 12;
         pkt.set_realm("realm");
         // tlv = 4 + 20 = 24;
+#ifdef WOLFSSL_ENABLE
         pkt.set_message_integrity(true);
+#endif
         // tlv = 4 + 8 = 12;
         pkt.set_software("software");
 

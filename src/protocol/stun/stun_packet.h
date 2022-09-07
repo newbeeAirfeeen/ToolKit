@@ -51,7 +51,7 @@ namespace stun {
         void set_alternate_server(const std::string &ip, uint16_t port);
         void set_mapped_address(const std::string &ip, uint16_t port);
         void set_xor_mapped_address(const std::string &ip, uint16_t port);
-#ifdef SSL_ENABLE
+#ifdef WOLFSSL_ENABLE
         void set_message_integrity(bool on);
 #endif
         stun_method get_method() const;

@@ -1,6 +1,7 @@
 ﻿//
 // Created by 沈昊 on 2022/7/29.
 //
+#if defined(WOLFSSL_ENABLE) && defined(ENABLE_STUN)
 #include "Util/MD5.h"
 #include "protocol/stun/stun.h"
 using namespace std;
@@ -46,13 +47,18 @@ int SASLprep(uint8_t *s) {
 
 int main() {
 
-    const std::string& buf = "pass";
-    SASLprep((uint8_t *)buf.data());
+    const std::string &buf = "pass";
+    SASLprep((uint8_t *) buf.data());
     cout << buf << endl;
     std::string hash = "user:realm:pass";
     toolkit::MD5_digest Md5(hash);
     auto str = Md5.rawdigest();
-    const char* data = str.data();
+    const char *data = str.data();
     cout << std::showbase << std::hex << Md5.hexdigest() << endl;
     return 0;
 }
+#else
+int main() {
+    return 0;
+}
+#endif
