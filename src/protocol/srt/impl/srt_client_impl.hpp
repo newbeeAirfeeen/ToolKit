@@ -84,22 +84,16 @@ namespace srt {
         }
 
     protected:
-        std::shared_ptr<executor> get_executor() const override{
+        std::shared_ptr<executor> get_executor() const override {
             return task_executor;
         }
 
         void onRecv(const std::shared_ptr<buffer> &buff) override {
-            std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
-            auto buf = std::make_shared<buffer>(buff->data(), buff->size());
-            task_executor->async([buf, self]() {
-                if (auto stronger_self = self.lock()) {
-                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
-                    if (!stronger_self->receive_func) {
-                        return;
-                    }
-                    return stronger_self->receive_func(buf);
-                }
-            });
+            std::lock_guard<std::recursive_mutex> lmtx(mtx);
+            if (!receive_func) {
+                return;
+            }
+            return receive_func(buff);
         }
 
         void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) override {
@@ -113,34 +107,17 @@ namespace srt {
         void on_connected() override {
             is_connect_func.store(true);
             auto c = srt::make_srt_error(success);
-            std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
-            /// 切换到其他线程调用回调
-            task_executor->async([c, self]() {
-                if (auto stronger_self = self.lock()) {
-                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
-                    if (stronger_self->conn_func)
-                        stronger_self->conn_func(c);
-                }
-            });
+            std::lock_guard<std::recursive_mutex> lmtx(mtx);
+            if (conn_func) conn_func(c);
         }
 
         void on_error(const std::error_code &e) override {
-            std::weak_ptr<impl> self(std::static_pointer_cast<impl>(shared_from_this()));
-            /// 切换到其他线程调用回调
             bool _ = false;
-            if (!is_connect_func.compare_exchange_strong(_, true)) {
-                return;
-            }
-            _ = true;
-            task_executor->async([e, self, _]() {
-                if (auto stronger_self = self.lock()) {
-                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
-                    if (_ && stronger_self->conn_func) {
-                        return stronger_self->conn_func(e);
-                    } else if (stronger_self->err_func)
-                        stronger_self->err_func(e);
-                }
-            });
+            bool cas = is_connect_func.compare_exchange_strong(_, true);
+            std::lock_guard<std::recursive_mutex> lmtx(mtx);
+            if (cas && conn_func) return conn_func(e);
+            else if (err_func)
+                err_func(e);
         }
 
     public:

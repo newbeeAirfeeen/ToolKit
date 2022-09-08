@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); });
-    logger::initialize("logs/srt_client.log", spdlog::level::info);
+    logger::initialize("logs/srt_client.log", spdlog::level::trace);
 
     if (argc < 3) {
         std::cerr << "srt_client <remote_ip> <remote port>";
