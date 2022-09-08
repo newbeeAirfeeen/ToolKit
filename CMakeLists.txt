@@ -8,7 +8,7 @@ option(ENABLE_SHARED "enable shared library" OFF)
 option(ENABLE_TEST "enable unit test" OFF)
 option(ENABLE_WOLFSSL "enable wolfssl" OFF)
 option(ENABLE_LOG "enable internal log" ON)
-
+option(ENABLE_PERF_TOOL "enable benchmark" ON)
 
 
 option(ENABLE_SRT "enable srt" ON)
@@ -65,6 +65,14 @@ endif()
 if(ENABLE_SRT)
     aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/srt SRC_LIST)
 endif()
+
+
+if(ENABLE_PERF_TOOL)
+    message("enable google perf tools")
+    add_definitions(-DENABLE_GOOGLE_PERF_TOOL)
+    add_subdirectory(3rdlib/gperftools)
+endif()
+
 
 # 静态或动态编译
 set(IS_STATIC STATIC)
