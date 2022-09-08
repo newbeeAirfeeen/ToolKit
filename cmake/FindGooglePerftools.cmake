@@ -28,6 +28,12 @@ find_library(GooglePerftools_LIBRARIES_DEBUG
         HINTS ${GooglePerftools_ROOT_DIR}/lib
         )
 
+#find_library(GooglePerftools_LIBRARIES_DEBUG
+#        NAMES profiler
+#        HINTS ${GooglePerftools_ROOT_DIR}/lib
+#        )
+
+
 find_library(GooglePerftools_LIBRARIES
         NAMES tcmalloc tcmalloc_minimal
         HINTS ${GooglePerftools_ROOT_DIR}/lib

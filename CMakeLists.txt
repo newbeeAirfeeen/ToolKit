@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(ToolKit VERSION 1)
 
+if(${CMAKE_BUILD_TYPE} STREQUAL "")
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -72,7 +77,11 @@ if(TCMALLOC_FOUND AND GOOGLEPERFTOOLS_FOUND)
     message("-- enable google perf tools, include directory:${GooglePerftools_INCLUDE_DIR},library:${GooglePerftools_LIBRARIES},debug library:${GooglePerftools_LIBRARIES_DEBUG}")
     add_definitions(-DENABLE_PREF_TOOL)
     include_directories(${GooglePerftools_INCLUDE_DIR})
-    list(APPEND LINK_LIB_LIST ${GooglePerftools_LIBRARIES})
+    if(${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
+        list(APPEND LINK_LIB_LIST ${GooglePerftools_LIBRARIES_DEBUG})
+    else()
+        list(APPEND LINK_LIB_LIST ${GooglePerftools_LIBRARIES})
+    endif()
 endif()
 
 
