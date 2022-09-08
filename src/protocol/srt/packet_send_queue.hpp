@@ -43,7 +43,7 @@ private:
 
 public:
     packet_send_queue(const event_poller::Ptr poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true) : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak) {
-        retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(poller->get_executor());
+        retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(poller);
         _size.store(0);
     }
 
@@ -194,6 +194,7 @@ protected:
         _allocated_bytes += pkt->pkt->size();
         _pkt_cache.emplace_back(pkt);
         _size.fetch_add(1);
+        /// 性能瓶颈
         update_retransmit_timer(pkt->seq);
         return pkt;
     }
@@ -263,7 +264,7 @@ protected:
         auto RTO = counts * (rto + 4 * rtt_var + 20000) + 10000;
         /// 当前这个包的重传时间
         Trace("seq {} set retransmit packet time, RTO={}, counts={}", seq, RTO, counts);
-        retransmit_timer->add_expired_from_now(RTO, seq);
+        retransmit_timer->expired_from_now(RTO, seq);
     }
 
     /// 超时重传

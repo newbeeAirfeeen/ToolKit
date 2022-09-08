@@ -41,14 +41,14 @@ private:
     using duration_type = std::chrono::nanoseconds;
 
 public:
-    packet_limited_send_rate_queue(const event_poller::Ptr& poller,
+    packet_limited_send_rate_queue(const event_poller::Ptr &poller,
                                    const std::shared_ptr<srt::srt_ack_queue> &ack,
                                    bool enable_retransmit,
                                    uint32_t sock_id,
                                    const std::chrono::steady_clock::time_point &t,
                                    uint16_t payload = 1456) : packet_send_queue<T>(poller, ack, enable_retransmit), _size(0) {
         Trace("create limited send queue, payload={}", payload);
-        timer = create_deadline_timer<int, duration_type>(poller->get_executor());
+        timer = create_deadline_timer<int, duration_type>(poller);
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
         Trace("average payload size={}", avg_payload_size);
         this->_sock_id = sock_id;
@@ -98,7 +98,8 @@ public:
             if (!stronger_self) {
                 return;
             }
-            stronger_self->timer->add_expired_from_now(0, 1);
+            /// 直接调用
+            stronger_self->on_timer(-1);
         });
         return static_cast<int>(t->size());
     }
@@ -125,10 +126,16 @@ public:
             return;
         }
         //// 重新开启定时器
-        std::lock_guard<std::recursive_mutex> lmtx(mtx);
-        if (!_buffer_cache.empty() && !_is_commit) {
-            timer->add_expired_from_now(0, 1);
-            _is_commit = true;
+        bool _not_empty = false;
+        {
+            std::lock_guard<std::recursive_mutex> lmtx(mtx);
+            if (!_buffer_cache.empty() && !_is_commit) {
+                _not_empty = _is_commit = true;
+            }
+        }
+        /// 重新开启定时器
+        if (_not_empty) {
+            on_timer(-1);
         }
     }
 
@@ -146,10 +153,11 @@ public:
         _size.store(this->get_window_size());
     }
 
-    void rexmit_packet(const packet_pointer& p) override {
+    void rexmit_packet(const packet_pointer &p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
         packet_send_queue<T>::rexmit_packet(p);
     }
+
 private:
     void on_timer(const int &v) {
         if (wait_capacity()) {
@@ -200,7 +208,7 @@ private:
                 return;
             }
         }
-        timer->add_expired_from_now(internal > _next_send_point ? 0 : _next_send_point, 1);
+        timer->expired_from_now(internal > _next_send_point ? 0 : _next_send_point, 1);
     }
 
 private:

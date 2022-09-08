@@ -27,6 +27,7 @@ void on_connected(const std::shared_ptr<srt::srt_client> &client) {
 }
 
 int main(int argc, char **argv) {
+
     const char *exec_name = "srtclient.profile";
 #ifdef ENABLE_PREF_TOOL
     ProfilerStart(exec_name);
@@ -39,7 +40,6 @@ int main(int argc, char **argv) {
         std::cerr << "srt_client <remote_ip> <remote port>";
         return -1;
     }
-
 
     asio::ip::udp::endpoint remote(asio::ip::make_address(argv[1]), std::stoi(argv[2]));
     auto client = std::make_shared<srt::srt_client>();
