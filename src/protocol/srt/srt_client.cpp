@@ -23,11 +23,11 @@
 * SOFTWARE.
 */
 #include "impl/srt_client_impl.hpp"
-
+#include "event_poller_pool.hpp"
 namespace srt {
 
-    srt_client::srt_client(const event_poller::Ptr& poller, const endpoint_type &host) {
-        _impl = std::make_shared<srt_client::impl>(poller, host);
+    srt_client::srt_client(const endpoint_type &host) {
+        _impl = std::make_shared<srt_client::impl>(event_poller_pool::Instance().get_poller(false), host);
         _impl->begin();
     }
 
