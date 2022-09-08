@@ -44,6 +44,7 @@ private:
 public:
     packet_send_queue(const event_poller::Ptr poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true) : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak) {
         retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(poller->get_executor());
+        _size.store(0);
     }
 
     void set_current_sequence(uint32_t seq) override {
@@ -55,7 +56,7 @@ public:
     }
 
     uint32_t get_buffer_size() const override {
-        return (uint32_t) _pkt_cache.size();
+        return _size.load(std::memory_order_relaxed);
     }
 
     packet_pointer get_first_block() const override {
@@ -81,6 +82,7 @@ public:
             Trace("capacity is not enough, drop front, seq={}, submit_time={}", _pkt_cache.front()->seq, _pkt_cache.front()->submit_time);
             auto front = std::move(_pkt_cache.front());
             _pkt_cache.pop_front();
+            _size.fetch_sub(1);
             /// 更新总字节数
             _allocated_bytes -= front->pkt->size();
             on_drop_packet(front->seq, front->seq);
@@ -110,6 +112,7 @@ public:
             this->_allocated_bytes -= p->pkt->size();
         });
         _pkt_cache.erase(pair.first, pair.second);
+        _size.fetch_sub(1);
         on_size_changed(false, (uint32_t) _pkt_cache.size());
         Trace("after drop, packet cache have size={}", _pkt_cache.size());
     }
@@ -118,6 +121,7 @@ public:
         retransmit_timer->stop();
         _pkt_cache.clear();
         _allocated_bytes = 0;
+        _size.store(0);
     }
 
     void send_again(uint32_t begin, uint32_t end) override {
@@ -146,6 +150,7 @@ public:
             }
             _allocated_bytes -= element->pkt->size();
             _pkt_cache.pop_front();
+            _size.fetch_sub(1);
         }
         on_size_changed(false, (uint32_t) _pkt_cache.size());
     }
@@ -188,6 +193,7 @@ protected:
         /// 增加总字节数目
         _allocated_bytes += pkt->pkt->size();
         _pkt_cache.emplace_back(pkt);
+        _size.fetch_add(1);
         update_retransmit_timer(pkt->seq);
         return pkt;
     }
@@ -207,6 +213,7 @@ protected:
             end = _pkt_cache.front()->seq;
             _allocated_bytes -= _pkt_cache.front()->pkt->size();
             _pkt_cache.pop_front();
+            _size.fetch_sub(1);
         }
 
         if (begin == -1) {
@@ -287,6 +294,7 @@ protected:
             on_drop_packet(pkt_pointer->seq, pkt_pointer->seq);
             _allocated_bytes -= (*iter.first)->pkt->size();
             _pkt_cache.erase(iter.first);
+            _size.fetch_sub(1);
             on_size_changed(false, (uint32_t) _pkt_cache.size());
             return;
         }
@@ -301,6 +309,7 @@ protected:
 protected:
     uint32_t cur_seq = 0;
     std::list<packet_pointer> _pkt_cache;
+    std::atomic<uint32_t> _size;
     uint64_t _allocated_bytes = 0;
     std::shared_ptr<deadline_timer<uint32_t, std::chrono::microseconds>> retransmit_timer;
     std::shared_ptr<srt::srt_ack_queue> _ack_queue;

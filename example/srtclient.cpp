@@ -17,7 +17,7 @@ void on_connected(const std::shared_ptr<srt::srt_client> &client) {
     while (!_quit.load()) {
         std::string send_buf = str + std::to_string(counts++);
         client->async_send(send_buf.data(), send_buf.size());
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds (1));
     }
 }
 
@@ -53,10 +53,7 @@ int main(int argc, char **argv) {
         worker.reset(new std::thread(on_connected, client));
     });
 
-    if (worker && worker->joinable()) {
-        worker->join();
-    }
-
+    Info("wait to quit");
     sem.wait();
     return 0;
 }
