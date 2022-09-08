@@ -1,0 +1,1 @@
+﻿pprof --pdf ./srtserver srtserver.profile >> srt.pdf

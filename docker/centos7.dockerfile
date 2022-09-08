@@ -21,7 +21,8 @@ RUN yum update -y && \
         openssl \
         openssl-devel \
         net-tools \
-        ghostscript
+        ghostscript \
+        graphviz
 
 WORKDIR /opt
 RUN wget -e "https_proxy=${HTTPS_PROXY}" https://cmake.org/files/v${CMAKE_VERSION}/cmake-${CMAKE_FULL_VERSION}.tar.gz \
