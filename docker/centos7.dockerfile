@@ -19,7 +19,9 @@ RUN yum update -y && \
         wget \
         make \
         openssl \
-        openssl-devel
+        openssl-devel \
+        net-tools \
+        ghostscript
 
 WORKDIR /opt
 RUN wget -e "https_proxy=${HTTPS_PROXY}" https://cmake.org/files/v${CMAKE_VERSION}/cmake-${CMAKE_FULL_VERSION}.tar.gz \
@@ -28,3 +30,14 @@ RUN wget -e "https_proxy=${HTTPS_PROXY}" https://cmake.org/files/v${CMAKE_VERSIO
     && ./bootstrap \
     && make -j8 \
     && make install
+
+
+RUN wget https://github.com/gperftools/gperftools/releases/download/gperftools-2.10/gperftools-2.10.tar.gz && \
+    tar -zxvf gperftools-2.10.tar.gz && \
+    cd gperftools-2.10 && \
+    ./configure && \
+    make -j8 && \
+    make install
+
+
+
