@@ -8,7 +8,7 @@ option(ENABLE_SHARED "enable shared library" OFF)
 option(ENABLE_TEST "enable unit test" OFF)
 option(ENABLE_WOLFSSL "enable wolfssl" OFF)
 option(ENABLE_LOG "enable internal log" ON)
-option(ENABLE_PERF_TOOL "enable benchmark" ON)
+option(ENABLE_PERF_TOOL "enable benchmark" OFF)
 
 
 option(ENABLE_SRT "enable srt" ON)
