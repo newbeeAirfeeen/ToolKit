@@ -7,6 +7,9 @@
 #include <iostream>
 #include <spdlog/logger.hpp>
 #include <string>
+#ifdef ENABLE_PREF_TOOL
+#include <gperftools//profiler.h>
+#endif
 using namespace srt;
 
 class srt_echo_session : public srt_session {
@@ -33,6 +36,10 @@ private:
 
 
 int main(int argc, char **argv) {
+    const char *exec_name = "srtserver.profile";
+#ifdef ENABLE_PREF_TOOL
+    ProfilerStart(exec_name);
+#endif
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); });
 
@@ -54,5 +61,8 @@ int main(int argc, char **argv) {
     server->start(endpoint);
 
     sem.wait();
+#ifdef ENABLE_PREF_TOOL
+    ProfilerStop();
+#endif
     return 0;
 }

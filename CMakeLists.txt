@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 project(ToolKit VERSION 1)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
-
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 option(ENABLE_SHARED "enable shared library" OFF)
 option(ENABLE_TEST "enable unit test" OFF)
 option(ENABLE_WOLFSSL "enable wolfssl" OFF)
@@ -65,6 +65,16 @@ endif()
 if(ENABLE_SRT)
     aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/srt SRC_LIST)
 endif()
+
+
+find_package(GooglePerftools)
+if(TCMALLOC_FOUND AND GOOGLEPERFTOOLS_FOUND)
+    message("-- enable google perf tools, include directory:${GooglePerftools_INCLUDE_DIR},library:${GooglePerftools_LIBRARIES},debug library:${GooglePerftools_LIBRARIES_DEBUG}")
+    add_definitions(-DENABLE_PREF_TOOL)
+    include_directories(${GooglePerftools_INCLUDE_DIR})
+    list(APPEND LINK_LIB_LIST ${GooglePerftools_LIBRARIES})
+endif()
+
 
 
 if(ENABLE_PERF_TOOL)

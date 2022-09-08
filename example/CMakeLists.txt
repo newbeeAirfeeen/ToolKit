@@ -6,7 +6,8 @@ foreach(item ${TEST_EXE})
     string(REGEX MATCH ".*[/\\](.*).cpp$" item_src ${item})
     message("-- 正在构建 ${item} --> ${CMAKE_MATCH_1} ${CMAKE_EXECUTABLE_SUFFIX}")
     add_executable(${CMAKE_MATCH_1} ${item})
+    if(GOOGLEPERFTOOLS_FOUND AND TCMALLOC_FOUND)
+        target_link_libraries(${CMAKE_MATCH_1} PUBLIC ${GooglePerftools_LIBRARIES_DEBUG})
+    endif()
     target_link_libraries(${CMAKE_MATCH_1} PUBLIC ${LINK_LIBS_GLOBAL})
 endforeach()
-
-

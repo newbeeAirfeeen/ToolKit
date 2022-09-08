@@ -7,8 +7,13 @@
 #include <iostream>
 #include <protocol/srt/srt_client.hpp>
 #include <spdlog/logger.hpp>
-using namespace std;
 
+#ifdef ENABLE_PREF_TOOL
+    #include <gperftools//profiler.h>
+#endif
+
+
+using namespace std;
 std::unique_ptr<std::thread> worker;
 std::atomic<bool> _quit{false};
 void on_connected(const std::shared_ptr<srt::srt_client> &client) {
@@ -17,12 +22,15 @@ void on_connected(const std::shared_ptr<srt::srt_client> &client) {
     while (!_quit.load()) {
         std::string send_buf = str + std::to_string(counts++);
         client->async_send(send_buf.data(), send_buf.size());
-        std::this_thread::sleep_for(std::chrono::microseconds (1));
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
 }
 
 int main(int argc, char **argv) {
-
+    const char *exec_name = "srtclient.profile";
+#ifdef ENABLE_PREF_TOOL
+    ProfilerStart(exec_name);
+#endif
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); });
     logger::initialize("logs/srt_client.log", spdlog::level::trace);
@@ -55,5 +63,8 @@ int main(int argc, char **argv) {
 
     Info("wait to quit");
     sem.wait();
+#ifdef ENABLE_PREF_TOOL
+    ProfilerStop();
+#endif
     return 0;
 }
