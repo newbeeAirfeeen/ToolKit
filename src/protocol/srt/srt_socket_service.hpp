@@ -141,7 +141,7 @@ namespace srt {
         void do_handshake_expired();
     private:
         /// 握手超时
-        void on_handshake_expired(bool try_send_again = true);
+        void on_handshake_expired(bool try_send_again);
         void on_keep_alive_expired();
     private:
         event_poller::Ptr poller;

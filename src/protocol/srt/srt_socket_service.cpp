@@ -86,7 +86,7 @@ namespace srt {
         }
         _is_open.store(true, std::memory_order_relaxed);
         /// 开始定时器, 每隔一段时间发送induction包
-        return on_handshake_expired();
+        return on_handshake_expired(true);
     }
 
     void srt_socket_service::connect_as_server() {
@@ -117,10 +117,10 @@ namespace srt {
         }
 
         if (try_send_again) {
-            /// 更新包的时间戳,当前时间减去第一次连接的时间
             set_packet_timestamp(handshake_buffer, ts);
             send_in(handshake_buffer, get_remote_endpoint());
         }
+
         /// 250ms后尝试重新发送
         Trace("update timer after 250ms to wait again");
         std::weak_ptr<srt_socket_service> self(shared_from_this());
@@ -614,7 +614,7 @@ namespace srt {
         }
         /// 保存握手缓存
         handshake_buffer = _pkt;
-        return on_handshake_expired();
+        return on_handshake_expired(true);
     }
     /// conclusion receive
     void srt_socket_service::handle_server_conclusion(const std::shared_ptr<buffer> &buff) {
@@ -710,6 +710,7 @@ namespace srt {
             handshake_context::to_buffer(*_handshake_context, pkt_buffer);
             /// 保存握手缓存
             handshake_buffer = pkt_buffer;
+            send_in(handshake_buffer, get_remote_endpoint());
             on_handshake_expired(false);
         } catch (const std::system_error &e) {
             Error(e.code().message());
