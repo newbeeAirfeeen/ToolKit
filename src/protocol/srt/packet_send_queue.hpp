@@ -42,7 +42,7 @@ private:
     using iterator = typename std::list<packet_pointer>::iterator;
 
 public:
-    packet_send_queue(const event_poller::Ptr poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true) : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak) {
+    packet_send_queue(const event_poller::Ptr& poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true) : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak) {
         retransmit_timer = create_deadline_timer<uint32_t, std::chrono::microseconds>(poller);
         _size.store(0);
     }

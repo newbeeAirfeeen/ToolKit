@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 option(ENABLE_SHARED "enable shared library" OFF)
-option(ENABLE_TEST "enable unit test" OFF)
+option(ENABLE_TEST "enable unit test" ON)
 option(ENABLE_WOLFSSL "enable wolfssl" OFF)
 option(ENABLE_LOG "enable internal log" ON)
 
@@ -116,6 +116,7 @@ if(NOT ANDROID)
     endif()
 
     if(ENABLE_TEST)
+        message("-- enable unittest")
         add_subdirectory(test)
     endif()
 

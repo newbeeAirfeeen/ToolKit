@@ -25,17 +25,17 @@
 
 #ifndef TOOLKIT_PACKET_LIMITED_SEND_RATE_QUEUE_HPP
 #define TOOLKIT_PACKET_LIMITED_SEND_RATE_QUEUE_HPP
-#include "deadline_timer.hpp"
-#include "packet_send_queue.hpp"
+#include "packet_sending_queue.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_packet.h"
 #include <atomic>
 #include <map>
 #include <mutex>
 template<typename T>
-class packet_limited_send_rate_queue : public packet_send_queue<T> {
+class packet_limited_send_rate_queue : public packet_sending_queue<T> {
 public:
-    using packet_pointer = typename packet_send_queue<T>::packet_pointer;
+    using base_type = packet_sending_queue<T>;
+    using packet_pointer = typename base_type::packet_pointer;
 
 private:
     using duration_type = std::chrono::nanoseconds;
@@ -46,9 +46,7 @@ public:
                                    bool enable_retransmit,
                                    uint32_t sock_id,
                                    const std::chrono::steady_clock::time_point &t,
-                                   uint16_t payload = 1456) : packet_send_queue<T>(poller, ack, enable_retransmit), _size(0) {
-        Trace("create limited send queue, payload={}", payload);
-        timer = create_deadline_timer<int, duration_type>(poller);
+                                   uint16_t payload = 1456) : base_type(poller, ack, enable_retransmit), _size(0), timer(poller->get_executor()) {
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
         Trace("average payload size={}", avg_payload_size);
         this->_sock_id = sock_id;
@@ -59,13 +57,6 @@ public:
 
 public:
     void start() override {
-        packet_send_queue<T>::start();
-        std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(packet_send_queue<T>::shared_from_this()));
-        timer->set_on_expired([self](const int &v) {
-            auto stronger_self = self.lock();
-            if (!stronger_self) { return; }
-            return stronger_self->on_timer(v);
-        });
         Trace("the temporary buffer cache initial size={}", this->get_window_size());
         _size.store(this->get_window_size(), std::memory_order_relaxed);
     }
@@ -92,14 +83,14 @@ public:
         }
 
         /// 如果比较成功，说明在进程中..
-        std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(packet_send_queue<T>::shared_from_this()));
-        packet_send_queue<T>::get_poller()->async([self]() {
+        std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(base_type::shared_from_this()));
+        base_type::get_poller()->async([self]() {
             auto stronger_self = self.lock();
             if (!stronger_self) {
                 return;
             }
             /// 直接调用
-            stronger_self->on_timer(-1);
+            stronger_self->on_timer();
         });
         return static_cast<int>(t->size());
     }
@@ -108,11 +99,11 @@ public:
     /// update the value of average packet payload size (AvgPayloadSize):
     void on_packet(const packet_pointer &p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
-        packet_send_queue<T>::on_packet(p);
+        base_type::on_packet(p);
     }
 
     void ack_sequence_to(uint32_t seq) override {
-        packet_send_queue<T>::ack_sequence_to(seq);
+        base_type::ack_sequence_to(seq);
         _last_ack_number = seq;
         // auto average_size = this->get_allocated_bytes() / this->get_buffer_size();
         // update_avg_payload(average_size == 0 ? 1456 : average_size);
@@ -129,13 +120,14 @@ public:
         bool _not_empty = false;
         {
             std::lock_guard<std::recursive_mutex> lmtx(mtx);
+            _is_commit = size != 0;
             if (!_buffer_cache.empty() && !_is_commit) {
                 _not_empty = _is_commit = true;
             }
         }
         /// 重新开启定时器
         if (_not_empty) {
-            on_timer(-1);
+            on_timer();
         }
     }
 
@@ -145,8 +137,8 @@ public:
     }
 
     void clear() override {
-        packet_send_queue<T>::clear();
-        timer->stop();
+        base_type::clear();
+        timer.cancel();
         std::lock_guard<std::recursive_mutex> lmtx(mtx);
         _buffer_cache.clear();
         _is_commit = false;
@@ -155,14 +147,14 @@ public:
 
     void rexmit_packet(const packet_pointer &p) override {
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
-        packet_send_queue<T>::rexmit_packet(p);
+        base_type::rexmit_packet(p);
     }
 
 private:
-    void on_timer(const int &v) {
-        if (wait_capacity()) {
-            return;
-        }
+    void on_timer() {
+//        if (wait_capacity()) {
+//            return;
+//        }
 
         T t;
         {
@@ -192,10 +184,9 @@ private:
             _last_send_point = now_nano;
         }
 
-        auto p = packet_send_queue<T>::insert_packet(pkt_buf, seq, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+        auto p = base_type::insert_packet(pkt_buf, seq, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
         /// 尝试发送数据
         on_packet(p);
-        this->drop_packet();
 
         auto internal = (now_nano - _last_send_point) / 1e3;
         auto _next_send_point = ((uint64_t) _pkt_snd_period * 1000);
@@ -208,7 +199,15 @@ private:
                 return;
             }
         }
-        timer->expired_from_now(internal > _next_send_point ? 0 : _next_send_point, 1);
+        std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(base_type::shared_from_this()));
+        timer.expires_after(duration_type(internal > _next_send_point ? 0 : _next_send_point));
+        timer.async_wait([self](const std::error_code &e) {
+            auto stronger_self = self.lock();
+            if (!stronger_self || e) {
+                return;
+            }
+            stronger_self->on_timer();
+        });
     }
 
 private:
@@ -217,7 +216,7 @@ private:
         auto cwnd = std::min(flow_window, this->get_window_size());
         auto diff = packet_interface<T>::sequence_diff(_last_ack_number, this->get_current_sequence());
         if (this->capacity() <= 0 || diff >= cwnd) {
-            Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}", cwnd, diff, flow_window, this->capacity());
+            //Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}", cwnd, diff, flow_window, this->capacity());
             return true;
         }
         return false;
@@ -236,7 +235,7 @@ private:
 
     inline void update_snd_period() {
         /// 求出步长
-        _pkt_snd_period = avg_payload_size * 1e6 / packet_send_queue<T>::get_bandwidth_mode()->get_bandwidth() * 1.0;
+        _pkt_snd_period = avg_payload_size * 1e6 / base_type::get_bandwidth_mode()->get_bandwidth() * 1.0;
         Trace("update packet send period={} us", static_cast<uint64_t>(_pkt_snd_period));
     }
 
@@ -248,7 +247,7 @@ private:
     /// PKT_SND_PERIOD = PktSize * 1000000 / MAX_BW
     ///  microseconds
     double _pkt_snd_period = 11.776;
-    std::shared_ptr<deadline_timer<int, duration_type>> timer;
+    asio::steady_timer timer;
     std::recursive_mutex mtx;
     std::list<T> _buffer_cache;
     std::atomic<int> _size;

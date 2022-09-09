@@ -123,8 +123,15 @@ protected:
         if (!get_buffer_size()) {
             return false;
         }
-        auto begin = get_first_block()->seq;
-        auto end = get_last_block()->seq;
+
+        auto first = get_first_block();
+        auto last = get_last_block();
+        if(!first || !last){
+            return false;
+        }
+
+        auto begin = first->seq;
+        auto end = last->seq;
         return (begin > end) && (begin - end > (get_max_sequence() >> 1));
     }
     uint32_t get_time_latency() {

@@ -26,7 +26,6 @@
 #ifndef TOOLKIT_SRT_SOCKET_SERVICE_HPP
 #define TOOLKIT_SRT_SOCKET_SERVICE_HPP
 #include "Util/nocopyable.hpp"
-#include "deadline_timer.hpp"
 #include "net/asio.hpp"
 #include "net/buffer.hpp"
 #include "net/event_poller.hpp"
