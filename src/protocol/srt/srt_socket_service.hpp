@@ -95,7 +95,6 @@ namespace srt {
         /// 数据统一出口
         void send_in(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where);
         void on_connect_in();
-        void do_keepalive();
         void do_nak();
         void do_nak_in();
         /// Round-trip time (RTT) in SRT is estimated during the transmission of data packets based on
@@ -139,22 +138,24 @@ namespace srt {
         void handle_shutdown(const srt_packet &pkt, const std::shared_ptr<buffer> &);
 
     private:
-        /// 定时器回调
-        void on_common_timer_expired(const int &);
-        /// 保活定时器
-        void on_keep_alive_expired(const int &);
-
+        void do_handshake_expired();
+    private:
+        /// 握手超时
+        void on_handshake_expired(bool try_send_again = true);
+        void on_keep_alive_expired();
     private:
         event_poller::Ptr poller;
-        /// 通常的定时器,处理ack,nak
-        std::shared_ptr<deadline_timer<int>> common_timer;
-        std::shared_ptr<deadline_timer<int>> keep_alive_timer;
+        /// 通常的定时器,处理接收超时和keepalive
+        asio::steady_timer _common_timer;
+        asio::steady_timer _nak_timer;
+        asio::steady_timer _ack_timer;
         /// 握手缓存
         std::shared_ptr<buffer> handshake_buffer;
         /// keep alive 缓存
         std::shared_ptr<buffer> keep_alive_buffer;
         /// 握手上下文
         std::shared_ptr<handshake_context> _handshake_context;
+        bool is_server = false;
         int handshake_conclusion = 0;
         bool report_nak_begin = false;
         bool ack_begin = false;
@@ -180,8 +181,6 @@ namespace srt {
         //// ack
         ack_entry _ack_entry;
         std::shared_ptr<srt_ack_queue> _ack_queue_;
-        /// 上一次接收ack的时间
-        time_point last_ack_response;
     };
 };// namespace srt
 

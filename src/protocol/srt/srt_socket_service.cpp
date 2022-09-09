@@ -36,41 +36,15 @@
 #include <random>
 namespace srt {
     static constexpr uint32_t packet_max_seq = 0x7FFFFFFF;
-    /// 连接回调, 发生在握手
-    enum timer_expired_type {
-        keep_alive_expired,
-        induction_expired,
-        conclusion_expired,
-        receive_timeout,
-        send_rate_limit,
-        server_handshake,
-        nak_expired,
-        ack_expired,
-    };
 
-    srt_socket_service::srt_socket_service(const event_poller::Ptr &poller) : poller(poller) {
+    srt_socket_service::srt_socket_service(const event_poller::Ptr &poller) : poller(poller),
+                                                                              _common_timer(poller->get_executor()),
+                                                                              _nak_timer(poller->get_executor()),
+                                                                              _ack_timer(poller->get_executor()) {
         _ack_queue_ = std::make_shared<srt::srt_ack_queue>();
     }
 
-    void srt_socket_service::begin() {
-        Debug("init common timer..");
-        common_timer = create_deadline_timer<int>(poller);
-        std::weak_ptr<srt_socket_service> self(shared_from_this());
-        common_timer->set_on_expired([self](const int &v) {
-            auto stronger_self = self.lock();
-            if (stronger_self) {
-                stronger_self->on_common_timer_expired(v);
-            }
-        });
-        Trace("init keep alive timer...");
-        keep_alive_timer = create_deadline_timer<int>(poller);
-        keep_alive_timer->set_on_expired([self](const int &v) {
-            auto stronger_self = self.lock();
-            if (!stronger_self)
-                return;
-            stronger_self->on_keep_alive_expired(v);
-        });
-    }
+    void srt_socket_service::begin() {}
 
     uint32_t srt_socket_service::get_cookie() {
         return 0;
@@ -110,94 +84,96 @@ namespace srt {
             _next_func = std::bind(&srt_socket_service::handle_server_induction, this, std::placeholders::_1);
             _next_func_with_pkt = std::bind(&srt_socket_service::handle_server_induction_1, this, std::placeholders::_1, std::placeholders::_2);
         }
-        /// 发送到对端
-        send_in(handshake_buffer, get_remote_endpoint());
-        /// 开始定时器, 每隔一段时间发送induction包
-        Trace("update timer after 250ms to send induction again");
-        this->common_timer->expired_from_now(250, timer_expired_type::induction_expired);
-        /// 套接字已经打开
         _is_open.store(true, std::memory_order_relaxed);
+        /// 开始定时器, 每隔一段时间发送induction包
+        return on_handshake_expired();
     }
 
     void srt_socket_service::connect_as_server() {
         _next_func = std::bind(&srt_socket_service::handle_client_induction, this, std::placeholders::_1);
         _next_func_with_pkt = std::bind(&srt_socket_service::handle_client_induction_1, this, std::placeholders::_1, std::placeholders::_2);
         connect_point = std::chrono::steady_clock::now();
+        is_server = true;
     }
 
-    void srt_socket_service::on_common_timer_expired(const int &val) {
-        int v = val;
-        if (perform_error) return;
-        switch (v) {
-            /// 用于客户端握手
-            case timer_expired_type::induction_expired:
-            case timer_expired_type::conclusion_expired: {
-                Trace("connect package may be lost, try send again, package type={}", v);
-                //// 连接超时
-                auto ts = get_time_from<std::chrono::milliseconds>(connect_point);
-                if (ts > get_connect_timeout()) {
-                    return on_error_in(make_srt_error(srt_error_code::socket_connect_time_out));
-                }
-                /// 更新包的时间戳,当前时间减去第一次连接的时间
-                set_packet_timestamp(handshake_buffer, ts);
-                send(handshake_buffer, get_remote_endpoint());
-                /// 统计包丢失
-                /// _sock_send_statistic->report_packet_lost(1);
-                /// 250ms后尝试重新发送
-                Trace("update timer after 250ms to send induction again");
-                this->common_timer->expired_from_now(250, val);
-                break;
-            }
-            /// 接收超时 断开连接
-            case timer_expired_type::receive_timeout: {
-                /// 上一次接收到到时间点
-                uint32_t leave_last_receive_time_point = get_time_from<std::chrono::milliseconds>(last_receive_point);
-                if (leave_last_receive_time_point > srt_socket_service::max_receive_time_out) {
-                    do_shutdown();
-                } else {
-                    common_timer->expired_from_now(srt_socket_service::max_receive_time_out - leave_last_receive_time_point, timer_expired_type::receive_timeout);
-                }
-                break;
-            }
-            /// 服务端握手超时
-            case timer_expired_type::server_handshake: {
-                Error("client handshake time out...");
-                srt_packet pkt;
-                return send_reject(1007, handshake_buffer);
-            }
-            case timer_expired_type::nak_expired: {
-                return do_nak_in();
-            }
-            case timer_expired_type::ack_expired: {
-                return do_ack_in();
-            }
+    void srt_socket_service::do_handshake_expired() {
+        if (is_server) {
+            Error("client handshake time out...");
+            srt_packet pkt;
+            return send_reject(1007, handshake_buffer);
         }
+        return on_error_in(make_srt_error(srt_error_code::socket_connect_time_out));
     }
 
-    void srt_socket_service::on_keep_alive_expired(const int &v) {
-        /// 如果没有连接 停止发送
-        if (!_is_connected.load(std::memory_order_relaxed) || perform_error) {
+    void srt_socket_service::on_handshake_expired(bool try_send_again) {
+        if (perform_error) {
             return;
         }
 
-        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - last_send_point).count();
-        if (now < 1000) {
-            return keep_alive_timer->expired_from_now(1000 - now, keep_alive_expired);
+        Trace("send handshake now...");
+        auto ts = get_time_from<std::chrono::milliseconds>(connect_point);
+        if (ts > get_connect_timeout()) {
+            return do_handshake_expired();
         }
 
-        auto ts = get_time_from<std::chrono::microseconds>(connect_point);
-        if (!keep_alive_buffer) {
-            srt_packet pkt;
-            pkt.set_control_type(control_type::keepalive);
-            pkt.set_socket_id(srt_socket_base::get_sock_id());
-            pkt.set_timestamp(ts);
-            keep_alive_buffer = create_packet(pkt);
-        } else {
-            /// 更新时间戳
-            set_packet_timestamp(keep_alive_buffer, ts);
+        if (try_send_again) {
+            /// 更新包的时间戳,当前时间减去第一次连接的时间
+            set_packet_timestamp(handshake_buffer, ts);
+            send_in(handshake_buffer, get_remote_endpoint());
         }
-        send_in(keep_alive_buffer, get_remote_endpoint());
-        return keep_alive_timer->expired_from_now(1000, keep_alive_expired);
+        /// 250ms后尝试重新发送
+        Trace("update timer after 250ms to wait again");
+        std::weak_ptr<srt_socket_service> self(shared_from_this());
+        _common_timer.expires_after(std::chrono::milliseconds(250));
+        _common_timer.async_wait([self, try_send_again](const std::error_code &e) {
+            auto stronger_self = self.lock();
+            if (!stronger_self) {
+                return;
+            }
+            if (e) return;
+            return stronger_self->on_handshake_expired(try_send_again);
+        });
+    }
+
+    void srt_socket_service::on_keep_alive_expired() {
+        if (perform_error || !_is_connected.load(std::memory_order_relaxed)) {
+            return;
+        }
+        /// 检查是否接收超时
+        auto current_time = std::chrono::steady_clock::now();
+        uint32_t leave_last_receive_time_point = (uint32_t) std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_receive_point).count();
+        if (leave_last_receive_time_point >= srt_socket_service::max_receive_time_out) {
+            return do_shutdown();
+        }
+
+        std::weak_ptr<srt_socket_service> self(shared_from_this());
+        auto func = [self](const std::error_code &e) {
+            auto stronger_self = self.lock();
+            if (!stronger_self) {
+                return;
+            }
+            if (e) return;
+            stronger_self->on_keep_alive_expired();
+        };
+
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_send_point).count();
+        if (now >= 1000) {
+            auto ts = (uint32_t) std::chrono::duration_cast<std::chrono::microseconds>(current_time - connect_point).count();
+            if (!keep_alive_buffer) {
+                srt_packet pkt;
+                pkt.set_control_type(control_type::keepalive);
+                pkt.set_socket_id(srt_socket_base::get_sock_id());
+                pkt.set_timestamp(ts);
+                keep_alive_buffer = create_packet(pkt);
+            } else {
+                /// 更新时间戳
+                set_packet_timestamp(keep_alive_buffer, ts);
+            }
+            send_in(keep_alive_buffer, get_remote_endpoint());
+            now = 0;
+        }
+        _common_timer.expires_after(std::chrono::milliseconds(1000 - now));
+        _common_timer.async_wait(func);
     }
 
     void srt_socket_service::input_packet(const std::shared_ptr<buffer> &buff) {
@@ -354,19 +330,15 @@ namespace srt {
         Trace("start sender/receiver buffer queue...");
         _sender_queue->start();
         _receive_queue->start();
-        /// 停止计时器
-        common_timer->stop();
+
         _is_open.store(true, std::memory_order_relaxed);
         _is_connected.store(true, std::memory_order_relaxed);
         {
             _next_func = std::bind(&srt_socket_service::handle_receive, this, std::placeholders::_1);
             _next_func_with_pkt = std::bind(&srt_socket_service::handle_receive_1, this, std::placeholders::_1, std::placeholders::_2);
         }
-        /// 开启keepalive
-        do_keepalive();
-        /// 创建
         _packet_receive_rate_ = std::make_shared<packet_calculate_window<16, 64>>();
-        common_timer->expired_from_now(srt_socket_service::max_receive_time_out, receive_timeout);
+        on_keep_alive_expired();
         /// 成功连接
         on_connected();
         Trace("invoke connected callback end");
@@ -375,8 +347,9 @@ namespace srt {
     void srt_socket_service::on_error_in(const std::error_code &e) {
         /// 停止发送队列
         /// 停止相关定时器
-        common_timer->stop();
-        keep_alive_timer->stop();
+        _common_timer.cancel();
+        _nak_timer.cancel();
+        _ack_timer.cancel();
         _is_connected.store(false);
         if (_sender_queue)
             _sender_queue->clear();
@@ -394,11 +367,6 @@ namespace srt {
                 }
             });
         }
-    }
-
-    void srt_socket_service::do_keepalive() {
-        /// 一秒一次
-        keep_alive_timer->expired_from_now(1000, keep_alive_expired);
     }
 
     /// Negative acknowledgment (NAK) control packets are used to signal
@@ -439,14 +407,22 @@ namespace srt {
         send_in(pkt_buff, get_remote_endpoint());
         uint32_t nak_interval = (_ack_queue_->get_rto() + 4 * _ack_queue_->get_rtt_var()) / 2;
         nak_interval = nak_interval < 20 ? 20 : nak_interval;
-        common_timer->expired_from_now(nak_interval, nak_expired);
+        std::weak_ptr<srt_socket_service> self(shared_from_this());
+        _nak_timer.expires_after(std::chrono::milliseconds(nak_interval));
+        _nak_timer.async_wait([self](const std::error_code &e) {
+            auto stronger_self = self.lock();
+            if (!stronger_self) {
+                return;
+            }
+            if (e) return;
+            stronger_self->do_nak_in();
+        });
     }
 
     void srt_socket_service::do_ack() {
         ack_begin = true;
-        last_ack_response = std::chrono::steady_clock::now();
         /// 至少执行一次
-        common_timer->expired_from_now(10, ack_expired);
+        do_ack_in();
     }
 
     void srt_socket_service::do_ack_in() {
@@ -494,7 +470,16 @@ namespace srt {
             ack_begin = false;
             return;
         }
-        common_timer->expired_from_now(10, ack_expired);
+        std::weak_ptr<srt_socket_service> self(shared_from_this());
+        _ack_timer.expires_after(std::chrono::milliseconds(10));
+        _ack_timer.async_wait([self](const std::error_code &e) {
+            auto stronger_self = self.lock();
+            if (!stronger_self) {
+                return;
+            }
+            if (e) return;
+            stronger_self->do_ack_in();
+        });
     }
 
     void srt_socket_service::do_ack_ack(uint32_t ack_number) {
@@ -586,8 +571,6 @@ namespace srt {
             Debug("max payload is not exceed 1500");
             return send_reject(handshake_context::packet_type::rej_rogue, buff);
         }
-        //// 停止定时器
-        common_timer->stop();
         /// 更新mtu
         set_max_payload(induction_context->_max_mss);
         /// 更新滑动窗口大小
@@ -600,7 +583,6 @@ namespace srt {
         ////
         ctx.extension_field = 1;
         ctx._sequence_number = induction_context->_sequence_number;
-
 
         ctx._max_mss = srt_socket_base::get_max_payload();
         ctx._window_size = srt_socket_service::get_max_flow_window_size();
@@ -632,8 +614,7 @@ namespace srt {
         }
         /// 保存握手缓存
         handshake_buffer = _pkt;
-        send_in(_pkt, get_remote_endpoint());
-        common_timer->expired_from_now(250, conclusion_expired);
+        return on_handshake_expired();
     }
     /// conclusion receive
     void srt_socket_service::handle_server_conclusion(const std::shared_ptr<buffer> &buff) {
@@ -729,10 +710,7 @@ namespace srt {
             handshake_context::to_buffer(*_handshake_context, pkt_buffer);
             /// 保存握手缓存
             handshake_buffer = pkt_buffer;
-            /// 发送induction
-            send_in(pkt_buffer, get_remote_endpoint());
-            /// 设置服务端握手超时
-            common_timer->expired_from_now(srt_socket_base::get_connect_timeout(), server_handshake);
+            on_handshake_expired(false);
         } catch (const std::system_error &e) {
             Error(e.code().message());
         }
