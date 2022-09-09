@@ -104,7 +104,7 @@ public:
 
     void ack_sequence_to(uint32_t seq) override {
         base_type::ack_sequence_to(seq);
-        _last_ack_number = seq;
+        _last_ack_number.store(seq);
         // auto average_size = this->get_allocated_bytes() / this->get_buffer_size();
         // update_avg_payload(average_size == 0 ? 1456 : average_size);
         update_snd_period();
@@ -152,10 +152,6 @@ public:
 
 private:
     void on_timer() {
-//        if (wait_capacity()) {
-//            return;
-//        }
-
         T t;
         {
             std::lock_guard<std::recursive_mutex> lmtx(mtx);
@@ -214,8 +210,9 @@ private:
     inline bool wait_capacity() {
         /// 如果窗口的容量 和 发送
         auto cwnd = std::min(flow_window, this->get_window_size());
-        auto diff = packet_interface<T>::sequence_diff(_last_ack_number, this->get_current_sequence());
-        if (this->capacity() <= 0 || diff >= cwnd) {
+        auto diff = packet_interface<T>::sequence_diff(_last_ack_number.load(), this->get_current_sequence());
+        auto size = this->get_buffer_size() + (this->get_window_size() - _size.load());
+        if (this->capacity() <= 0 || diff >= cwnd || size >= this->get_window_size()) {
             //Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}", cwnd, diff, flow_window, this->capacity());
             return true;
         }
@@ -257,7 +254,7 @@ private:
     /// 上一次发送包的序号
     uint32_t message_number = 1;
     uint32_t flow_window = 0;
-    uint32_t _last_ack_number = 0;
+    std::atomic<uint32_t> _last_ack_number{0};
     uint64_t _last_send_point = 0;
 };
 

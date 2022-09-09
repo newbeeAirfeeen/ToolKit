@@ -221,6 +221,7 @@ protected:
     }
 
     void on_timer(const uint32_t index, const uint32_t seq, uint64_t submit_point) {
+        Error("timer expired");
         /// 找到对应桶
         auto _list = _pkt_cache[index];
         /// 需要重传的包
