@@ -35,6 +35,7 @@ struct packet {
     uint32_t seq = 0;
     uint64_t submit_time = 0;
     uint16_t retransmit_count = 1;
+    uint64_t retransmit_time_point = 0;
     T pkt;
 };
 

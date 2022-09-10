@@ -213,7 +213,7 @@ private:
         auto diff = packet_interface<T>::sequence_diff(_last_ack_number.load(), this->get_current_sequence());
         auto size = this->get_buffer_size() + (this->get_window_size() - _size.load());
         if (this->capacity() <= 0 || diff >= cwnd || size >= this->get_window_size()) {
-            //Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}", cwnd, diff, flow_window, this->capacity());
+//            Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}, size={}", cwnd, diff, flow_window, this->capacity(), size);
             return true;
         }
         return false;
