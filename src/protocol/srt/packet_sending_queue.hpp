@@ -45,8 +45,8 @@ public:
 
 private:
     using iterator = typename std::list<packet_pointer>::iterator;
-    using time_point = std::chrono::time_point<std::chrono::steady_clock, std::chrono::milliseconds>;
-
+    using duration = std::chrono::milliseconds;
+    using time_point = std::chrono::time_point<std::chrono::steady_clock, duration>;
 public:
     packet_sending_queue(const event_poller::Ptr &poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true, bool enable_drop = true)
         : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak), enable_drop(enable_drop), rexmit_timer(poller->get_executor()) {}
@@ -226,7 +226,7 @@ protected:
         auto next_expired = pkt->retransmit_time_point;
         Trace("seq {} set retransmit packet time={} ms", pkt->seq, next_expired);
         std::weak_ptr<packet_sending_queue<T>> self(packet_sending_queue<T>::shared_from_this());
-        rexmit_timer.expires_at(time_point(next_expired));
+        rexmit_timer.expires_at(time_point() + duration(next_expired));
         rexmit_timer.async_wait([self, index, seq, next_expired](const std::error_code &e) {
             auto stronger_self = self.lock();
             if (!stronger_self) {
