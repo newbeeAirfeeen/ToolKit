@@ -35,6 +35,7 @@
 #include <chrono>
 #include <functional>
 #include <list>
+#include <numeric>
 #include <utility>
 #include <vector>
 template<typename T>
@@ -80,7 +81,7 @@ public:
             return nullptr;
         }
         for (int i = 0; i < (int) _pkt_cache.size(); i++) {
-            if (_pkt_cache.empty()) {
+            if (_pkt_cache[i]->empty()) {
                 continue;
             }
             return _pkt_cache[i]->back();
@@ -90,7 +91,7 @@ public:
 
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
         Trace("current seq={}, time_point={}", seq, time_point);
-        auto pkt = insert_packet(t, this->get_current_sequence());
+        auto pkt = insert_packet(t, this->get_next_sequence());
         on_packet(pkt);
         return static_cast<int>(t->size());
     }
@@ -362,7 +363,7 @@ private:
     }
 
     void ack_sequence_to_l(int index, uint32_t seq) {
-        auto &_list = _pkt_cache[index];
+        auto _list = _pkt_cache[index];
         while (!_list->empty()) {
             auto element = _list->front();
             if (element->seq >= seq && !packet_send_interface<T>::is_cycle()) {
