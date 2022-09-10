@@ -44,10 +44,11 @@ public:
 
 private:
     using iterator = typename std::list<packet_pointer>::iterator;
+    using time_point = std::chrono::time_point<std::chrono::steady_clock, std::chrono::milliseconds>;
 
 public:
-    packet_sending_queue(const event_poller::Ptr &poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true)
-        : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak), rexmit_timer(poller->get_executor()) {}
+    packet_sending_queue(const event_poller::Ptr &poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true, bool enable_drop = true)
+        : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak), enable_drop(enable_drop), rexmit_timer(poller->get_executor()) {}
 
     void set_current_sequence(uint32_t seq) override {
         this->cur_seq = seq;
@@ -116,7 +117,8 @@ public:
             send_again_l(i, begin, end);
         }
         /// 更新定时器
-        update_rexmit_timer();
+        if (enable_drop)
+            update_rexmit_timer();
     }
 
     void ack_sequence_to(uint32_t seq) override {
@@ -125,13 +127,24 @@ public:
             return;
         }
 
-        for (int i = 0; i < (int) _pkt_cache.size(); i++) {
+        if (packet_interface<T>::is_cycle() && get_last_block()->seq < seq) {
+            Trace("out of window range size");
+            return;
+        }
+
+        auto old = _size.load(std::memory_order_relaxed);
+        for (int i = (int) _pkt_cache.size() - 1; i >= 0; i--) {
             ack_sequence_to_l(i, seq);
         }
-        on_size_changed(false, _size.load());
+        auto new_ = _size.load(std::memory_order_relaxed);
+        if (old != new_) {
+            on_size_changed(false, _size.load());
+            if (enable_drop) {
+                update_rexmit_timer();
+            }
+        }
     }
 
-protected:
     event_poller::Ptr get_poller() {
         return poller;
     }
@@ -175,7 +188,7 @@ protected:
         }
         (*_pkt_cache.begin())->emplace_back(pkt);
         /// 启动定时器
-        if (_size.load(std::memory_order_relaxed) == 1) {
+        if (_size.load(std::memory_order_relaxed) == 1 && enable_drop) {
             update_rexmit_timer();
         }
         return pkt;
@@ -265,7 +278,8 @@ protected:
             _pkt_cache[index + 1]->splice(_pkt_cache[index + 1]->end(), *_list, _list->begin(), it);
         }
         /// 更新定时器
-        update_rexmit_timer();
+        if (enable_drop)
+            update_rexmit_timer();
         if (drop) {
             on_size_changed(false, _size.load(std::memory_order_relaxed));
         }
@@ -405,6 +419,7 @@ private:
     std::shared_ptr<srt::srt_ack_queue> _ack_queue;
     uint64_t _allocated_bytes = 0;
     bool enable_nak = true;
+    bool enable_drop = true;
 };
 
 
