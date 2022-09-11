@@ -47,6 +47,7 @@ private:
     using iterator = typename std::list<packet_pointer>::iterator;
     using duration = std::chrono::milliseconds;
     using time_point = std::chrono::time_point<std::chrono::steady_clock, duration>;
+
 public:
     packet_sending_queue(const event_poller::Ptr &poller, const std::shared_ptr<srt::srt_ack_queue> &ack_queue, bool enable_nak = true, bool enable_drop = true)
         : poller(poller), _ack_queue(ack_queue), enable_nak(enable_nak), enable_drop(enable_drop), rexmit_timer(poller->get_executor()) {}
@@ -114,6 +115,7 @@ public:
     }
 
     void send_again(uint32_t begin, uint32_t end) override {
+        //Warn("send again {}-{}",begin, end);
         for (int i = (int) (_pkt_cache.size() - 1); i >= 0; i--) {
             send_again_l(i, begin, end);
         }
@@ -161,7 +163,7 @@ protected:
     packet_pointer insert_packet(const T &t, uint32_t seq, uint64_t submit_time = 0) {
         Trace("current capacity={}, seq={}", packet_interface<T>::capacity(), seq);
         if (packet_interface<T>::capacity() <= 0) {
-            auto entry = get_minimum_expired();
+            auto entry = get_minimum_expired(false);
             if (entry.first) {
                 auto pkt = *(_pkt_cache[entry.second]->begin());
                 _pkt_cache[entry.second]->pop_front();
@@ -178,20 +180,20 @@ protected:
             pkt->submit_time = submit_time;
         pkt->pkt = t;
         /// 设置重传的的时间点
-        pkt->retransmit_time_point = submit_time + pkt_RTO(1) / 1000;
+        pkt->retransmit_time_point = pkt->submit_time + pkt_RTO(1) / 1000;
         /// 增加总字节数目
         _allocated_bytes += pkt->pkt->size();
 
         _size.fetch_add(1);
-
+        //        Debug("pkt add queue, subtime_time={}, rexmit_time={}", pkt->submit_time, pkt->retransmit_time_point);
         if (_pkt_cache.empty()) {
             _pkt_cache.emplace_back(std::make_shared<std::list<packet_pointer>>());
         }
         (*_pkt_cache.begin())->emplace_back(pkt);
         /// 启动定时器
-        if (_size.load(std::memory_order_relaxed) == 1 && enable_drop) {
-            update_rexmit_timer();
-        }
+        //if (_size.load(std::memory_order_relaxed) == 1 && enable_drop) {
+        update_rexmit_timer();
+        //}
         return pkt;
     }
 
@@ -238,7 +240,7 @@ protected:
     }
 
     void on_timer(const uint32_t index, const uint32_t seq, uint64_t retransmit_time) {
-        Debug("timer expired, index={}, seq={}, time_point={}", index, seq, retransmit_time);
+        Trace("timer expired, index={}, seq={}, time_point={}", index, seq, retransmit_time);
         /// 找到对应桶
         auto _list = _pkt_cache[index];
         /// 需要重传的包
@@ -376,7 +378,7 @@ private:
     }
 
     //// 求出最小超时的桶的位置
-    std::pair<bool, uint32_t> get_minimum_expired() const {
+    std::pair<bool, uint32_t> get_minimum_expired(bool rexmit_bool = true) const {
         if (_size.load(std::memory_order_relaxed) == 0) {
             return {false, 0};
         }
@@ -391,7 +393,11 @@ private:
             /// 得到第一个的包
             auto &pkt = *_pkt_cache[i]->begin();
             /// 重传的时间点
-            auto rexmit = pkt->retransmit_time_point;
+            uint64_t rexmit = pkt->retransmit_time_point;
+            /// 提交时间点
+            if (!rexmit_bool) {
+                rexmit = pkt->submit_time;
+            }
             if (mini > rexmit) {
                 index = i;
                 mini = rexmit;

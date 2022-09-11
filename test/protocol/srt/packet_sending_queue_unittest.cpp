@@ -22,7 +22,7 @@ auto create_queue(uint32_t seq, uint32_t delay, uint32_t max_seq, uint32_t windo
     queue->set_max_sequence(max_seq);
     queue->set_window_size(window_size);
     queue->set_on_drop_packet([](uint32_t begin, uint32_t end) {
-        //Info("drop packet {}-{}", begin, end);
+        Info("drop packet {}-{}", begin, end);
     });
     queue->set_on_packet([](const std::shared_ptr<packet<std::shared_ptr<std::string>>> &pointer) {
         //Info("send pkt: {}", pointer->pkt->data());
@@ -78,46 +78,4 @@ TEST(basic_ack_sequence_to, packet_sending_queue) {
 
 
 TEST(timed_ack_sequence_to, packet_sending_queue) {
-
-    logger::initialize("logs/pkt_sending_queue_ack_to_unittest.log", spdlog::level::debug);
-    auto str = std::make_shared<std::string>("0");
-    auto queue = create_queue(16, 0xFFFFFFFF, 20, 8, true);
-
-    auto poller = queue->get_poller();
-    std::atomic<bool> f{false};
-    poller->async([&]() {
-        queue->input_packet(str, 0, 0);//16
-        SLEEP_MS(400);
-        queue->input_packet(str, 0, 0);//17
-        SLEEP_MS(400);
-        queue->input_packet(str, 0, 0);//18
-        SLEEP_MS(400);
-        queue->input_packet(str, 0, 0);//19
-        SLEEP_MS(400);
-        queue->input_packet(str, 0, 0);//0
-        SLEEP_MS(400);
-        queue->input_packet(str, 0, 0);//1
-        SLEEP_MS(400);
-        queue->input_packet(str, 0, 0);//2
-        SLEEP_MS(400);
-        f.store(true);
-    });
-    bool _ = true;
-    while (!f.compare_exchange_weak(_, true)) _ = true;
-    f.store(false);
-    SLEEP_SECOND(3);
-    poller->async([&]() {
-        queue->ack_sequence_to(15);
-        EXPECT_EQ(queue->get_buffer_size(), 7);
-        queue->ack_sequence_to(2);
-        EXPECT_EQ(queue->get_buffer_size(), 1);
-        f.store(true);
-    });
-
-    _ = true;
-    while (!f.compare_exchange_weak(_, true)) _ = true;
-
-    EXPECT_EQ(1, 1);
-
-
 }

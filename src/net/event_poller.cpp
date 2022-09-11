@@ -73,7 +73,7 @@ const std::thread::id &event_poller::get_thread_id() const {
 }
 
 void event_poller::run() {
-    Debug("event_poller 启动");
+    Trace("event_poller 启动");
     this->id = std::this_thread::get_id();
     auto construct_func = [&] { this->_running.store(true, std::memory_order_relaxed); };
     auto destroy_func = [&] { this->_running.store(false, std::memory_order_relaxed); };
