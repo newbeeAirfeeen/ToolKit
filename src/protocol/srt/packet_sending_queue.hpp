@@ -325,7 +325,7 @@ protected:
 
 private:
     void drop_l(int index, uint32_t seq_begin, uint32_t seq_end) {
-        auto &_list = _pkt_cache[index];
+        auto _list = _pkt_cache[index];
         auto pair = find_packet_by_sequence(*_list, seq_begin, seq_end);
         if (pair.first == _list->end() || pair.second == _list->end()) {
             Debug("no packet to drop, not found begin or end sequence");
