@@ -33,8 +33,8 @@ auto create_queue(uint32_t seq, uint32_t delay, uint32_t max_seq, uint32_t windo
     return queue;
 }
 int main() {
-    const char *exec_name = "pkt_sending.profile";
-    logger::initialize("logs/pkt_sending_queue_ack_to_unittest.log", spdlog::level::debug);
+    const char *exec_name = "pkt_sending_queue.profile";
+    logger::initialize("logs/pkt_sending_queue.log", spdlog::level::debug);
 #ifdef ENABLE_PREF_TOOL
     ProfilerStart(exec_name);
 #endif
