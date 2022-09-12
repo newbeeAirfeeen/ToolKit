@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); });
 
-    logger::initialize("logs/srt_server.log", spdlog::level::trace);
+    logger::initialize("logs/srt_server.log", spdlog::level::info);
 
     if (argc < 2) {
         std::cerr << "srtserver <local port>";
