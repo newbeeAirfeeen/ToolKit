@@ -115,7 +115,41 @@ public:
     }
 
     void send_again(uint32_t begin, uint32_t end) override {
-        //Warn("send again {}-{}",begin, end);
+
+        if (_size.load() == 0) {
+            Debug("send queue is empty, not need to send again");
+            return;
+        }
+
+        auto is_in_sending_window_func = [&](uint32_t seq) -> bool {
+            bool is_cycling = packet_interface<T>::is_cycle();
+            auto last_seq = get_last_block()->seq;
+            auto first_seq = get_first_block()->seq;
+
+            if (is_cycling && seq < first_seq && seq > last_seq) {
+                Debug("send again out of window, window range={}-{}, seq={}", first_seq, last_seq, seq);
+                return false;
+            }
+
+            if (seq > last_seq && !is_cycling) {
+                Debug("send again out of window, end={}, last_seq={}", seq, last_seq);
+                return false;
+            }
+
+            if (!is_cycling && seq < first_seq) {
+                Debug("send again out of window, start={}, seq={}", first_seq, seq);
+                return false;
+            }
+
+            return true;
+        };
+
+        bool _ = is_in_sending_window_func(begin) && is_in_sending_window_func(end);
+        if (!_) {
+            return;
+        }
+
+
         for (int i = (int) (_pkt_cache.size() - 1); i >= 0; i--) {
             send_again_l(i, begin, end);
         }
@@ -344,7 +378,7 @@ private:
     }
 
     void send_again_l(int index, uint32_t seq_begin, uint32_t seq_end) {
-        auto &_list = _pkt_cache[index];
+        auto _list = _pkt_cache[index];
         auto pair = find_packet_by_sequence(*_list, seq_begin, seq_end);
         if (pair.first == _list->end() || pair.second == _list->end()) {
             return;
