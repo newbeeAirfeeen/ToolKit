@@ -102,6 +102,12 @@ public:
             Debug("no packet to drop, cache is empty");
             return;
         }
+
+        bool _ = in_sending_window(seq_begin) && in_sending_window(seq_end);
+        if (!_) {
+            return;
+        }
+
         for (int i = 0; i < (int) _pkt_cache.size(); i++) {
             drop_l(i, seq_begin, seq_end);
         }
@@ -121,30 +127,7 @@ public:
             return;
         }
 
-        auto is_in_sending_window_func = [&](uint32_t seq) -> bool {
-            bool is_cycling = packet_interface<T>::is_cycle();
-            auto last_seq = get_last_block()->seq;
-            auto first_seq = get_first_block()->seq;
-
-            if (is_cycling && seq < first_seq && seq > last_seq) {
-                Debug("send again out of window, window range={}-{}, seq={}", first_seq, last_seq, seq);
-                return false;
-            }
-
-            if (seq > last_seq && !is_cycling) {
-                Debug("send again out of window, end={}, last_seq={}", seq, last_seq);
-                return false;
-            }
-
-            if (!is_cycling && seq < first_seq) {
-                Debug("send again out of window, start={}, seq={}", first_seq, seq);
-                return false;
-            }
-
-            return true;
-        };
-
-        bool _ = is_in_sending_window_func(begin) && is_in_sending_window_func(end);
+        bool _ = in_sending_window(begin) && in_sending_window(end);
         if (!_) {
             return;
         }
@@ -187,6 +170,29 @@ public:
     }
 
 protected:
+    bool in_sending_window(uint32_t seq) {
+        bool is_cycling = packet_interface<T>::is_cycle();
+        auto last_seq = get_last_block()->seq;
+        auto first_seq = get_first_block()->seq;
+
+        if (is_cycling && seq < first_seq && seq > last_seq) {
+            Debug("send again out of window, window range={}-{}, seq={}", first_seq, last_seq, seq);
+            return false;
+        }
+
+        if (seq > last_seq && !is_cycling) {
+            Debug("send again out of window, end={}, last_seq={}", seq, last_seq);
+            return false;
+        }
+
+        if (!is_cycling && seq < first_seq) {
+            Debug("send again out of window, start={}, seq={}", first_seq, seq);
+            return false;
+        }
+
+        return true;
+    }
+
     inline uint32_t get_next_sequence() {
         auto seq = cur_seq;
         cur_seq = (cur_seq + 1) % packet_interface<T>::get_max_sequence();

@@ -76,7 +76,6 @@ public:
             _buffer_cache.push_back(t);
             _size.fetch_sub(1);
             if (_is_commit) {
-                //Trace("already in sending proc..");
                 return static_cast<int>(t->size());
             }
             _is_commit = true;
@@ -183,9 +182,9 @@ private:
         auto p = base_type::insert_packet(pkt_buf, seq, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
         /// 尝试发送数据
         on_packet(p);
-
-        auto internal = (now_nano - _last_send_point) / 1e3;
-        auto _next_send_point = ((uint64_t) _pkt_snd_period * 1000);
+        // us
+        auto internal = now_nano - _last_send_point;
+        auto _next_send_point = (uint64_t)(_pkt_snd_period * 1000);
         _last_send_point = now_nano;
         //// 更新发送间隔
         {
@@ -195,8 +194,13 @@ private:
                 return;
             }
         }
+
+        if (internal > _next_send_point) {
+            return on_timer();
+        }
+
         std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(base_type::shared_from_this()));
-        timer.expires_after(duration_type(internal > _next_send_point ? 0 : _next_send_point));
+        timer.expires_after(duration_type(_next_send_point));
         timer.async_wait([self](const std::error_code &e) {
             auto stronger_self = self.lock();
             if (!stronger_self || e) {
@@ -207,13 +211,13 @@ private:
     }
 
 private:
-    inline bool wait_capacity() {
+    bool wait_capacity() {
         /// 如果窗口的容量 和 发送
         auto cwnd = std::min(flow_window, this->get_window_size());
         auto diff = packet_interface<T>::sequence_diff(_last_ack_number.load(), this->get_current_sequence());
         auto size = this->get_buffer_size() + (this->get_window_size() - _size.load());
         if (this->capacity() <= 0 || diff >= cwnd || size >= this->get_window_size()) {
-//            Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}, size={}", cwnd, diff, flow_window, this->capacity(), size);
+            //            Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}, size={}", cwnd, diff, flow_window, this->capacity(), size);
             return true;
         }
         return false;
