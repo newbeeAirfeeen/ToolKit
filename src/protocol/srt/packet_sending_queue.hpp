@@ -121,7 +121,7 @@ public:
     }
 
     void send_again(uint32_t begin, uint32_t end) override {
-
+        Warn("send again {}-{}", begin, end);
         if (_size.load() == 0) {
             Debug("send queue is empty, not need to send again");
             return;
@@ -136,6 +136,7 @@ public:
         for (int i = (int) (_pkt_cache.size() - 1); i >= 0; i--) {
             send_again_l(i, begin, end);
         }
+        Warn("real send again {}-{}", begin, end);
         /// 更新定时器
         if (enable_drop)
             update_rexmit_timer();

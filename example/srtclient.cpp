@@ -22,7 +22,7 @@ void on_connected(const std::shared_ptr<srt::srt_client> &client) {
     while (!_quit.load()) {
         std::string send_buf = str + std::to_string(counts++);
         auto ret = client->async_send(send_buf.data(), send_buf.size());
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::microseconds (500));
     }
 }
 
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 #endif
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); });
-    logger::initialize("logs/srt_client.log", spdlog::level::trace);
+    logger::initialize("logs/srt_client.log", spdlog::level::warn);
 
     if (argc < 3) {
         std::cerr << "srt_client <remote_ip> <remote port>";
