@@ -12,26 +12,25 @@
 #endif
 using namespace srt;
 
-class srt_echo_session : public srt_session {
+class only_receive_session : public srt_session {
 public:
-    srt_echo_session(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) : srt_session(sock, context) {
-        str = "this is server msg ";
+    only_receive_session(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) : srt_session(sock, context) {
     }
-    ~srt_echo_session() override = default;
+    ~only_receive_session() override = default;
 
 protected:
     void onRecv(const std::shared_ptr<buffer> &ptr) override {
         Info("receive: {}", ptr->data());
-        std::string strr = str + std::to_string(count++);
-        async_send(strr.data(), strr.size());
     }
     void onError(const std::error_code &e) override {
         srt_session::onError(e);
     }
+};
 
-private:
-    int count = 1;
-    std::string str;
+class echo_session : public only_receive_session {
+protected:
+    void onRecv(const std::shared_ptr<buffer> &ptr) override {
+    }
 };
 
 
@@ -43,7 +42,7 @@ int main(int argc, char **argv) {
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); });
 
-    logger::initialize("logs/srt_server.log", spdlog::level::info);
+    logger::initialize("logs/srt_server.log", spdlog::level::trace);
 
     if (argc < 2) {
         std::cerr << "srtserver <local port>";
@@ -55,7 +54,7 @@ int main(int argc, char **argv) {
 
     /// 设置创建session回调
     server->on_create_session([](const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) -> std::shared_ptr<srt_session> {
-        return std::make_shared<srt_echo_session>(sock, context);
+        return std::make_shared<only_receive_session>(sock, context);
     });
 
     server->start(endpoint);
