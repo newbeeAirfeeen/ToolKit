@@ -23,7 +23,7 @@ namespace logger{
 #else
 namespace spdlog{
     namespace level{
-        enum level_enum{trace,info,warn,error};
+        enum level_enum{trace,debug,info,warn,error,critical};
     };
 };
 namespace logger{
