@@ -249,7 +249,7 @@ private:
             _next_send_point = (uint64_t) (_pkt_snd_period * 1000);
             /// 拿到拥塞控制发送的建议时间间隔
             auto _congestion_period = (uint64_t) (_congestion->get_send_period() * 1000);
-            Trace("congestion_period={} ns, next_send_point={} ns", internal, _congestion_period);
+            Trace("congestion_period={} ns, next_send_point={} ns", _congestion_period, _next_send_point);
             if (_next_send_point < _congestion_period) {
                 _next_send_point = _congestion_period;
             }
