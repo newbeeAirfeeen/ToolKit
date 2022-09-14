@@ -46,12 +46,14 @@ public:
                                    const std::shared_ptr<srt::srt_ack_queue> &ack,
                                    bool enable_retransmit,
                                    uint32_t sock_id,
+                                   uint32_t max_payload,
                                    const std::chrono::steady_clock::time_point &t,
                                    uint16_t payload = 1456) : base_type(poller, ack, enable_retransmit), _size(0), timer(poller->get_executor()) {
         avg_payload_size = payload > 1456 ? 1472 : (payload + 16);
         Trace("average payload size={}", avg_payload_size);
         this->_sock_id = sock_id;
         this->_conn = t;
+        this->max_payload = max_payload;
         update_snd_period();
         _congestion = std::make_shared<congestion>(*this);
     }
@@ -187,7 +189,7 @@ public:
     }
 
     uint32_t get_max_payload() const override {
-        return 1500;
+        return max_payload;
     }
 
     uint32_t get_deliver_rate() const override {
@@ -317,6 +319,7 @@ private:
     std::atomic<int> _size;
     bool _is_commit = false;
     uint32_t _sock_id = 0;
+    uint32_t max_payload = 1500;
     std::chrono::steady_clock::time_point _conn;
     /// 上一次发送包的序号
     uint32_t message_number = 1;

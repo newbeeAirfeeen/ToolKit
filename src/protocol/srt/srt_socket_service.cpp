@@ -303,7 +303,7 @@ namespace srt {
 
         Trace("init sender/receiver buffer queue...");
         _sender_queue = std::make_shared<packet_limited_send_rate_queue<std::shared_ptr<buffer>>>(poller, _ack_queue_, get_report_nak(),
-                                                                                                  get_sock_id(), connect_point, get_max_payload());
+                                                                                                  get_sock_id(), get_max_payload(), connect_point, get_max_payload());
         _receive_queue = std::make_shared<packet_receive_queue<std::shared_ptr<buffer>>>();
 
         _sender_queue->set_on_packet(std::bind(&srt_socket_service::on_sender_packet, this, std::placeholders::_1));
