@@ -142,7 +142,7 @@ public:
             update_rexmit_timer();
     }
 
-    void ack_sequence_to(uint32_t seq) override {
+    void ack_sequence_to(bool full_ack, uint32_t seq, uint32_t receive_rate, uint32_t link_capacity) override {
         if (_size.load(std::memory_order_relaxed) == 0) {
             Trace("no packets need sequence to do, cache is empty");
             return;
@@ -164,6 +164,10 @@ public:
                 update_rexmit_timer();
             }
         }
+    }
+
+    const std::shared_ptr<srt::srt_ack_queue> &get_ack_queue() const {
+        return this->_ack_queue;
     }
 
     event_poller::Ptr get_poller() {

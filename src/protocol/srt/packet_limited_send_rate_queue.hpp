@@ -27,12 +27,13 @@
 #define TOOLKIT_PACKET_LIMITED_SEND_RATE_QUEUE_HPP
 #include "packet_sending_queue.hpp"
 #include "spdlog/logger.hpp"
+#include "srt_congestion.hpp"
 #include "srt_packet.h"
 #include <atomic>
 #include <map>
 #include <mutex>
 template<typename T>
-class packet_limited_send_rate_queue : public packet_sending_queue<T> {
+class packet_limited_send_rate_queue : public packet_sending_queue<T>, public congestion_holder {
 public:
     using base_type = packet_sending_queue<T>;
     using packet_pointer = typename base_type::packet_pointer;
@@ -52,6 +53,7 @@ public:
         this->_sock_id = sock_id;
         this->_conn = t;
         update_snd_period();
+        _congestion = std::make_shared<congestion>(*this);
     }
     ~packet_limited_send_rate_queue() override = default;
 
@@ -101,14 +103,25 @@ public:
         base_type::on_packet(p);
     }
 
-    void ack_sequence_to(uint32_t seq) override {
-        base_type::ack_sequence_to(seq);
-        _last_ack_number.store(seq);
+    void ack_sequence_to(bool full_ack, uint32_t seq, uint32_t receive_rate, uint32_t link_capacity) override {
+        /// 先更新拥塞控制
+        if (full_ack) {
+            _congestion->ack_sequence_to(seq, receive_rate, link_capacity);
+            this->_receive_rate = receive_rate;
+        }
+        base_type::ack_sequence_to(full_ack, seq, receive_rate, link_capacity);
+        /// 更新参数值
+        this->_last_ack_number.store(seq);
         // auto average_size = this->get_allocated_bytes() / this->get_buffer_size();
         // update_avg_payload(average_size == 0 ? 1456 : average_size);
         update_snd_period();
     }
 
+    void send_again(uint32_t begin, uint32_t end) override {
+        /// 更新拥塞控制
+        _congestion->rexmit_pkt_event(true, begin, end);
+        packet_sending_queue<T>::send_again(begin, end);
+    }
 
     void on_size_changed(bool full, uint32_t size) override {
         if (full || size >= this->get_window_size()) {
@@ -145,8 +158,40 @@ public:
     }
 
     void rexmit_packet(const packet_pointer &p) override {
+        /// ON RTO
+        _congestion->rexmit_pkt_event(false, 0, 0);
         update_avg_payload(static_cast<uint16_t>(p->pkt->size()));
         base_type::rexmit_packet(p);
+    }
+
+public:
+    //// congestion holder
+    uint32_t get_current_seq() const override {
+        return packet_sending_queue<T>::get_current_sequence();
+    }
+
+    uint32_t get_RTT() const override {
+        return packet_sending_queue<T>::get_ack_queue()->get_rto();
+    }
+
+    uint32_t get_ack_last_number() const override {
+        return _last_ack_number.load(std::memory_order_relaxed);
+    }
+
+    uint32_t get_lost_list_size() const override {
+        return this->get_buffer_size();
+    }
+
+    uint32_t get_max_window_size() const override {
+        return packet_sending_queue<T>::get_window_size();
+    }
+
+    uint32_t get_max_payload() const override {
+        return 1500;
+    }
+
+    uint32_t get_deliver_rate() const override {
+        return _receive_rate;
     }
 
 private:
@@ -174,19 +219,9 @@ private:
         auto pkt_buf = create_packet(pkt);
 
         pkt_buf->append(t->data(), t->size());
-        auto now_nano = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-        if (!_last_send_point) {
-            _last_send_point = now_nano;
-        }
-
         auto p = base_type::insert_packet(pkt_buf, seq, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
         /// 尝试发送数据
         on_packet(p);
-        // us
-        auto internal = now_nano - _last_send_point;
-        auto _next_send_point = (uint64_t)(_pkt_snd_period * 1000);
-        _last_send_point = now_nano;
-        //// 更新发送间隔
         {
             std::lock_guard<std::recursive_mutex> lmtx(mtx);
             if (_buffer_cache.empty()) {
@@ -194,11 +229,38 @@ private:
                 return;
             }
         }
+        ////////
+        uint64_t _next_send_point = 1000;
+        /// 如果在慢启动阶段
+        if (_congestion->slow_starting()) {
+            _next_send_point = (uint64_t) (_congestion->get_send_period() * 1000);
+        } else {
+            /// 计算当前时间(纳秒)
+            auto now_nano = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+            if (!_last_send_point) {
+                _last_send_point = now_nano;
+            }
+            /// 计算出当前时间点离上次发送点的间隔
+            auto internal = now_nano - _last_send_point;
+            /// 并更新为当前的发送时间点
+            _last_send_point = now_nano;
 
-        if (internal > _next_send_point) {
-            return on_timer();
+            /// 计算出下一次应该发送的时间间隔
+            _next_send_point = (uint64_t) (_pkt_snd_period * 1000);
+            /// 拿到拥塞控制发送的建议时间间隔
+            auto _congestion_period = (uint64_t) (_congestion->get_send_period() * 1000);
+            Trace("congestion_period={} ns, next_send_point={} ns", internal, _congestion_period);
+            if (_next_send_point < _congestion_period) {
+                _next_send_point = _congestion_period;
+            }
+
+            /// 如果间隔大于下一次发送时间
+            if (internal > _next_send_point) {
+                return on_timer();
+            }
         }
 
+        Trace("next send duration={} ns", _next_send_point);
         std::weak_ptr<packet_limited_send_rate_queue<T>> self(std::static_pointer_cast<packet_limited_send_rate_queue<T>>(base_type::shared_from_this()));
         timer.expires_after(duration_type(_next_send_point));
         timer.async_wait([self](const std::error_code &e) {
@@ -213,11 +275,12 @@ private:
 private:
     bool wait_capacity() {
         /// 如果窗口的容量 和 发送
-        auto cwnd = std::min(flow_window, this->get_window_size());
+        uint32_t cwnd = std::min(flow_window, this->get_window_size());
+        cwnd = std::min(cwnd, _congestion->get_cwnd_window());
         auto diff = packet_interface<T>::sequence_diff(_last_ack_number.load(), this->get_current_sequence());
         auto size = this->get_buffer_size() + (this->get_window_size() - _size.load());
         if (this->capacity() <= 0 || diff >= cwnd || size >= this->get_window_size()) {
-            //            Warn("window is full, cwnd={}, diff_seq={}, flow_window={}, capacity={}, size={}", cwnd, diff, flow_window, this->capacity(), size);
+            Debug("wait capacity, cwnd={}, diff_seq={}, flow_window={}, capacity={}, size={}", cwnd, diff, flow_window, this->capacity(), size);
             return true;
         }
         return false;
@@ -258,8 +321,10 @@ private:
     /// 上一次发送包的序号
     uint32_t message_number = 1;
     uint32_t flow_window = 0;
+    uint32_t _receive_rate = 0;
     std::atomic<uint32_t> _last_ack_number{0};
     uint64_t _last_send_point = 0;
+    std::shared_ptr<congestion> _congestion;
 };
 
 
