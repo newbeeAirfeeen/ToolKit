@@ -13,7 +13,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 option(ENABLE_SHARED "enable shared library" OFF)
 option(ENABLE_TEST "enable unit test" ON)
 option(ENABLE_WOLFSSL "enable wolfssl" OFF)
-option(ENABLE_LOG "enable internal log" OFF)
+option(ENABLE_LOG "enable internal log" ON)
 
 
 
