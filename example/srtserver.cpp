@@ -28,9 +28,17 @@ protected:
 };
 
 class echo_session : public only_receive_session {
+public:
+    echo_session(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) : only_receive_session(sock, context) {
+    }
 protected:
     void onRecv(const std::shared_ptr<buffer> &ptr) override {
+        Info("receive: {}", ptr->data());
+        auto str = std::to_string(counts++);
+        async_send(str.data(), str.size());
     }
+private:
+    uint32_t counts = 1;
 };
 
 
@@ -54,7 +62,7 @@ int main(int argc, char **argv) {
 
     /// 设置创建session回调
     server->on_create_session([](const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) -> std::shared_ptr<srt_session> {
-        return std::make_shared<only_receive_session>(sock, context);
+        return std::make_shared<echo_session>(sock, context);
     });
 
     server->start(endpoint);
