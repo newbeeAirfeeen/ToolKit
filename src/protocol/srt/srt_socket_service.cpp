@@ -408,7 +408,7 @@ namespace srt {
         uint32_t nak_interval = (_ack_queue_->get_rto() + 4 * _ack_queue_->get_rtt_var()) / 2;
         nak_interval = nak_interval < 20000 ? 20000 : nak_interval;
         std::weak_ptr<srt_socket_service> self(shared_from_this());
-        _nak_timer.expires_after(std::chrono::microseconds (nak_interval));
+        _nak_timer.expires_after(std::chrono::microseconds(nak_interval));
         _nak_timer.async_wait([self](const std::error_code &e) {
             auto stronger_self = self.lock();
             if (!stronger_self) {

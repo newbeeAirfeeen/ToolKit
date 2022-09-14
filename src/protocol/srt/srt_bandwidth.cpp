@@ -23,8 +23,8 @@
 * SOFTWARE.
 */
 #include "srt_bandwidth.hpp"
-#include <chrono>
 #include "spdlog/logger.hpp"
+#include <chrono>
 uint64_t &bandwidth_mode::bandwidth() {
     return this->band_width;
 }
@@ -65,9 +65,9 @@ void estimated_bandwidth_mode::input_packet(uint16_t size) {
 uint64_t estimated_bandwidth_mode::get_bandwidth() const {
     std::lock_guard<std::mutex> lmtx(mtx);
     uint64_t v = bandwidth_mode::get_bandwidth();
-    if( v == 0){
-        v  = 1024 * 1024;
+    if (v == 0) {
+        v = 1024 * 1024;
     }
-    Trace("get bandwidth {}",v);
+    Trace("get bandwidth {}", v);
     return v;
 }

@@ -77,7 +77,7 @@ public:
 
     int input_packet(const T &t, uint32_t seq, uint64_t time_point) override {
 
-        if(_cur_seq > seq && !is_seq_cycle(seq, _cur_seq)){
+        if (_cur_seq > seq && !is_seq_cycle(seq, _cur_seq)) {
             Warn("too old packet seq, seq={}, current_seq={}, ignore it", seq, _cur_seq);
             return 0;
         }
@@ -100,7 +100,6 @@ public:
             Debug("cycle packet too new packet seq, current seq={}, seq={}, diff={}", _cur_seq, seq, diff);
             return -1;
         }
-
 
 
         auto pos = (_start + diff) % _pkt_buf.size();

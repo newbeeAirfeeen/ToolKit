@@ -18,10 +18,10 @@ namespace srt {
         if (it == ack_queue.end()) {
             return;
         }
-        auto rtt = (uint32_t)(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - it->second).count());
+        auto rtt = (uint32_t) (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - it->second).count());
         /// rtt = 7/8 * RTT + 1/8 * rtt
         /// rtt_var = 3/4 * rtt_var + 1/4 * abs(RTT - rtt)
-        _rtt_var = (3 * _rtt_var + std::abs((long )_rtt -  (long )rtt)) / 4;
+        _rtt_var = (3 * _rtt_var + std::abs((long) _rtt - (long) rtt)) / 4;
         _rtt = (7 * rtt + _rtt) / 8;
         Debug("rtt={}, rtt_variance={}, ms={}", _rtt, _rtt_var, rtt);
         ack_queue.erase(it);

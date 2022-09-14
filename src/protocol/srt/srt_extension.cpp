@@ -142,7 +142,7 @@ namespace srt {
 
     static void get_ext_string(const uint32_t *data, uint32_t block_size, std::string &stream_id) {
         size_t i = 0;
-        for (i = 0; i < (size_t)block_size; i++) {
+        for (i = 0; i < (size_t) block_size; i++) {
             uint32_t raw = load_be32(data++);
             stream_id.append((const char *) &raw, sizeof(uint32_t));
         }

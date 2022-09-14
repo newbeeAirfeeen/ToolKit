@@ -22,8 +22,8 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include "impl/srt_client_impl.hpp"
 #include "event_poller_pool.hpp"
+#include "impl/srt_client_impl.hpp"
 namespace srt {
 
     srt_client::srt_client(const endpoint_type &host) {

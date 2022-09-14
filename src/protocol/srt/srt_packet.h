@@ -196,7 +196,7 @@ namespace srt {
 #if 0
     void update_packet_data_flag(const srt_packet &pkt, const std::shared_ptr<buffer> &ptr) noexcept;
 #endif
-    void set_retransmit(bool , const std::shared_ptr<buffer>& buff);
+    void set_retransmit(bool, const std::shared_ptr<buffer> &buff);
 };// namespace srt
 
 #endif//TOOLKIT_SRT_PACKET_H

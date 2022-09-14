@@ -48,7 +48,7 @@ namespace srt {
     public:
         void update_receive_rate(uint16_t size) {
             auto now = std::chrono::steady_clock::now();
-            pkt_window[index] = (uint32_t)std::chrono::duration_cast<std::chrono::microseconds>(now - last_receive_point).count();
+            pkt_window[index] = (uint32_t) std::chrono::duration_cast<std::chrono::microseconds>(now - last_receive_point).count();
             bytes_window[index] = size;
             index = (index + 1) % NUM;
             last_receive_point = now;
@@ -122,7 +122,7 @@ namespace srt {
                 bandsum += bandwidth_window[i];
             }
             if (count == 0) count = 1;
-            return (uint32_t)(std::ceil(1000000.0 / (double(bandsum) / double(count))));
+            return (uint32_t) (std::ceil(1000000.0 / (double(bandsum) / double(count))));
         }
 
     private:

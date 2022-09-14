@@ -197,6 +197,4 @@ public:
 };
 
 
-
-
 #endif//TOOLKIT_PACKET_INTERFACE_HPP
