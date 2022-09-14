@@ -31,6 +31,66 @@ namespace srt {
         _impl->begin();
     }
 
+    void srt_client::set_max_payload(uint16_t length) {
+        _impl->set_max_payload(length);
+    }
+
+    void srt_client::set_max_window_size(uint16_t size) {
+        _impl->set_max_flow_window_size(size);
+    }
+
+    void srt_client::set_enable_drop_late_packet(bool on) {
+        _impl->set_drop_too_late_packet(on);
+    }
+
+    void srt_client::set_enable_report_nack(bool on) {
+        _impl->set_report_nak(on);
+    }
+
+    void srt_client::set_stream_id(const std::string &stream_id) {
+        _impl->set_stream_id(stream_id);
+    }
+
+    void srt_client::set_connect_timeout(uint32_t ms) {
+        _impl->set_connect_timeout(ms);
+    }
+
+    void srt_client::set_max_receive_time_out(uint32_t ms) {
+        _impl->set_max_receive_time_out(ms);
+    }
+
+    uint16_t srt_client::get_max_payload() const {
+        return (uint16_t) _impl->get_max_payload();
+    }
+
+    uint16_t srt_client::get_max_window_size() const {
+        return (uint16_t) _impl->get_max_flow_window_size();
+    }
+
+    bool srt_client::enable_drop_too_late_packet() const {
+        return (uint16_t) _impl->get_drop_too_late_packet();
+    }
+
+    bool srt_client::enable_report_nack() const {
+        return _impl->get_report_nak();
+    }
+
+    const std::string &srt_client::stream_id() const {
+        return _impl->get_stream_id();
+    }
+
+    uint32_t srt_client::socket_id() const {
+        return _impl->get_sock_id();
+    }
+
+    uint32_t srt_client::connect_timeout() const {
+        return _impl->get_connect_timeout();
+    }
+
+    uint32_t srt_client::max_receive_time_out() const {
+        return _impl->get_max_receive_time_out();
+    }
+
     void srt_client::async_connect(const endpoint_type &remote, const std::function<void(const std::error_code &e)> &f) {
         _impl->async_connect(remote, f);
     }

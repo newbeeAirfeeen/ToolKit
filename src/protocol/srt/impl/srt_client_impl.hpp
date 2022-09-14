@@ -104,11 +104,23 @@ namespace srt {
             }
         }
 
+        /**
+         * 为兼容srt_session在io线程触发，这里会自己切换到其他线程，预防client阻塞io线程
+         */
         void on_connected() override {
             is_connect_func.store(true);
-            auto c = srt::make_srt_error(success);
-            std::lock_guard<std::recursive_mutex> lmtx(mtx);
-            if (conn_func) conn_func(c);
+            std::weak_ptr<srt_client::impl> self(std::static_pointer_cast<srt_client::impl>(shared_from_this()));
+            get_executor()->async([self]() {
+                auto stronger_self = self.lock();
+                if (!stronger_self) {
+                    return;
+                }
+
+                auto c = srt::make_srt_error(success);
+                std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
+                if (stronger_self->conn_func)
+                    stronger_self->conn_func(c);
+            });
         }
 
         void on_error(const std::error_code &e) override {
