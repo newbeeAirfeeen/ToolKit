@@ -138,10 +138,12 @@ namespace srt {
 
     private:
         void do_handshake_expired();
+
     private:
         /// 握手超时
         void on_handshake_expired(bool try_send_again);
         void on_keep_alive_expired();
+
     private:
         event_poller::Ptr poller;
         /// 通常的定时器,处理接收超时和keepalive

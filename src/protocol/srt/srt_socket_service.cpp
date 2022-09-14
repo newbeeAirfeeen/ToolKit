@@ -315,7 +315,7 @@ namespace srt {
         _sender_queue->set_max_sequence(packet_max_seq);
         _sender_queue->set_window_size(_handshake_context->_window_size);
         _sender_queue->update_flow_window(_handshake_context->_window_size);
-        _sender_queue->ack_sequence_to(_handshake_context->_sequence_number);
+        _sender_queue->ack_sequence_to(false, _handshake_context->_sequence_number, 0, 0);
 
         _receive_queue->set_current_sequence(_handshake_context->_sequence_number);
         _receive_queue->set_max_sequence(packet_max_seq);
@@ -903,8 +903,9 @@ namespace srt {
         if (buff->size() < 4) {
             return;
         }
-
+        bool _ = false;
         uint32_t _last_ack_packet_seq = buff->get_be<uint32_t>();
+        uint32_t _packet_receiving_rate = 0, _estimated_link_capacity = 0, _receiving_rate = 0;
         Trace("ack number:{}, last_ack_packet_seq={}", an, _last_ack_packet_seq);
         if (buff->size() >= 12) {
             /// A Small ACK includes the fields up to and including the Available
@@ -913,11 +914,12 @@ namespace srt {
             uint32_t _rtt_variance = buff->get_be<uint32_t>();
             uint32_t _available_buffer_size = buff->get_be<uint32_t>();
             if (buff->size() >= 12) {
-                uint32_t _packet_receiving_rate = buff->get_be<uint32_t>();
-                uint32_t _estimated_link_capacity = buff->get_be<uint32_t>();
-                uint32_t _receiving_rate = buff->get_be<uint32_t>();
+                _packet_receiving_rate = buff->get_be<uint32_t>();
+                _estimated_link_capacity = buff->get_be<uint32_t>();
+                _receiving_rate = buff->get_be<uint32_t>();
                 /// ack ack control packets are sent to acknowledge the reception
                 do_ack_ack(an);
+                _ = true;
             }
             /// 更新rtt rtt_variance.
             Trace("update rtt={}, rtt_variance={}, peer available buffer size={}", _rtt, _rtt_variance, _available_buffer_size);
@@ -925,7 +927,7 @@ namespace srt {
             _sender_queue->update_flow_window(_available_buffer_size);
         }
         /// 滑动序号
-        _sender_queue->ack_sequence_to(_last_ack_packet_seq);
+        _sender_queue->ack_sequence_to(_, _last_ack_packet_seq, _packet_receiving_rate, _estimated_link_capacity);
     }
 
     void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {

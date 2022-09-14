@@ -127,7 +127,7 @@ protected:
 
         auto first = get_first_block();
         auto last = get_last_block();
-        if(!first || !last){
+        if (!first || !last) {
             return false;
         }
 
@@ -159,6 +159,7 @@ private:
     uint32_t _max_sequence = 0xFFFFFFFF;
 };
 
+
 template<typename T>
 class packet_send_interface : public packet_interface<T> {
 public:
@@ -169,14 +170,16 @@ public:
     void set_bandwidth_mode(const std::shared_ptr<bandwidth_mode> &mode) {
         _mode = mode;
     }
+
     const std::shared_ptr<bandwidth_mode> &get_bandwidth_mode() {
         return _mode;
     }
+
     void drop(uint32_t seq, uint32_t seq_) override = 0;
 
 public:
     virtual void send_again(uint32_t begin, uint32_t end) = 0;
-    virtual void ack_sequence_to(uint32_t seq) = 0;
+    virtual void ack_sequence_to(bool full_ack, uint32_t seq, uint32_t receive_rate, uint32_t link_capacity) = 0;
     virtual void update_flow_window(uint32_t) = 0;
     void on_size_changed(bool, uint32_t) override = 0;
 
@@ -192,6 +195,8 @@ public:
     virtual std::vector<std::pair<uint32_t, uint32_t>> get_pending_packets() const = 0;
     void on_size_changed(bool, uint32_t) override {}
 };
+
+
 
 
 #endif//TOOLKIT_PACKET_INTERFACE_HPP
