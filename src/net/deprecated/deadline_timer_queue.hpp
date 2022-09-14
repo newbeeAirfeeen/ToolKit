@@ -25,7 +25,7 @@
 
 #ifndef TOOLKIT_DEADLINE_TIMER_QUEUE_HPP
 #define TOOLKIT_DEADLINE_TIMER_QUEUE_HPP
-#include "protocol/srt/deadline_timer.hpp"
+#include "deadline_timer.hpp"
 #include <functional>
 #include <map>
 #include <memory>

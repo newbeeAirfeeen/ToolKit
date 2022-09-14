@@ -27,8 +27,8 @@
 #define TOOLKIT_PACKET_SEND_QUEUE_HPP
 #include "event_poller.hpp"
 #include "spdlog/logger.hpp"
-#include "srt_ack.hpp"
-#include "srt_bandwidth.hpp"
+#include "protocol/srt/srt_ack.hpp"
+#include "protocol/srt/srt_bandwidth.hpp"
 #include <algorithm>
 #include <chrono>
 #include <functional>
