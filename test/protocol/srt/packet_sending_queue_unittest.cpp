@@ -48,9 +48,9 @@ TEST(cycle_ack_sequence_to, packet_sending_queue) {
     // 2
     queue->input_packet(str, 0, 0);
 
-    queue->ack_sequence_to(15);
+    queue->ack_sequence_to(false, 15, 0, 0);
     EXPECT_EQ(queue->get_buffer_size(), 7);
-    queue->ack_sequence_to(2);
+    queue->ack_sequence_to(false, 2, 0, 0);
     EXPECT_EQ(queue->get_buffer_size(), 1);
 }
 TEST(basic_ack_sequence_to, packet_sending_queue) {
@@ -66,13 +66,13 @@ TEST(basic_ack_sequence_to, packet_sending_queue) {
     EXPECT_EQ(queue->get_buffer_size(), 8192);
     /// 1 - 8192
     EXPECT_EQ(queue->get_first_block()->seq, 1);
-    queue->ack_sequence_to(10);
+    queue->ack_sequence_to(false, 10, 0, 0);
     EXPECT_EQ(queue->get_first_block()->seq, 10);
     EXPECT_EQ(queue->get_buffer_size(), 8183);
     /// 10 - 8192
-    queue->ack_sequence_to(50);
+    queue->ack_sequence_to(false, 50, 0, 0);
     EXPECT_EQ(queue->get_buffer_size(), 8143);
-    queue->ack_sequence_to(10000);
+    queue->ack_sequence_to(false, 10000, 0, 0);
     EXPECT_EQ(queue->get_buffer_size(), 0);
 }
 
