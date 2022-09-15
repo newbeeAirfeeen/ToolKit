@@ -1,4 +1,0 @@
-#ifndef STEADY_TIMER_HPP
-#define STEADY_TIMER_HPP
-
-#endif // STEADY_TIMER_HPP

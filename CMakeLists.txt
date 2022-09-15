@@ -36,6 +36,7 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS_RELEASE /O2)
 endif()
 
+
 # 源代码
 set(SRC_LIST "")
 # 待链接的库
@@ -103,7 +104,7 @@ message("-- library use ${IS_STATIC} build")
 set(TOOLKIT_TARGET_NAME ${PROJECT_NAME}_${shared_or_static} CACHE INTERNAL "project name")
 set(BUILD_SHARED_ALL ${IS_STATIC} CACHE INTERNAL "build ${IS_STATIC} all")
 set(LINK_LIBS_GLOBAL ${TOOLKIT_TARGET_NAME} ${LINK_LIB_LIST} CACHE INTERNAL "build ${IS_STATIC} all")
-include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/net)
+include_directories(${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/3rdlib/asio)
 
 add_library(${TOOLKIT_TARGET_NAME} ${IS_STATIC} ${SRC_LIST} src/Util/endian.cpp)
 target_link_libraries(${TOOLKIT_TARGET_NAME} PUBLIC ${LINK_LIB_LIST})

@@ -24,7 +24,7 @@
 */
 #ifndef TOOLKIT_SRT_HANDSHAKE_H
 #define TOOLKIT_SRT_HANDSHAKE_H
-#include "net/asio.hpp"
+#include "asio.hpp"
 #include <memory>
 #include <net/buffer.hpp>
 namespace srt {
