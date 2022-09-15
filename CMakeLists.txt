@@ -20,7 +20,7 @@ option(ENABLE_LOG "enable internal log" ON)
 option(ENABLE_SRT "enable srt" ON)
 option(ENABLE_STUN "enable stun" OFF)
 option(ENABLE_EXAMPLE "enable example" ON)
-
+option(ENABLE_APP "enable application" ON)
 
 add_definitions(-DASIO_STANDALONE
                 -DASIO_HEADER_ONLY
@@ -122,4 +122,8 @@ if(NOT ANDROID)
         add_subdirectory(test)
     endif()
 
+    if(ENABLE_APP)
+        message("-- enable app")
+        add_subdirectory(app)
+    endif()
 endif()
