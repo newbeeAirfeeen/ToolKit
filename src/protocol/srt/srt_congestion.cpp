@@ -76,7 +76,11 @@ void congestion::rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end) {
         in_slow_start.store(false);
         update_pkt_send_period();
     }
+
     if (!is_nak) {
+        last_dec_period = _pkt_send_period;
+        _pkt_send_period = std::ceil(_pkt_send_period * 2);
+        last_dec_seq = holder.get_ack_last_number();
         return;
     }
 
