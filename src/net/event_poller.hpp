@@ -65,6 +65,7 @@ public:
      * @return 当前线程的id
      */
     const std::thread::id &get_thread_id() const;
+    bool is_current_thread() const;
     /*!
      * 异步执行任务,如果在本线程，则直接执行
      */

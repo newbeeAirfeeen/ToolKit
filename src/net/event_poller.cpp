@@ -45,7 +45,7 @@ void event_poller::start() {
         this->run();
     }));
     bool _ = true;
-    while(!_running.compare_exchange_weak(_, true)){
+    while (!_running.compare_exchange_weak(_, true)) {
         _ = true;
     }
 }
@@ -70,6 +70,11 @@ asio::io_context &event_poller::get_executor() {
 
 const std::thread::id &event_poller::get_thread_id() const {
     return this->id;
+}
+
+bool event_poller::is_current_thread() const {
+    auto thread_id = std::this_thread::get_id();
+    return thread_id == get_thread_id();
 }
 
 void event_poller::run() {

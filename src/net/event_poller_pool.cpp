@@ -57,19 +57,21 @@ event_poller::Ptr event_poller_pool::get_poller(bool current_thread) {
     event_poller::Ptr pointer;
     std::shared_ptr<std::atomic<char>> _load = std::make_shared<std::atomic<char>>(0);
     std::weak_ptr<std::atomic<char>> self(_load);
-    std::for_each(poller_pool.begin(), poller_pool.end(), [&, self](const event_poller::Ptr ev_ptr) {
-        auto stronger_self = self.lock();
-        if (!stronger_self) {
-            return;
-        }
+    std::for_each(poller_pool.begin(), poller_pool.end(), [&, self](const event_poller::Ptr &ev_ptr) {
+        ev_ptr->async([&, self]() {
+            auto stronger_self = self.lock();
+            if (!stronger_self) {
+                return;
+            }
 
-        char _0 = 0;
-        if (!stronger_self->compare_exchange_strong(_0, 1)) {
-            return;
-        }
+            char _0 = 0;
+            if (!stronger_self->compare_exchange_strong(_0, 1)) {
+                return;
+            }
 
-        pointer = ev_ptr;
-        stronger_self->store(2);
+            pointer = ev_ptr;
+            stronger_self->store(2);
+        });
     });
     char _ = 2;
     while (!_load->compare_exchange_weak(_, 2)) {
