@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 option(ENABLE_SHARED "enable shared library" OFF)
-option(ENABLE_TEST "enable unit test" OFF)
+option(ENABLE_TEST "enable unit test" ON)
 option(ENABLE_WOLFSSL "enable wolfssl" OFF)
 option(ENABLE_LOG "enable internal log" ON)
 
@@ -19,6 +19,7 @@ option(ENABLE_LOG "enable internal log" ON)
 
 option(ENABLE_SRT "enable srt" ON)
 option(ENABLE_STUN "enable stun" OFF)
+option(ENABLE_URI "enable uri" ON)
 option(ENABLE_EXAMPLE "enable example" ON)
 option(ENABLE_APP "enable application" ON)
 
@@ -74,6 +75,11 @@ if(ENABLE_SRT)
 endif()
 
 
+if(ENABLE_URI)
+    aux_source_directory(${CMAKE_SOURCE_DIR}/src/protocol/uri SRC_LIST)
+endif()
+
+
 find_package(GooglePerftools)
 if(TCMALLOC_FOUND AND GOOGLEPERFTOOLS_FOUND)
     message("-- enable google perf tools, include directory:${GooglePerftools_INCLUDE_DIR},library:${GooglePerftools_LIBRARIES},debug library:${GooglePerftools_LIBRARIES_DEBUG}")
@@ -126,4 +132,5 @@ if(NOT ANDROID)
         message("-- enable app")
         add_subdirectory(app)
     endif()
+
 endif()

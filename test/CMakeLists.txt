@@ -21,6 +21,11 @@ if(ENABLE_SRT)
     add_subdirectory(protocol/srt)
 endif()
 
+if(ENABLE_URI)
+    message("-- enable uri unittest")
+    add_subdirectory(protocol/uri)
+endif()
+
 foreach (item ${TEST_LIST})
     gtest_discover_tests(${item})
 endforeach()
