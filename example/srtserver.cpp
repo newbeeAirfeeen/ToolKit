@@ -11,7 +11,7 @@
 #include <gperftools/profiler.h>
 #endif
 using namespace srt;
-
+#include "protocol/http/http.hpp"
 class only_receive_session : public srt_session {
 public:
     only_receive_session(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) : srt_session(sock, context) {
