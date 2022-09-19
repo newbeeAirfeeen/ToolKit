@@ -25,13 +25,12 @@
 
 #ifndef TOOLKIT_HTTP_FIELDS_HPP
 #define TOOLKIT_HTTP_FIELDS_HPP
+#include "Util/string_view.h"
 #include <cstdint>
 #include <type_traits>
-#include "Util/string_view.h"
-namespace http{
+namespace http {
 
-    enum class field : unsigned short
-    {
+    enum class field : unsigned short {
         unknown = 0,
         a_im,
         accept,
@@ -393,11 +392,12 @@ namespace http{
 
     string_view to_string(field f);
     field string_to_field(string_view s);
-    std::ostream& operator << (std::ostream& os, field f);
+    std::ostream &operator<<(std::ostream &os, field f);
 
     template<typename Allocator>
-    class basic_fields{
-        static_assert(std::is_pointer<typename std::allocator_traits<Allocator>::pointer>::value,"Allocator must use regular pointers");
+    class basic_fields {
+        static_assert(std::is_pointer<typename std::allocator_traits<Allocator>::pointer>::value, "Allocator must use regular pointers");
+
     public:
         struct element;
         using off_type = uint16_t;
@@ -408,10 +408,32 @@ namespace http{
             off_type off_;
             off_type len_;
             field f_;
-            char* data() const;
+            char *data() const;
 
+        protected:
+            value_type(field name, string_view sname, string_view value);
+
+        public:
+            value_type(const value_type &) = delete;
+            value_type &operator=(const value_type &) = delete;
+            /// Returns the field enum, which can be @ref field::unknown
+            field name() const;
+
+            /// returnts the field name as string
+            const string_view name_string() const;
+            const string_view value() const;
+
+
+            struct key_compare {
+                bool operator()(string_view lhs, const value_type &rhs) const noexcept {
+                    if (lhs.size() < rhs.name_string().size())
+                        return true;
+                    if (lhs.size() > rhs.name_string().size())
+                        return false;
+                    return lhs.compare(rhs.name_string());
+                }
+            };
         };
-
     };
-};
+};    // namespace http
 #endif//TOOLKIT_HTTP_FIELDS_HPP
