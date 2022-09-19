@@ -427,9 +427,9 @@ private:
     static bool is_one_of(CharT c, basic_string_view str);
 };
 
-template<typename CharT, typename Traits>
-const typename basic_string_view<CharT, Traits>::size_type
-        basic_string_view<CharT, Traits>::npos;
+//template<typename CharT, typename Traits>
+//const typename basic_string_view<CharT, Traits>::size_type
+//        basic_string_view<CharT, Traits>::npos;
 
 //--------------------------------------------------------------------------
 // Public Functions
