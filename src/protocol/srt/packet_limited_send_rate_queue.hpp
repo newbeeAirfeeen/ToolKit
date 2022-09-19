@@ -280,9 +280,8 @@ private:
         uint32_t cwnd = std::min(flow_window, this->get_window_size());
         cwnd = std::min(cwnd, _congestion->get_cwnd_window());
         auto diff = packet_interface<T>::sequence_diff(_last_ack_number.load(), this->get_current_sequence());
-        auto size = this->get_buffer_size() + (this->get_window_size() - _size.load());
-        if (this->capacity() <= 0 || diff >= cwnd || size >= this->get_window_size()) {
-            Debug("wait capacity, cwnd={}, diff_seq={}, flow_window={}, capacity={}, size={}", cwnd, diff, flow_window, this->capacity(), size);
+        if (this->capacity() <= 0 || diff >= cwnd) {
+            Debug("wait capacity, cwnd={}, diff_seq={}, flow_window={}, capacity={}", cwnd, diff, flow_window, this->capacity());
             return true;
         }
         return false;
