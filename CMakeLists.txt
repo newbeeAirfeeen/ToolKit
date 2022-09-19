@@ -19,7 +19,7 @@ option(ENABLE_LOG "enable internal log" ON)
 
 option(ENABLE_SRT "enable srt" ON)
 option(ENABLE_STUN "enable stun" OFF)
-option(ENABLE_URI "enable uri" ON)
+option(ENABLE_URI "enable uri" OFF)
 option(ENABLE_EXAMPLE "enable example" ON)
 option(ENABLE_APP "enable application" ON)
 

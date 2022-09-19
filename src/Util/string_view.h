@@ -484,22 +484,23 @@ using u32string_view = basic_string_view<char32_t>;
 #include "detail/string_view.inl"
 
 
-
-namespace std{
 #if 1
-  //hash from msvc
-  template<> struct hash<string_view>{
-      size_t operator()(const string_view& view) const{
-         constexpr uint64_t offset_basis = 14695981039346656037ULL;
-         constexpr uint64_t prime        = 1099511628211ULL;
-         uint64_t val = offset_basis;
-         for(uint64_t idx = 0; idx < static_cast<uint64_t>(view.size());++idx){
-           val ^= static_cast<uint64_t>(view[idx]);
-           val *= prime;
-         }
-         return static_cast<size_t>(val);
-      }
-  };
+namespace std {
+    //hash from msvc
+    template<>
+    struct hash<string_view> {
+        size_t operator()(const string_view &view) const {
+            constexpr uint64_t offset_basis = 14695981039346656037ULL;
+            constexpr uint64_t prime = 1099511628211ULL;
+            uint64_t val = offset_basis;
+            for (uint64_t idx = 0; idx < static_cast<uint64_t>(view.size()); ++idx) {
+                val ^= static_cast<uint64_t>(view[idx]);
+                val *= prime;
+            }
+            return static_cast<size_t>(val);
+        }
+    };
+}// namespace std
 #endif
 
 #endif
