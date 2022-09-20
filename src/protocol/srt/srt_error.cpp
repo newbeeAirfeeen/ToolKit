@@ -42,6 +42,8 @@ namespace srt {
                 return "srt control type error, current packet is not permitted with invalid arguments";
             case srt_stream_id_too_long:
                 return "stream_id length is too long to load it";
+            case srt_stream_serialize_error:
+                return "stream_id parse error";
             case srt_KM_REQ_is_not_support:
                 return "at the this point, KE_REQ is not support";
             case srt_unknown_extension_field:

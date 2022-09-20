@@ -34,6 +34,7 @@ namespace srt {
         srt_packet_error,/// srt 包解析失败
         srt_control_type_error,
         srt_stream_id_too_long,        /// stream_id 字段太长了
+        srt_stream_serialize_error,    /// srt解析失败
         srt_KM_REQ_is_not_support,     /// 握手阶段: 不支持的加密
         srt_unknown_extension_field,   /// 未知的扩展字段
         srt_peer_error,                /// 收到peer_error,

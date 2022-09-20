@@ -30,7 +30,7 @@
 #endif
 
 #include "SASL_prep.h"
-#include "Util/string_view.hpp"
+#include "net/deprecated/string_view.hpp"
 #include "stun_address.h"
 #include "stun_error.h"
 #include "stun_error_code.h"

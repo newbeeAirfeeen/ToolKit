@@ -34,6 +34,7 @@
 #include "srt_handshake.h"
 #include "srt_packet.h"
 #include "srt_socket_base.hpp"
+#include "srt_stream_id.hpp"
 #include <chrono>
 #include <cstdint>
 #include <functional>

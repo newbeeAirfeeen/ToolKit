@@ -39,7 +39,7 @@ endif()
 
 
 # 源代码
-set(SRC_LIST "")
+set(SRC_LIST "src/Util/string_util.cpp")
 # 待链接的库
 set(LINK_LIB_LIST "")
 
