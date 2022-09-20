@@ -56,6 +56,10 @@ namespace srt {
         uint32_t get_peer_sock_id() const;
         uint32_t get_connect_timeout() const;
         uint32_t get_max_receive_time_out() const;
+
+    protected:
+        void set_peer_sock_id(uint32_t id);
+
     protected:
         bool drop_too_late_packet = true;
         bool report_nak = true;

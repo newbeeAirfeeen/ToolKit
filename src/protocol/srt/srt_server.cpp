@@ -51,10 +51,10 @@ namespace srt {
 
     void srt_server::add_connected_session(const std::shared_ptr<srt_session> &session) {
         /// 同步到线程局部存储
-        _thread_local_session_map_.emplace(session->get_sock_id(), session);
+        _thread_local_session_map_.emplace(session->get_peer_sock_id(), session);
         /// 同步到全局会话管理器
         std::lock_guard<std::recursive_mutex> lmtx(mtx);
-        _session_map_.emplace(session->get_sock_id(), session);
+        _session_map_.emplace(session->get_peer_sock_id(), session);
     }
 
     void srt_server::on_create_session(const on_create_session_func &f) {

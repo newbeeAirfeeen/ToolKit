@@ -132,4 +132,8 @@ namespace srt {
     uint32_t srt_socket_base::get_max_receive_time_out() const {
         return this->max_receive_time_out;
     }
+
+    void srt_socket_base::set_peer_sock_id(uint32_t id){
+        this->peer_sock_id = id;
+    }
 };// namespace srt
