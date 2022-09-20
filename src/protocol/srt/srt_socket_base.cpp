@@ -113,6 +113,10 @@ namespace srt {
         return this->sock_id;
     }
 
+    uint32_t srt_socket_base::get_peer_sock_id() const {
+        return this->peer_sock_id;
+    }
+
     bool srt_socket_base::get_report_nak() const {
         return this->report_nak;
     }
