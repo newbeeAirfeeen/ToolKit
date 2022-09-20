@@ -765,7 +765,7 @@ namespace srt {
         _handshake_context->address = get_local_endpoint().address();
         srt_socket_base::set_max_payload(_handshake_context->_max_mss);
         srt_socket_base::set_max_flow_window_size(_handshake_context->_window_size);
-        srt_socket_base::set_sock_id(_handshake_context->_socket_id);
+        //srt_socket_base::set_sock_id(_handshake_context->_socket_id);
 
         srt_socket_base::set_report_nak(extension->nak);
         srt_socket_base::set_drop_too_late_packet(extension->drop);
