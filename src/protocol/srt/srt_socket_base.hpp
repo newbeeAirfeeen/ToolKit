@@ -53,9 +53,9 @@ namespace srt {
         bool get_report_nak() const;
         const std::string &get_stream_id() const;
         uint32_t get_sock_id() const;
+        uint32_t get_peer_sock_id() const;
         uint32_t get_connect_timeout() const;
         uint32_t get_max_receive_time_out() const;
-
     protected:
         bool drop_too_late_packet = true;
         bool report_nak = true;
@@ -64,6 +64,7 @@ namespace srt {
         uint32_t max_payload = 1500;
         uint32_t max_flow_window_size = 8192;
         uint32_t sock_id = 0;
+        uint32_t peer_sock_id = 0;
         uint32_t connect_time_out = 3000;
         uint32_t max_receive_time_out = 10000;
     };
