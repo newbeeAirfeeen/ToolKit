@@ -26,7 +26,6 @@
 #include "Util/optional.hpp"
 #include "Util/string_util.hpp"
 #include "srt_error.hpp"
-#include <vector>
 namespace srt {
     using index_type = typename string_view::size_type;
     stream_id stream_id::from_buffer(string_view view) {
