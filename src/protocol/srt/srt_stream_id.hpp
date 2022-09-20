@@ -29,9 +29,6 @@
 #include <unordered_map>
 namespace srt {
     class stream_id {
-        friend stream_id from_buffer(string_view view);
-        friend std::string to_buffer(const stream_id &_url);
-
     public:
         static stream_id from_buffer(string_view view);
         static stream_id from_buffer(const char *data, size_t length);
@@ -39,9 +36,9 @@ namespace srt {
 
     public:
         void is_publish(bool);
-        void vhost(const std::string &);
-        void app(const std::string &);
-        void stream(const std::string &);
+        void vhost(string_view);
+        void app(string_view);
+        void stream(string_view);
         void set_query(string_view, const std::string &);
 
         bool is_publish() const;

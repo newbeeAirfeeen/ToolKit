@@ -62,14 +62,14 @@ namespace srt {
                         throw std::system_error(make_srt_error(srt_stream_serialize_error));
                     }
                     if (v.size() == 3) {
-                        _stream_id.vhost({v.front().data(), v.front().size()});
+                        _stream_id.vhost(v.front());
                         v.pop_front();
                     }
                     if (v.size() >= 2) {
-                        _stream_id.app({v.front().data(), v.front().size()});
-                        _stream_id.stream({v.back().data(), v.back().size()});
+                        _stream_id.app(v.front());
+                        _stream_id.stream(v.back());
                     } else {
-                        _stream_id.vhost({v.front().data(), v.front().size()});
+                        _stream_id.vhost(v.front());
                     }
                     break;
                 case 'r':
@@ -77,8 +77,8 @@ namespace srt {
                     if (vec.size() > 2) {
                         throw std::system_error(make_srt_error(srt_stream_serialize_error));
                     }
-                    _stream_id.app({v.front().data(), v.front().size()});
-                    _stream_id.stream({v.back().data(), v.size()});
+                    _stream_id.app(v.front());
+                    _stream_id.stream(v.back());
                     break;
                 case 'm': {
                     _stream_id._is_publish = "publish" == value;
@@ -125,16 +125,16 @@ namespace srt {
         this->_is_publish = v;
     }
 
-    void stream_id::vhost(const std::string &v) {
-        this->_vhost.assign(v);
+    void stream_id::vhost(string_view v) {
+        this->_vhost.assign(v.data(), v.size());
     }
 
-    void stream_id::app(const std::string &v) {
-        this->_app.assign(v);
+    void stream_id::app(string_view v) {
+        this->_app.assign(v.data(), v.size());
     }
 
-    void stream_id::stream(const std::string &v) {
-        this->_stream.assign(v);
+    void stream_id::stream(string_view v) {
+        this->_stream.assign(v.data(), v.size());
     }
 
     void stream_id::set_query(string_view k, const std::string &v) {
