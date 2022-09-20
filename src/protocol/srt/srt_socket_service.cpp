@@ -745,11 +745,11 @@ namespace srt {
             Error("not support encryption");
             return send_reject(1011, buff);
         }
-//        if (context->extension_field != 1) {
-//            Error("stream type is not equal to 1");
-//            return send_reject(1003, buff);
-//        }
-         if (context->_max_mss > 1500 || context->_max_mss < 728) {
+        //        if (context->extension_field != 1) {
+        //            Error("stream type is not equal to 1");
+        //            return send_reject(1003, buff);
+        //        }
+        if (context->_max_mss > 1500 || context->_max_mss < 728) {
             Error("invalid mss size={}", context->_max_mss);
             return send_reject(1003, buff);
         }
