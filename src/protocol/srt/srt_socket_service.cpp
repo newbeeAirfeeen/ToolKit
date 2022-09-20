@@ -758,10 +758,11 @@ namespace srt {
             return send_reject(1003, buff);
         }
 
-        std::default_random_engine random(std::random_device{}());
-        std::uniform_int_distribution<int32_t> mt(0, (std::numeric_limits<int32_t>::max)());
         _handshake_context = context;
-        _handshake_context->_socket_id = mt(random);
+        // 设置本地socket_id
+        srt_socket_base::set_sock_id(_handshake_context->_socket_id);
+        /// 使用地址值保证唯一性
+        _handshake_context->_socket_id = *((uint32_t *)this);
         _handshake_context->address = get_local_endpoint().address();
         srt_socket_base::set_max_payload(_handshake_context->_max_mss);
         srt_socket_base::set_max_flow_window_size(_handshake_context->_window_size);
@@ -771,6 +772,7 @@ namespace srt {
         srt_socket_base::set_drop_too_late_packet(extension->drop);
         srt_socket_base::set_time_based_deliver(extension->receiver_tlpktd_delay);
         srt_socket_base::set_stream_id(extension->stream_id);
+        srt_socket_base::set_peer_sock_id(_handshake_context->_socket_id);
         Trace("client handshake success, max_mss={}, window size={}, sock_id={}, report_nak={}, enable_drop={}, time based={} ms, stream_id={}",
               _handshake_context->_max_mss, _handshake_context->_window_size, _handshake_context->_socket_id,
               extension->nak, extension->drop, extension->receiver_tlpktd_delay, extension->stream_id);
@@ -805,7 +807,7 @@ namespace srt {
             return;
         }
 
-        if (srt_pkt->get_socket_id() != srt_socket_base::sock_id) {
+        if (srt_pkt->get_socket_id() != srt_socket_base::get_peer_sock_id()) {
             Warn("receive socket id is not equal to current socket id which is invalid, ignore it");
             return;
         }
