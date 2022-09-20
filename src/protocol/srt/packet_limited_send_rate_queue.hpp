@@ -55,7 +55,7 @@ public:
         this->_conn = t;
         this->max_payload = max_payload;
         update_snd_period();
-        _congestion = std::make_shared<congestion>(*this);
+        _congestion = std::make_shared<congestion>();
     }
     ~packet_limited_send_rate_queue() override = default;
 

@@ -28,6 +28,19 @@
 #include <atomic>
 #include <chrono>
 
+class congestion {
+public:
+    virtual ~congestion() = default;
+
+public:
+    virtual double get_send_period() const;
+    virtual uint32_t get_cwnd_window() const;
+    virtual bool slow_starting() const;
+    virtual void rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end);
+    virtual void ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t link_capacity);
+};
+
+
 class congestion_holder {
 public:
     virtual ~congestion_holder() = default;
@@ -40,22 +53,21 @@ public:
     virtual uint32_t get_deliver_rate() const = 0;
 };
 
-class congestion {
+class file_congestion : public congestion {
 private:
     using duration = std::chrono::microseconds;
     using time_point = std::chrono::steady_clock::time_point;
 
 public:
-    explicit congestion(const congestion_holder &holder);
-    virtual ~congestion() = default;
+    explicit file_congestion(const congestion_holder &holder);
+    ~file_congestion() override = default;
     /// 已经发送的包数量
-    double get_send_period() const;
-    uint32_t get_cwnd_window() const;
+    double get_send_period() const override;
+    uint32_t get_cwnd_window() const override;
+    bool slow_starting() const override;
 
-public:
-    virtual bool slow_starting() const;
-    virtual void rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end);
-    virtual void ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t link_capacity);
+    void rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end) override;
+    void ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t link_capacity) override;
 
 private:
     void update_pkt_send_period();

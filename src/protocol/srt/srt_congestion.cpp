@@ -49,24 +49,40 @@ inline static uint32_t seq_len(uint32_t seq1, uint32_t seq2) {
 inline static int32_t dec_seq(int32_t seq) { return (seq == 0) ? 0x7FFFFFFF : seq - 1; }
 
 
-congestion::congestion(const congestion_holder &holder) : holder(holder) {
+double congestion::get_send_period() const {
+    return 0.0;
+}
+
+uint32_t congestion::get_cwnd_window() const {
+    return 8192;
+}
+
+bool congestion::slow_starting() const {
+    return false;
+}
+
+void congestion::rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end) {}
+void congestion::ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t link_capacity) {}
+
+
+file_congestion::file_congestion(const congestion_holder &holder) : holder(holder) {
     _last_rc_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     last_dec_seq = (uint32_t) dec_seq((int32_t) holder.get_ack_last_number());
 }
 
-double congestion::get_send_period() const {
+double file_congestion::get_send_period() const {
     return _pkt_send_period;
 }
 
-uint32_t congestion::get_cwnd_window() const {
+uint32_t file_congestion::get_cwnd_window() const {
     return this->cwnd_size.load(std::memory_order_relaxed);
 }
 
-bool congestion::slow_starting() const {
+bool file_congestion::slow_starting() const {
     return in_slow_start.load(std::memory_order_relaxed);
 }
 
-void congestion::rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end) {
+void file_congestion::rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end) {
     /// slow start phase ends
     /// set the pkt sending period pkt_snd_period  in step 5 of section(1)
 
@@ -106,7 +122,7 @@ void congestion::rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end) {
     }
 }
 
-void congestion::ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t link_capacity) {
+void file_congestion::ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t link_capacity) {
     auto now = (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     if (now - _last_rc_time < _rc_internal) {
         return;
@@ -125,7 +141,7 @@ void congestion::ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t l
             Debug("stop to slow staring...");
         }
     }
-    /// once slow start phase ends , the algorithm enters the congestion avoidance phase
+    /// once slow start phase ends , the algorithm enters the file_congestion avoidance phase
     else {
         cwnd_size.store(holder.get_deliver_rate() * (holder.get_RTT() + _rc_internal) / 1000000 + 16);
         Trace("update cwnd size={}", cwnd_size.load(std::memory_order_relaxed));
@@ -152,7 +168,7 @@ void congestion::ack_sequence_to(uint32_t seq, uint32_t receive_rate, uint32_t l
     }
 }
 
-void congestion::update_pkt_send_period() {
+void file_congestion::update_pkt_send_period() {
     auto deliver_rate = holder.get_deliver_rate();
     if (deliver_rate > 0) {
         _pkt_send_period = 1000000.0 / deliver_rate;
