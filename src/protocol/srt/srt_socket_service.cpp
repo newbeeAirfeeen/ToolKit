@@ -641,12 +641,13 @@ namespace srt {
             return send_reject(1012, buff);
         }
 
-
         /// 最终更新mtu
         /// set_max_payload(context->_max_mss);
         /// 最终更新滑动窗口大小
         auto mss = get_max_payload() > 1500 ? 1500 : get_max_payload();
         context->_max_mss = srt_socket_service::max_payload = mss;
+        /// 设置peer_id
+        srt_socket_service::peer_sock_id = pkt->get_socket_id();
         srt_socket_service::max_flow_window_size = context->_window_size;
         /// 最终确定协商好的参数
         srt_socket_service::sock_id = context->_socket_id;
@@ -762,7 +763,7 @@ namespace srt {
         // 设置本地socket_id
         srt_socket_base::set_sock_id(_handshake_context->_socket_id);
         /// 使用地址值保证唯一性
-        _handshake_context->_socket_id = *((uint32_t *)this);
+        _handshake_context->_socket_id = *((uint32_t *) this);
         _handshake_context->address = get_local_endpoint().address();
         srt_socket_base::set_max_payload(_handshake_context->_max_mss);
         srt_socket_base::set_max_flow_window_size(_handshake_context->_window_size);
