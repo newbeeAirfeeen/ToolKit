@@ -167,12 +167,12 @@ public:
             }
             diff = seq_end - _cur_seq + 1;
         }
-
-        auto expected_size = get_expected_size();
-        if (diff > expected_size) {
-            Warn("step size={}, expected_size={}, ignore it", diff, expected_size);
-            return;
-        }
+        //      假如后面一个包的都没有收到,就会卡序号
+        //        auto expected_size = get_expected_size();
+        //        if (diff > expected_size) {
+        //            Warn("step size={}, expected_size={}, ignore it", diff, expected_size);
+        //            return;
+        //        }
 
         uint32_t seq_ = _cur_seq;
         for (uint32_t i = 0; i < diff; i++) {
