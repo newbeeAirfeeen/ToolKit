@@ -94,6 +94,7 @@ namespace srt {
         }
         server->remove_cookie_session(cookie_);
         server->add_connected_session(std::static_pointer_cast<srt_session>(srt_socket_service::shared_from_this()));
+        Debug("new srt session handshake done, session_id={}", get_sock_id());
     }
 
     void srt_session::send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) {

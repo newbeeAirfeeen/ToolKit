@@ -16,13 +16,15 @@
 using namespace std;
 std::unique_ptr<std::thread> worker;
 std::atomic<bool> _quit{false};
+char static_buff[1400] = {0};
 void on_connected(const std::shared_ptr<srt::srt_client> &client) {
     int counts = 1;
     std::string str = "client to send ";
     while (!_quit.load()) {
         std::string send_buf = str + std::to_string(counts++);
-        auto ret = client->async_send(send_buf.data(), send_buf.size());
-        std::this_thread::sleep_for(std::chrono::milliseconds (1));
+        std::copy(send_buf.begin(), send_buf.end(), static_buff);
+        auto ret = client->async_send(static_buff, 1400);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
@@ -34,7 +36,7 @@ int main(int argc, char **argv) {
 #endif
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); });
-    logger::initialize("logs/srt_client.log", spdlog::level::trace);
+    logger::initialize("logs/srt_client.log", spdlog::level::info);
 
     if (argc < 3) {
         std::cerr << "srt_client <remote_ip> <remote port>";
@@ -44,6 +46,7 @@ int main(int argc, char **argv) {
     asio::ip::udp::endpoint remote(asio::ip::make_address(argv[1]), std::stoi(argv[2]));
     auto client = std::make_shared<srt::srt_client>();
 
+    client->set_max_payload(1500);
     client->set_on_receive([&](const std::shared_ptr<buffer> &buff) {
         Info("receive: {}", buff->data());
     });
