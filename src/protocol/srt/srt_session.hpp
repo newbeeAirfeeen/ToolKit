@@ -1,6 +1,6 @@
 ﻿/*
 * @file_name: srt_session.hpp
-* @date: 2022/08/20
+* @date: 2022/09/21
 * @author: shen hao
 * Copyright @ hz shen hao, All rights reserved.
 *
@@ -25,47 +25,17 @@
 
 #ifndef TOOLKIT_SRT_SESSION_HPP
 #define TOOLKIT_SRT_SESSION_HPP
-#include "executor.hpp"
-#include "srt_socket_service.hpp"
-#include <memory>
 
+#include "srt_session_base.hpp"
 namespace srt {
-    class srt_server;
-    class srt_session : public srt_socket_service {
-        friend class srt_server;
-
+    class srt_session : public srt_session_base {
     public:
         srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, const event_poller::Ptr &context);
         ~srt_session() override;
-
     protected:
-        ///// override from srt_socket_service
-        const asio::ip::udp::endpoint &get_remote_endpoint() final;
-        const asio::ip::udp::endpoint &get_local_endpoint() final;
-        /// 统一数据接收接口
+        void onConnected() override;
         void onRecv(const std::shared_ptr<buffer> &) override;
-        std::shared_ptr<executor> get_executor() const override;
-        virtual void onError(const std::error_code &e);
-
-    private:
-        void on_session_timeout();
-        void set_parent(const std::shared_ptr<srt_server> &);
-        void set_current_remote_endpoint(const asio::ip::udp::endpoint &);
-        void set_cookie(uint32_t);
-        uint32_t get_cookie() final;
-        void begin_session();
-        void receive(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
-        void on_connected() final;
-        void send(const std::shared_ptr<buffer> &buff, const asio::ip::udp::endpoint &where) final;
-        void on_error(const std::error_code &e) final;
-
-    private:
-        std::weak_ptr<srt_server> _parent_server;
-        asio::ip::udp::socket &_sock;
-        asio::ip::udp::endpoint _remote;
-        asio::ip::udp::endpoint _local;
-        uint32_t cookie_ = 0;
-        std::shared_ptr<executor> executor_;
+        void onError(const std::error_code &e) override;
     };
 };// namespace srt
 
