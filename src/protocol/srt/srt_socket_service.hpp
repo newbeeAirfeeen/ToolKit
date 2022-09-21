@@ -80,8 +80,8 @@ namespace srt {
         virtual uint32_t get_cookie();
 
     protected:
+        void shutdown();
         void on_error_in(const std::error_code &e);
-
     private:
         //// send_queue
         void on_sender_packet(const packet_pointer &type);

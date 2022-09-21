@@ -25,17 +25,21 @@
 
 #ifndef TOOLKIT_SRT_SESSION_HPP
 #define TOOLKIT_SRT_SESSION_HPP
-
 #include "srt_session_base.hpp"
+#include "srt_stream_id.hpp"
 namespace srt {
     class srt_session : public srt_session_base {
     public:
         srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, const event_poller::Ptr &context);
         ~srt_session() override;
+
     protected:
         void onConnected() override;
         void onRecv(const std::shared_ptr<buffer> &) override;
         void onError(const std::error_code &e) override;
+
+    private:
+        typename srt::stream_id _id;
     };
 };// namespace srt
 

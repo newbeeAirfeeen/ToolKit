@@ -341,6 +341,15 @@ namespace srt {
         Trace("invoke connected callback end");
     }
 
+    void srt_socket_service::shutdown() {
+        std::weak_ptr<srt_socket_service> self(shared_from_this());
+        get_poller()->async([self]() {
+            if (auto stronger_self = self.lock()) {
+                stronger_self->do_shutdown();
+            }
+        });
+    }
+
     void srt_socket_service::on_error_in(const std::error_code &e) {
         /// 停止发送队列
         /// 停止相关定时器

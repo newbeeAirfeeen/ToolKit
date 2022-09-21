@@ -33,7 +33,6 @@ namespace srt {
         executor_ = executor_pool::instance().get_executor();
     }
 
-
     void srt_session_base::set_parent(const std::shared_ptr<srt_server> &serv) {
         this->_parent_server = serv;
     }

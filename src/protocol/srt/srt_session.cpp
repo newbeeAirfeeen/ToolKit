@@ -28,18 +28,26 @@ namespace srt {
     srt_session::srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, const event_poller::Ptr &context) : srt_session_base(_sock, context) {
     }
 
-    srt_session::~srt_session(){
+    srt_session::~srt_session() {
         Warn("~srt_session");
     }
 
-    void srt_session::onConnected(){
-        Info("stream_id:{}", get_stream_id());
+    void srt_session::onConnected() {
+        try {
+            const std::string &sid = get_stream_id();
+            _id = srt::stream_id::from_buffer(sid.data(), sid.size());
+        } catch (const std::system_error &e) {
+            Error("{}", e.what());
+            shutdown();
+            return;
+        }
+        Info("stream id, vhost={}, app={}, stream={}, publish={}", _id.vhost(), _id.app(), _id.stream(), _id.is_publish());
     }
 
     void srt_session::onRecv(const std::shared_ptr<buffer> &) {
     }
 
     void srt_session::onError(const std::error_code &e) {
-        Error("error: {}", e.message());
+            Error("error: {}", e.message());
     }
 }// namespace srt

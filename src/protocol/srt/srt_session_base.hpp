@@ -49,7 +49,6 @@ namespace srt {
         const asio::ip::udp::endpoint &get_local_endpoint() final;
         std::shared_ptr<executor> get_executor() const final;
         /// 统一数据接收接口
-
     private:
         void on_session_timeout();
         void set_parent(const std::shared_ptr<srt_server> &);
