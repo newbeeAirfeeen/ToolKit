@@ -48,12 +48,7 @@ std::shared_ptr<executor> executor_pool::get_executor() {
     std::shared_ptr<executor> executor_;
     std::shared_ptr<std::atomic<char>> _load = std::make_shared<std::atomic<char>>(0);
     std::weak_ptr<std::atomic<char>> self(_load);
-    auto id = std::this_thread::get_id();
-    for_each([&, self, id](const std::shared_ptr<executor> &ev_ptr) {
-        if(id == std::this_thread::get_id()){
-            return ;
-        }
-
+    for_each([&, self](const std::shared_ptr<executor> &ev_ptr) {
         auto stronger_self = self.lock();
         if (!stronger_self) {
             return;
@@ -68,7 +63,7 @@ std::shared_ptr<executor> executor_pool::get_executor() {
         stronger_self->store(2);
     });
     char _ = 2;
-    while(!_load->compare_exchange_weak(_, 3)){
+    while (!_load->compare_exchange_weak(_, 3)) {
         _ = 2;
     }
     return executor_;
