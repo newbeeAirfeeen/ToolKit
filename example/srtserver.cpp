@@ -11,34 +11,6 @@
 #include <gperftools/profiler.h>
 #endif
 using namespace srt;
-class only_receive_session : public srt_session {
-public:
-    only_receive_session(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) : srt_session(sock, context) {
-    }
-    ~only_receive_session() override = default;
-
-protected:
-    void onRecv(const std::shared_ptr<buffer> &ptr) override {
-        Info("receive: {}", ptr->data());
-    }
-    void onError(const std::error_code &e) override {
-        srt_session::onError(e);
-    }
-};
-
-class echo_session : public only_receive_session {
-public:
-    echo_session(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) : only_receive_session(sock, context) {
-    }
-
-protected:
-    void onRecv(const std::shared_ptr<buffer> &ptr) override {
-        Info("receive: {} bytes", ptr->size());
-    }
-
-private:
-    uint32_t counts = 1;
-};
 
 
 int main(int argc, char **argv) {
@@ -58,12 +30,6 @@ int main(int argc, char **argv) {
 
     auto server = std::make_shared<srt_server>();
     asio::ip::udp::endpoint endpoint(asio::ip::udp::v4(), std::stoi(argv[1]));
-
-    /// 设置创建session回调
-    server->on_create_session([](const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) -> std::shared_ptr<srt_session> {
-        return std::make_shared<echo_session>(sock, context);
-    });
-
     server->start(endpoint);
 
     sem.wait();

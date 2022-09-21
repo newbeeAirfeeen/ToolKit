@@ -3,6 +3,7 @@
 #include "event_poller_pool.hpp"
 #include "net/buffer.hpp"
 #include "srt_packet.h"
+#include "srt_session.hpp"
 #include <algorithm>
 #include <atomic>
 #include <list>
@@ -10,11 +11,11 @@
 #include <random>
 #include <spdlog/logger.hpp>
 namespace srt {
-    static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session>> _thread_local_session_map_;
+    static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session_base>> _thread_local_session_map_;
     /// handle handshake
-    static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session>> _cookie_map;
+    static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session_base>> _cookie_map;
     srt_server::srt_server() {
-        _on_create_session_func_ = [](const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) -> std::shared_ptr<srt_session> {
+        _on_create_session_func_ = [](const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) -> std::shared_ptr<srt_session_base> {
             return std::make_shared<srt_session>(sock, context);
         };
     }
@@ -49,7 +50,7 @@ namespace srt {
         Trace("session map, thread_local size = {}, global size = {}", _thread_local_session_map_.size(), _session_map_.size());
     }
 
-    void srt_server::add_connected_session(const std::shared_ptr<srt_session> &session) {
+    void srt_server::add_connected_session(const std::shared_ptr<srt_session_base> &session) {
         /// 同步到线程局部存储
         _thread_local_session_map_.emplace(session->get_peer_sock_id(), session);
         /// 同步到全局会话管理器
@@ -97,7 +98,7 @@ namespace srt {
         });
     }
 
-    std::shared_ptr<srt_session> srt_server::get_session(uint32_t sock_id) {
+    std::shared_ptr<srt_session_base> srt_server::get_session(uint32_t sock_id) {
         std::lock_guard<std::recursive_mutex> lmtx(mtx);
         auto it = _session_map_.find(sock_id);
         if (it == _session_map_.end()) {
@@ -106,7 +107,7 @@ namespace srt {
         return it->second;
     }
 
-    std::shared_ptr<srt_session> srt_server::get_session_with_cookie(uint32_t sock_id) {
+    std::shared_ptr<srt_session_base> srt_server::get_session_with_cookie(uint32_t sock_id) {
         std::lock_guard<std::recursive_mutex> lmtx(_cookie_mtx);
         auto it = _handshake_map.find(sock_id);
         if (it == _handshake_map.end()) {
@@ -188,7 +189,7 @@ namespace srt {
             /// 线程局部存储需要拷贝数据
             Warn("data received in other thread, switch to session thread...");
             auto buf_tmp = buffer::assign(buff->data(), buff->size());
-            std::weak_ptr<srt_session> session_self(session);
+            std::weak_ptr<srt_session_base> session_self(session);
             session->get_poller()->async([pkt, buf_tmp, endpoint, session_self]() {
                 if (auto stronger_session_self = session_self.lock()) {
                     stronger_session_self->receive(pkt, buf_tmp);
@@ -221,7 +222,7 @@ namespace srt {
             /// 线程局部存储需要拷贝缓冲区
             auto buff_tmp = buffer::assign(buff->data(), buff->size());
             /// 切换到其他线程
-            std::weak_ptr<srt_session> session_self(session);
+            std::weak_ptr<srt_session_base> session_self(session);
             session->get_poller()->async([buff_tmp, session_self, pkt]() {
                 if (auto session_stronger = session_self.lock()) {
                     session_stronger->receive(pkt, buff_tmp);
