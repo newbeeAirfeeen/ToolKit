@@ -134,7 +134,7 @@ namespace srt {
             throw std::runtime_error("server has crashed");
         }
         while (true) {
-            auto random_sock_id = rng_unsigned_integer();
+            auto random_sock_id = rng_integer<uint32_t>(1, (std::numeric_limits<uint32_t>::max)());
             auto _ = server_->get_session(random_sock_id);
             if (!_) {
                 return random_sock_id;

@@ -23,11 +23,10 @@
 * SOFTWARE.
 */
 #include "srt_congestion.hpp"
+#include "Util/random.hpp"
 #include "spdlog/logger.hpp"
 #include <algorithm>
 #include <cmath>
-#include <random>
-#include "Util/random.hpp"
 
 inline static int seq_cmp(int32_t seq, int32_t seq2) {
     constexpr int32_t max_seq = 0x3FFFFFFF;
@@ -106,7 +105,7 @@ void file_congestion::rexmit_pkt_event(bool is_nak, uint32_t begin, uint32_t end
         avg_nak_num = (uint32_t) ceil(avg_nak_num * (1 - loss_share_factor) + nak_count * loss_share_factor);
         nak_count = dec_count = 1;
         last_dec_seq = holder.get_current_seq();
-        dec_random = avg_nak_num > 1 ? rng_unsigned_integer(1, (int) avg_nak_num) : 1;
+        dec_random = avg_nak_num > 1 ? rng_integer<int>(1, avg_nak_num) : 1;
     } else if ((dec_count++ < 5) && (0 == (++nak_count % dec_random))) {
         _pkt_send_period = std::ceil(_pkt_send_period * 1.03);
         last_dec_seq = holder.get_current_seq();
