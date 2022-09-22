@@ -245,7 +245,7 @@ public:
         auto begin = _start;
         auto end = _end;
         auto size = _size;
-        Debug("pending packet, begin={}, end={}, size={}", begin, end, size);
+        Trace("pending packet, begin={}, end={}, size={}", begin, end, size);
         while (begin != end && size > 0) {
             if (_pkt_buf[begin]) {
                 if (begin_seq >= 0 && end_seq >= 0) {
