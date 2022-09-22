@@ -11,7 +11,7 @@
 #include <type_traits>
 std::string makeRandStr(int sz, bool printable);
 
-uint32_t rng_unsigned_integer();
+uint32_t rng_unsigned_integer(uint32_t range_begin = 0, uint32_t range_end = (std::numeric_limits<uint32_t>::max)());
 
 //template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
 //auto get_random() -> typename std::remove_reference<typename std::remove_cv<T>::type>::type {
