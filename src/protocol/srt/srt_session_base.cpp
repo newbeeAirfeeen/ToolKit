@@ -23,6 +23,7 @@
 * SOFTWARE.
 */
 #include "srt_session_base.hpp"
+#include "Util/random.hpp"
 #include "executor_pool.hpp"
 #include "spdlog/logger.hpp"
 #include "srt_error.hpp"
@@ -124,5 +125,21 @@ namespace srt {
 
     uint32_t srt_session_base::get_cookie() {
         return cookie_;
+    }
+
+
+    uint32_t srt_session_base::get_unique_socket_id() {
+        auto server_ = _parent_server.lock();
+        if (!server_) {
+            throw std::runtime_error("server has crashed");
+        }
+        while (true) {
+            auto random_sock_id = rng_unsigned_integer();
+            auto _ = server_->get_session(random_sock_id);
+            if (!_) {
+                return random_sock_id;
+            }
+        }
+        return srt_socket_service_holder::get_unique_socket_id();
     }
 };// namespace srt

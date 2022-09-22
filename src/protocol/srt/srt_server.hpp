@@ -35,6 +35,7 @@ namespace srt {
     class srt_server : public std::enable_shared_from_this<srt_server> {
     public:
         using on_create_session_func = std::function<std::shared_ptr<srt_session_base>(const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context)>;
+        friend class srt_session_base;
 
     public:
         srt_server();
@@ -42,11 +43,13 @@ namespace srt {
 
     public:
         void start(const asio::ip::udp::endpoint &endpoint);
+        /// 创建会话的回调
+        void on_create_session(const on_create_session_func &f);
+
+    private:
         void remove_cookie_session(uint32_t);
         void remove_session(uint32_t);
         void add_connected_session(const std::shared_ptr<srt_session_base> &session);
-        /// 创建会话的回调
-        void on_create_session(const on_create_session_func &f);
 
     private:
         void on_receive(const std::shared_ptr<buffer> &, const asio::ip::udp::endpoint &, const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &);
@@ -62,12 +65,6 @@ namespace srt {
 
     private:
         std::vector<std::shared_ptr<asio::ip::udp::socket>> _socks;
-        std::recursive_mutex _cookie_mtx;
-        std::unordered_map<uint32_t, std::shared_ptr<srt_session_base>> _handshake_map;
-        /// 会话管理map
-        /// socket id
-        std::recursive_mutex mtx;
-        std::unordered_map<uint32_t, std::shared_ptr<srt_session_base>> _session_map_;
         on_create_session_func _on_create_session_func_;
     };
 }// namespace srt

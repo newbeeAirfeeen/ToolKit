@@ -37,6 +37,15 @@
 namespace srt {
     static constexpr uint32_t packet_max_seq = 0x7FFFFFFF;
 
+    uint32_t srt_socket_service_holder::get_cookie() {
+        return 0;
+    }
+
+    uint32_t srt_socket_service_holder::get_unique_socket_id() {
+        return 0;
+    }
+
+
     srt_socket_service::srt_socket_service(const event_poller::Ptr &poller) : poller(poller),
                                                                               _common_timer(poller->get_executor()),
                                                                               _nak_timer(poller->get_executor()),
@@ -45,10 +54,6 @@ namespace srt {
     }
 
     void srt_socket_service::begin() {}
-
-    uint32_t srt_socket_service::get_cookie() {
-        return 0;
-    }
 
     event_poller::Ptr srt_socket_service::get_poller() {
         return this->poller;
@@ -338,7 +343,7 @@ namespace srt {
         on_keep_alive_expired();
         /// 成功连接
         on_connected();
-        Trace("invoke connected callback end");
+        Debug("invoke connected callback end");
     }
 
     void srt_socket_service::shutdown() {
@@ -771,8 +776,9 @@ namespace srt {
         _handshake_context = context;
         // 设置本地socket_id
         srt_socket_base::set_sock_id(_handshake_context->_socket_id);
-        /// 使用地址值保证唯一性
-        _handshake_context->_socket_id = *((uint32_t *) this);
+
+        _handshake_context->_socket_id = get_unique_socket_id();
+        Info("peer socket id={}", _handshake_context->_socket_id);
         _handshake_context->address = get_local_endpoint().address();
         srt_socket_base::set_max_payload(_handshake_context->_max_mss);
         srt_socket_base::set_max_flow_window_size(_handshake_context->_window_size);
@@ -788,6 +794,7 @@ namespace srt {
               extension->nak, extension->drop, extension->receiver_tlpktd_delay, extension->stream_id);
         handshake_conclusion = 2;
         srt_packet _pkt;
+        _pkt.set_socket_id(srt_socket_base::get_sock_id());
         _pkt.set_control_type(handshake);
         _pkt.set_timestamp(get_time_from<std::chrono::microseconds>(connect_point));
         handshake_buffer = create_packet(_pkt);
@@ -942,7 +949,7 @@ namespace srt {
     void srt_socket_service::handle_ack_ack(const srt_packet &pkt, const std::shared_ptr<buffer> &) {
         auto ack_seq = pkt.get_type_information();
         _ack_queue_->calculate(ack_seq);
-        Debug("handle ack ack, rtt={}, rtt_variance={}", _ack_queue_->get_rto(), _ack_queue_->get_rtt_var());
+        Trace("handle ack ack, rtt={}, rtt_variance={}", _ack_queue_->get_rto(), _ack_queue_->get_rtt_var());
     }
 
     void srt_socket_service::handle_peer_error(const srt_packet &pkt, const std::shared_ptr<buffer> &) {

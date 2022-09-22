@@ -43,7 +43,19 @@
 #include <tuple>
 
 namespace srt {
-    class srt_socket_service : public srt_socket_base, public std::enable_shared_from_this<srt_socket_service>, public noncopyable {
+
+    class srt_socket_service_holder {
+    public:
+        virtual ~srt_socket_service_holder() = default;
+        //// 需要在连接的时候调用
+        virtual const asio::ip::udp::endpoint &get_remote_endpoint() = 0;
+        virtual const asio::ip::udp::endpoint &get_local_endpoint() = 0;
+        virtual std::shared_ptr<executor> get_executor() const = 0;
+        virtual uint32_t get_cookie();
+        virtual uint32_t get_unique_socket_id();
+    };
+
+    class srt_socket_service : public srt_socket_base, public srt_socket_service_holder, public std::enable_shared_from_this<srt_socket_service>, public noncopyable {
     public:
         using time_point = typename std::chrono::steady_clock::time_point;
         using packet_pointer = typename packet_interface<std::shared_ptr<buffer>>::packet_pointer;
@@ -66,10 +78,6 @@ namespace srt {
         bool is_open() final;
         bool is_connected() final;
         virtual void begin();
-        //// 需要在连接的时候调用
-        virtual const asio::ip::udp::endpoint &get_remote_endpoint() = 0;
-        virtual const asio::ip::udp::endpoint &get_local_endpoint() = 0;
-        virtual std::shared_ptr<executor> get_executor() const = 0;
         /// 连接成功
         virtual void on_connected() = 0;
         /// 发送行为
@@ -77,11 +85,11 @@ namespace srt {
         virtual void onRecv(const std::shared_ptr<buffer> &) = 0;
         /// 出错调用
         virtual void on_error(const std::error_code &e) = 0;
-        virtual uint32_t get_cookie();
 
     protected:
         void shutdown();
         void on_error_in(const std::error_code &e);
+
     private:
         //// send_queue
         void on_sender_packet(const packet_pointer &type);

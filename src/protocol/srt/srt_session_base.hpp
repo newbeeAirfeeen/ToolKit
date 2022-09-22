@@ -54,7 +54,11 @@ namespace srt {
         void set_parent(const std::shared_ptr<srt_server> &);
         void set_current_remote_endpoint(const asio::ip::udp::endpoint &);
         void set_cookie(uint32_t);
+        ///////////// socket_service_holder ////////////////
         uint32_t get_cookie() final;
+        uint32_t get_unique_socket_id() final;
+
+    private:
         void begin_session();
         void receive(const std::shared_ptr<srt_packet> &, const std::shared_ptr<buffer> &buff);
         void on_connected() final;

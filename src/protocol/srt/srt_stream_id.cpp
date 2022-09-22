@@ -28,10 +28,25 @@
 #include "srt_error.hpp"
 namespace srt {
     using index_type = typename string_view::size_type;
+    static stream_id from_buffer_2(string_view view) {
+        auto v = string_util::split(view, "/");
+        if (v.size() > 3 || v.size() < 2) {
+            throw std::system_error(make_srt_error(srt_stream_serialize_error));
+        }
+        stream_id id;
+        if (v.size() == 3) {
+            id.vhost(v.front());
+            v.pop_front();
+        }
+        id.app(v.front());
+        id.stream(v.back());
+        return id;
+    }
+
     stream_id stream_id::from_buffer(string_view view) {
         index_type index = view.find("#!::");
         if (index != 0) {
-            throw std::system_error(make_srt_error(srt_stream_serialize_error));
+            return from_buffer_2(view);
         }
         view.remove_prefix(4);
         auto vec = string_util::split(view, ",");

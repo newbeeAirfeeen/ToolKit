@@ -1,5 +1,5 @@
 ﻿/*
-* @file_name: srt_session.hpp
+* @file_name: source_event.hpp
 * @date: 2022/09/21
 * @author: shen hao
 * Copyright @ hz shen hao, All rights reserved.
@@ -23,35 +23,13 @@
 * SOFTWARE.
 */
 
-#ifndef TOOLKIT_SRT_SESSION_HPP
-#define TOOLKIT_SRT_SESSION_HPP
-#include "media/media_source.hpp"
-#include "srt_session_base.hpp"
-#include "srt_stream_id.hpp"
-namespace srt {
-    class srt_session : public srt_session_base {
-    public:
-        srt_session(const std::shared_ptr<asio::ip::udp::socket> &_sock, const event_poller::Ptr &context);
-        ~srt_session() override;
-
-    protected:
-        void onConnected() override;
-        void onRecv(const std::shared_ptr<buffer> &) override;
-        void onError(const std::error_code &e) override;
-
-    protected:
-        void handle_publish();
-        void handle_play();
-        void handle_play_l(const media_source::pointer &);
-
-    private:
-        typename srt::stream_id _id;
-        std::shared_ptr<media_source> publish_source;
-        //// io
-        std::weak_ptr<media_source> play_source;
-        std::shared_ptr<typename toolkit::RingBuffer<std::shared_ptr<buffer>>::RingReader> reader;
-    };
-};// namespace srt
+#ifndef TOOLKIT_SOURCE_EVENT_HPP
+#define TOOLKIT_SOURCE_EVENT_HPP
 
 
-#endif//TOOLKIT_SRT_SESSION_HPP
+class source_event {
+public:
+    virtual ~source_event() = default;
+};
+
+#endif//TOOLKIT_SOURCE_EVENT_HPP

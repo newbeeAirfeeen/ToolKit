@@ -11,9 +11,15 @@
 #include <random>
 #include <spdlog/logger.hpp>
 namespace srt {
-    static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session_base>> _thread_local_session_map_;
+    static thread_local std::unordered_map<uint64_t, std::weak_ptr<srt_session_base>> _thread_local_session_map_;
     /// handle handshake
-    static thread_local std::unordered_map<uint32_t, std::weak_ptr<srt_session_base>> _cookie_map;
+    static thread_local std::unordered_map<uint64_t, std::weak_ptr<srt_session_base>> _cookie_map;
+    /// 会话管理map
+    /// socket id
+    static std::recursive_mutex mtx;
+    static std::unordered_map<uint32_t, std::shared_ptr<srt_session_base>> _session_map_;
+    static std::recursive_mutex _cookie_mtx;
+    static std::unordered_map<uint32_t, std::shared_ptr<srt_session_base>> _handshake_map;
     srt_server::srt_server() {
         _on_create_session_func_ = [](const std::shared_ptr<asio::ip::udp::socket> &sock, const event_poller::Ptr &context) -> std::shared_ptr<srt_session_base> {
             return std::make_shared<srt_session>(sock, context);
@@ -29,7 +35,7 @@ namespace srt {
             if (auto stronger_self = self.lock()) {
                 auto _sock = stronger_self->create(poller, endpoint);
                 {
-                    std::lock_guard<std::recursive_mutex> lmtx(stronger_self->mtx);
+                    std::lock_guard<std::recursive_mutex> lmtx(mtx);
                     stronger_self->_socks.push_back(_sock);
                 }
                 stronger_self->start(_sock, poller);
@@ -41,13 +47,14 @@ namespace srt {
         _cookie_map.erase(_cookie);
         std::lock_guard<std::recursive_mutex> lmtx(_cookie_mtx);
         _handshake_map.erase(_cookie);
+        Debug("cookie_map size={}, _handshake_map size={}", _cookie_map.size(), _handshake_map.size());
     }
 
     void srt_server::remove_session(uint32_t sock_id) {
         _thread_local_session_map_.erase(sock_id);
         std::lock_guard<std::recursive_mutex> lmtx(mtx);
         _session_map_.erase(sock_id);
-        Trace("session map, thread_local size = {}, global size = {}", _thread_local_session_map_.size(), _session_map_.size());
+        Debug("session map, thread_local size = {}, global size = {}", _thread_local_session_map_.size(), _session_map_.size());
     }
 
     void srt_server::add_connected_session(const std::shared_ptr<srt_session_base> &session) {
@@ -56,6 +63,7 @@ namespace srt {
         /// 同步到全局会话管理器
         std::lock_guard<std::recursive_mutex> lmtx(mtx);
         _session_map_.emplace(session->get_peer_sock_id(), session);
+        Debug("session map, thread_local size = {}, global size = {}", _thread_local_session_map_.size(), _session_map_.size());
     }
 
     void srt_server::on_create_session(const on_create_session_func &f) {
@@ -150,11 +158,10 @@ namespace srt {
         }
         auto p = ((const uint32_t *) buff->data()) + 7;
         uint32_t _cookie_ = load_be32(p);
-        Debug("get cookie={}", _cookie_);
         if (_cookie_ == 0 && pkt->get_socket_id() == 0) {
-            Debug("create new srt session...");
             /// 同步到线程局部存储
             auto session = _on_create_session_func_(sock, poller);
+
             /// 设置当前cookie
             std::default_random_engine random(std::random_device{}());
             std::uniform_int_distribution<int32_t> mt(0, (std::numeric_limits<int32_t>::max)());
