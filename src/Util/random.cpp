@@ -4,6 +4,7 @@
 
 
 #include "random.hpp"
+#include <numeric>
 #include <random>
 static constexpr char CCH[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -20,4 +21,10 @@ std::string makeRandStr(int sz, bool printable) {
         }
     }
     return ret;
+}
+static thread_local std::random_device ran;
+static thread_local std::mt19937 sgen(ran());
+uint32_t rng_unsigned_integer(uint32_t range_begin, uint32_t range_end) {
+    std::uniform_int_distribution<> dis(range_begin, range_end);
+    return dis(sgen);
 }

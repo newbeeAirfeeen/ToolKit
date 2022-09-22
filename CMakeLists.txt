@@ -39,7 +39,9 @@ endif()
 
 
 # 源代码
-set(SRC_LIST "src/Util/string_util.cpp")
+set(SRC_LIST "src/Util/string_util.cpp"
+             "src/Util/random.cpp"
+             "src/media/media_source.cpp")
 # 待链接的库
 set(LINK_LIB_LIST "")
 
