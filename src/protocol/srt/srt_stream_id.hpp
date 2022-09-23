@@ -27,6 +27,7 @@
 #define TOOLKIT_SRT_STREAM_ID_HPP
 #include "Util/string_view.h"
 #include <unordered_map>
+#include <string>
 namespace srt {
     class stream_id {
     public:

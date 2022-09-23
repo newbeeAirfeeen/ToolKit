@@ -221,7 +221,7 @@ private:
     }
 
     int flags = 0;
-    msg_header_[0] = (flags & SND_NO_FIN ? 0 : 128);
+    msg_header_[0] = (flags & SND_NO_FIN ? 0 : (char)128);
     if (!(flags & SND_CONTINUATION)) {
       msg_header_[0] |= code;
     }

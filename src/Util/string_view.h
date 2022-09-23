@@ -36,6 +36,7 @@
 #define TOOLKIT_STD_STRING_VIEW_HPP
 #if __cplusplus >= 201703L
 #include <string_view>
+using string_view = std::string_view;
 #else
 #include <algorithm>// std::
 #include <cstddef>  // std::size_t

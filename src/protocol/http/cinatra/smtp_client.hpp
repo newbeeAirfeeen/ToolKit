@@ -1,7 +1,7 @@
 #pragma once
 #include "utils.hpp"
 #include <string>
-
+#include <fstream>
 namespace cinatra::smtp {
 struct email_server {
   std::string server;
