@@ -82,6 +82,15 @@ if(ENABLE_URI)
 endif()
 
 
+
+find_package(LibVLC)
+if(LIBVLC_FOUND)
+    add_definitions(-DENABLE_VLC)
+    include_directories(${LIBVLC_INCLUDE_DIR})
+    list(APPEND LINK_LIB_LIST ${LIBVLC_LIBRARY} ${LIBVLCCORE_LIBRARY})
+endif()
+
+
 find_package(GooglePerftools)
 if(TCMALLOC_FOUND AND GOOGLEPERFTOOLS_FOUND)
     message("-- enable google perf tools, include directory:${GooglePerftools_INCLUDE_DIR},library:${GooglePerftools_LIBRARIES},debug library:${GooglePerftools_LIBRARIES_DEBUG}")
