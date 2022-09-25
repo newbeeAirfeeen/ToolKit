@@ -83,14 +83,6 @@ endif()
 
 
 
-find_package(LibVLC)
-if(LIBVLC_FOUND)
-    add_definitions(-DENABLE_VLC)
-    include_directories(${LIBVLC_INCLUDE_DIR})
-    list(APPEND LINK_LIB_LIST ${LIBVLC_LIBRARY} ${LIBVLCCORE_LIBRARY})
-endif()
-
-
 find_package(GooglePerftools)
 if(TCMALLOC_FOUND AND GOOGLEPERFTOOLS_FOUND)
     message("-- enable google perf tools, include directory:${GooglePerftools_INCLUDE_DIR},library:${GooglePerftools_LIBRARIES},debug library:${GooglePerftools_LIBRARIES_DEBUG}")
@@ -101,6 +93,26 @@ if(TCMALLOC_FOUND AND GOOGLEPERFTOOLS_FOUND)
     else()
         list(APPEND LINK_LIB_LIST ${GooglePerftools_LIBRARIES})
     endif()
+endif()
+
+
+find_package(SDL2_image)
+find_package(SDL2)
+find_package(FFmpeg)
+if(SDL2_FOUND AND SDL2_IMAGE_FOUND)
+    message("-- found sdl2 library, sdl2_image library:${SDL2_IMAGE_INCLUDE_DIRS};${SDL2_INCLUDE_DIR};${SDL2_IMAGE_INCLUDE_DIRS};
+    ${SDL2_IMAGE_LIBRARIES};${SDL2_INCLUDE_DIR};${SDL2_LIBRARY}")
+    add_definitions(-DENABLE_SDL2 -DENABLE_FFMPEG)
+    include_directories(${SDL2_IMAGE_INCLUDE_DIRS} ${SDL2_INCLUDE_DIR})
+    #add_subdirectory(app/player)
+endif()
+
+
+find_package(LibVLC)
+if(LIBVLC_FOUND)
+    add_definitions(-DENABLE_VLC)
+    include_directories(${LIBVLC_INCLUDE_DIR})
+    #list(APPEND LINK_LIB_LIST ${LIBVLC_LIBRARY} ${LIBVLCCORE_LIBRARY})
 endif()
 
 
@@ -141,7 +153,8 @@ if(NOT ANDROID)
 
     if(ENABLE_APP)
         message("-- enable app")
-        add_subdirectory(app)
+        add_subdirectory(app/player)
+        add_subdirectory(app/vlcapp)
     endif()
 
 endif()

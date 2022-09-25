@@ -3,6 +3,9 @@
 //
 #include <SDL2/SDL.h>
 #include <Util/cmdline.hpp>
+#ifdef ENABLE_VLC
+#include <vlc/vlc.h>
+#endif
 int main(int argc, char *argv[]) {
 
 
